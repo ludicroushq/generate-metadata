@@ -15,6 +15,7 @@
       "import": "./dist/next.js"
     }
   },
+  "files": ["dist", "src"],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
