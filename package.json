@@ -2,22 +2,61 @@
   "name": "generate-metadata",
   "version": "0.0.0",
   "description": "generate metadata",
-  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "require": "./dist/next.cjs",
+      "import": "./dist/next.js"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "concurrently pnpm:build:*",
+    "build:pkg": "pnpm run generate:pkg && tsup",
+    "ci:test": "concurrently pnpm:ci:test:*",
+    "ci:test:lint": "biome check .",
+    "dev": "concurrently pnpm:dev:*",
+    "dev:pkg": "pnpm run generate:dev && tsup --watch",
+    "generate:pkg": "openapi-typescript https://www.generate-metadata.com/api/schema -o ./src/__generated__/api.ts",
+    "generate:dev": "openapi-typescript http://localhost:3000/api/schema -o ./src/__generated__/api.ts",
+    "test": "concurrently pnpm:test:*",
+    "test:lint": "biome check . --write --unsafe",
+    "test:typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ludicroushq/generate-metadata.git"
   },
-  "keywords": [
-    "generate",
-    "metadata"
-  ],
+  "keywords": ["generate", "metadata"],
   "author": "ludicrous",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/ludicroushq/generate-metadata/issues"
   },
-  "homepage": "https://github.com/ludicroushq/generate-metadata#readme"
+  "homepage": "https://github.com/ludicroushq/generate-metadata#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.3",
+    "@types/node": "^22.7.5",
+    "concurrently": "^9.0.1",
+    "lefthook": "^1.7.18",
+    "next": "^14.2.15",
+    "openapi-typescript": "^7.4.1",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.12.2",
+    "ts-pattern": "^5.4.0"
+  }
 }
