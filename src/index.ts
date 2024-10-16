@@ -1,29 +1,36 @@
-import assert from "assert";
 import { api } from "./utils/api";
 
 export type GenerateMetadataClientBaseOptions = {
   apiKey?: string;
-  hostname: string;
 };
 export class GenerateMetadataClientBase {
-  apiKey: string;
-  hostname: string;
+  apiKey: string | undefined;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
-    const { apiKey = process.env.GENERATE_METADATA_API_KEY, hostname } = props;
-    assert(apiKey, "apiKey is required");
+    const { apiKey = process.env.GENERATE_METADATA_API_KEY } = props;
+
+    if (process.env.NODE_ENV === "production" && !apiKey) {
+      console.warn(
+        "GenerateMetadata - API key was not passed in production mode.",
+      );
+    }
 
     this.apiKey = apiKey;
-    this.hostname = hostname;
   }
 
   async getMetadata({ path }: { path: string }) {
+    if (!this.apiKey) {
+      throw new Error("GenerateMetadata - API key is not set");
+    }
+
     try {
-      const res = await api.GET("/api/v1/get-metadata", {
+      const res = await api.POST("/api/v1/get-metadata", {
+        body: {
+          path,
+        },
         params: {
-          query: {
-            path,
-            hostname: this.hostname,
+          header: {
+            authorization: `Bearer ${this.apiKey}`,
           },
         },
       });

@@ -11,17 +11,31 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get: {
+    get?: never;
+    put?: never;
+    post: {
       parameters: {
-        query: {
-          path: string;
-          hostname: string;
+        query?: never;
+        header: {
+          authorization: string;
         };
-        header?: never;
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody?: {
+        content: {
+          "application/json": {
+            path: string;
+            /** @default {} */
+            opts?: {
+              /** @default false */
+              ai?: boolean;
+              /** @default false */
+              revalidate?: boolean;
+            };
+          };
+        };
+      };
       responses: {
         /** @description Return the scrape */
         200: {
@@ -34,8 +48,6 @@ export interface paths {
         };
       };
     };
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
