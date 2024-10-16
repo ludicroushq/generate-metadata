@@ -69,17 +69,24 @@ export interface components {
         }
       | {
           status: "success" | "revalidating";
-          metadata: {
-            title: string;
-            description: string;
-            openGraph: {
-              title: string;
-              description: string;
-            };
-            alternates: {
-              canonical: string;
-            };
-          };
+          metadata:
+            | {
+                /** @enum {string} */
+                type: "not-enough-information";
+              }
+            | {
+                /** @enum {string} */
+                type: "metadata";
+                title: string;
+                description: string;
+                openGraph: {
+                  title: string;
+                  description: string;
+                };
+                alternates: {
+                  canonical: string;
+                };
+              };
         }
       | {
           /** @enum {string} */

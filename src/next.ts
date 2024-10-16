@@ -17,6 +17,10 @@ type NextGenerateMetadata<Props> = (
 
 type GenerateMetadataOptions = {
   path: string;
+  opts?: {
+    ai?: boolean;
+    revalidate?: boolean;
+  };
 };
 
 type Status = {
@@ -80,8 +84,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const isProductionLambda = isProduction && !isBuildPhase;
 
     return async (): Promise<Metadata> => {
-      const path = generateMetadataOptions.path;
-      const getMetadata = await this.getMetadata({ path });
+      const { path, opts } = generateMetadataOptions;
+      const getMetadata = await this.getMetadata({ path, opts });
 
       if (!getMetadata.ok) {
         console.error(
@@ -149,6 +153,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             status: "revalidating",
           },
           (data): Metadata => {
+            if (data.metadata.type === "not-enough-information") {
+              return {};
+            }
             return {
               title: data.metadata.title,
               description: data.metadata.description,
