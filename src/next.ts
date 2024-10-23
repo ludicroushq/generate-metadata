@@ -36,6 +36,13 @@ function md5(str: string): string {
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   buildId: string;
+  cache: Record<
+    string,
+    {
+      cachedAt: Date;
+      data: components["schemas"]["get-metadata-response"];
+    }
+  > = {};
   constructor(opts: GenerateMetadataClientOptions) {
     super(opts);
     this.buildId = this.getBuildId();
@@ -85,12 +92,104 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
     return async (): Promise<Metadata> => {
       const { path, opts } = generateMetadataOptions;
-      const getMetadata = await this.getMetadata({ path, opts });
+      try {
+        const getMetadata = await (async () => {
+          const cached = this.cache[path];
+          if (
+            cached &&
+            cached.cachedAt > new Date(Date.now() - 1000 * 60 * 5)
+          ) {
+            return cached.data;
+          }
+          const getMetadata = await this.getMetadata({ path, opts });
+          if (!getMetadata.ok) {
+            throw getMetadata.err;
+          }
 
-      if (!getMetadata.ok) {
+          this.cache[path] = {
+            cachedAt: new Date(),
+            data: getMetadata.data.data,
+          };
+          return getMetadata.data.data;
+        })();
+
+        return match(getMetadata)
+          .with({ status: "error" }, (data) => {
+            console.error(
+              "Failed to generate metadata for path: /:",
+              data.message,
+            );
+            return {
+              other: {
+                ...this.generateMetadataStatus({
+                  status: "error",
+                  message: data.message,
+                }),
+              },
+            };
+          })
+          .with(
+            {
+              status: "pending",
+            },
+            () => {
+              return {
+                other: {
+                  ...this.generateMetadataStatus({
+                    status: "pending",
+                  }),
+                },
+              };
+            },
+          )
+          .with(
+            {
+              status: "missing",
+            },
+            () => {
+              return {
+                other: {
+                  ...this.generateMetadataStatus({
+                    status: "missing",
+                  }),
+                },
+              };
+            },
+          )
+          .with(
+            {
+              status: "success",
+            },
+            {
+              status: "revalidating",
+            },
+            (data): Metadata => {
+              if (data.metadata.type === "not-enough-information") {
+                return {};
+              }
+              return {
+                title: data.metadata.title,
+                description: data.metadata.description,
+                openGraph: {
+                  title: data.metadata.openGraph.title,
+                  description: data.metadata.openGraph.description,
+                },
+                alternates: {
+                  canonical: data.metadata.alternates.canonical,
+                },
+                other: {
+                  ...this.generateMetadataStatus({
+                    status: data.status,
+                  }),
+                },
+              };
+            },
+          )
+          .exhaustive();
+      } catch (err) {
         console.error(
           "Failed to fetch metadata for path: /:",
-          JSON.stringify(getMetadata.err),
+          JSON.stringify(err),
         );
         return {
           other: {
@@ -101,80 +200,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           },
         };
       }
-
-      return match(getMetadata.data.data)
-        .with({ status: "error" }, (data) => {
-          console.error(
-            "Failed to generate metadata for path: /:",
-            data.message,
-          );
-          return {
-            other: {
-              ...this.generateMetadataStatus({
-                status: "error",
-                message: data.message,
-              }),
-            },
-          };
-        })
-        .with(
-          {
-            status: "pending",
-          },
-          () => {
-            return {
-              other: {
-                ...this.generateMetadataStatus({
-                  status: "pending",
-                }),
-              },
-            };
-          },
-        )
-        .with(
-          {
-            status: "missing",
-          },
-          () => {
-            return {
-              other: {
-                ...this.generateMetadataStatus({
-                  status: "missing",
-                }),
-              },
-            };
-          },
-        )
-        .with(
-          {
-            status: "success",
-          },
-          {
-            status: "revalidating",
-          },
-          (data): Metadata => {
-            if (data.metadata.type === "not-enough-information") {
-              return {};
-            }
-            return {
-              title: data.metadata.title,
-              description: data.metadata.description,
-              openGraph: {
-                title: data.metadata.openGraph.title,
-                description: data.metadata.openGraph.description,
-              },
-              alternates: {
-                canonical: data.metadata.alternates.canonical,
-              },
-              other: {
-                ...this.generateMetadataStatus({
-                  status: data.status,
-                }),
-              },
-            };
-          },
-        )
-        .exhaustive();
     };
   }
 }
