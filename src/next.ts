@@ -95,10 +95,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       try {
         const getMetadata = await (async () => {
           const cached = this.cache[path];
-          if (
-            cached &&
-            cached.cachedAt > new Date(Date.now() - 1000 * 60 * 5)
-          ) {
+          if (cached) {
             return cached.data;
           }
           const getMetadata = await this.getMetadata({ path, opts });
