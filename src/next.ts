@@ -185,10 +185,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           )
           .exhaustive();
       } catch (err) {
-        console.error(
-          "Failed to fetch metadata for path: /:",
-          JSON.stringify(err),
-        );
+        console.error(err);
+        console.error("Failed to fetch metadata for path: /");
         return {
           other: {
             ...this.generateMetadataStatus({

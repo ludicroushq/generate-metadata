@@ -76,7 +76,7 @@ export interface components {
               }
             | {
                 /** @enum {string} */
-                type: "metadata";
+                type: "success";
                 title: string;
                 description: string;
                 openGraph: {
