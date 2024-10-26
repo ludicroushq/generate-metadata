@@ -92,6 +92,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
     return async (): Promise<Metadata> => {
       const { path, opts } = generateMetadataOptions;
+      console.log("generating metadata for", path);
       try {
         const getMetadata = await (async () => {
           const cached = this.cache[path];
