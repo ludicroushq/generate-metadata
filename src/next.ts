@@ -19,7 +19,6 @@ type GenerateMetadataOptions = {
   path: string;
   opts?: {
     ai?: boolean;
-    revalidate?: boolean;
   };
 };
 

@@ -21,18 +21,19 @@ export class GenerateMetadataClientBase {
   async getMetadata({
     path,
     opts = {},
-  }: { path: string; opts?: { ai?: boolean; revalidate?: boolean } }) {
+  }: { path: string; opts?: { ai?: boolean } }) {
     if (!this.apiKey) {
       throw new Error("GenerateMetadata - API key is not set");
     }
 
+    // TODO: opts + trigger scrape on build + caching
+
     try {
-      const res = await api.POST("/api/v1/get-metadata", {
-        body: {
-          path,
-          opts,
-        },
+      const res = await api.GET("/api/v1/metadata", {
         params: {
+          path: {
+            path,
+          },
           header: {
             authorization: `Bearer ${this.apiKey}`,
           },
@@ -42,7 +43,7 @@ export class GenerateMetadataClientBase {
       if (res.error) {
         return {
           ok: false,
-          err: res,
+          err: res.error,
         } as const;
       }
 
