@@ -64,13 +64,13 @@ export interface paths {
     };
     get: {
       parameters: {
-        query?: never;
+        query: {
+          path: string;
+        };
         header: {
           authorization: string;
         };
-        path: {
-          path: string;
-        };
+        path?: never;
         cookie?: never;
       };
       requestBody?: never;

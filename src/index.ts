@@ -31,7 +31,7 @@ export class GenerateMetadataClientBase {
     try {
       const res = await api.GET("/api/v1/metadata", {
         params: {
-          path: {
+          query: {
             path,
           },
           header: {
