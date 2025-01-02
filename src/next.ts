@@ -2,7 +2,6 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import type { Metadata, ResolvingMetadata } from "next";
-import { PHASE_PRODUCTION_BUILD } from "next/dist/shared/lib/constants";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -23,7 +22,7 @@ type GenerateMetadataOptions = {
 };
 
 type Status = {
-  status: components["schemas"]["get-metadata-response"]["status"];
+  status: components["schemas"]["metadata-response"]["status"];
   message?: string;
 };
 
@@ -39,7 +38,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     string,
     {
       cachedAt: Date;
-      data: components["schemas"]["get-metadata-response"];
+      data: components["schemas"]["metadata-response"];
     }
   > = {};
   constructor(opts: GenerateMetadataClientOptions) {
@@ -72,7 +71,15 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public generateMetadata<Props>(
     generateMetadataOptions: GenerateMetadataOptions,
   ): NextGenerateMetadata<Props> {
+    const isProduction = process.env.NODE_ENV === "production";
+    // const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
+    // const isProductionBuild = isProduction && isBuildPhase;
+    // const isProductionLambda = isProduction && !isBuildPhase;
+
     if (!this.apiKey) {
+      const warnOrError = isProduction ? console.error : console.warn;
+      warnOrError("GenerateMetadata - API key is not set.");
+
       return async (): Promise<Metadata> => ({
         title: `${generateMetadataOptions.path} - GenerateMetadata`,
         other: {
@@ -84,14 +91,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       });
     }
 
-    const isProduction = process.env.NODE_ENV === "production";
-    const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
-    const isProductionBuild = isProduction && isBuildPhase;
-    const isProductionLambda = isProduction && !isBuildPhase;
-
     return async (): Promise<Metadata> => {
       const { path, opts } = generateMetadataOptions;
-      console.log("generating metadata for", path);
       try {
         const getMetadata = await (async () => {
           const cached = this.cache[path];
@@ -113,7 +114,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         return match(getMetadata)
           .with({ status: "error" }, (data) => {
             console.error(
-              "Failed to generate metadata for path: /:",
+              `Failed to generate metadata for path: ${path}:`,
               data.message,
             );
             return {
@@ -125,20 +126,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
               },
             };
           })
-          .with(
-            {
-              status: "pending",
-            },
-            () => {
-              return {
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: "pending",
-                  }),
-                },
-              };
-            },
-          )
           .with(
             {
               status: "missing",
@@ -161,18 +148,15 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
               status: "revalidating",
             },
             (data): Metadata => {
-              if (data.metadata.type === "not-enough-information") {
-                return {};
-              }
               return {
                 title: data.metadata.title,
                 description: data.metadata.description,
                 openGraph: {
-                  title: data.metadata.openGraph.title,
-                  description: data.metadata.openGraph.description,
+                  title: data.metadata.openGraph?.title,
+                  description: data.metadata.openGraph?.description,
                 },
                 alternates: {
-                  canonical: data.metadata.alternates.canonical,
+                  canonical: data.metadata.alternates?.canonical,
                 },
                 other: {
                   ...this.generateMetadataStatus({
@@ -184,8 +168,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           )
           .exhaustive();
       } catch (err) {
-        console.error(err);
-        console.error("Failed to fetch metadata for path: /");
+        console.error(
+          "Failed to fetch metadata for path: /",
+          err instanceof Error ? err.message : err,
+        );
         return {
           other: {
             ...this.generateMetadataStatus({

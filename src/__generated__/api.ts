@@ -63,6 +63,71 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/scrape": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          authorization: string;
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            path: string;
+            buildId: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Return the scrape status */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["metadata-response"] &
+              Record<string, never>;
+          };
+        };
+        /** @description Invalid input */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              message: string;
+            };
+          };
+        };
+        /** @description Invalid token */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": Record<string, never>;
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -70,32 +135,21 @@ export interface components {
     "metadata-response":
       | {
           /** @enum {string} */
-          status: "pending";
-        }
-      | {
-          /** @enum {string} */
           status: "missing";
         }
       | {
           status: "success" | "revalidating";
-          metadata:
-            | {
-                /** @enum {string} */
-                type: "not-enough-information";
-              }
-            | {
-                /** @enum {string} */
-                type: "success";
-                title: string;
-                description: string;
-                openGraph: {
-                  title: string;
-                  description: string;
-                };
-                alternates: {
-                  canonical: string;
-                };
-              };
+          metadata: {
+            title?: string;
+            description?: string;
+            openGraph?: {
+              title?: string;
+              description?: string;
+            };
+            alternates?: {
+              canonical?: string;
+            };
+          };
         }
       | {
           /** @enum {string} */
