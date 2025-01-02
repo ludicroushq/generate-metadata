@@ -15,7 +15,10 @@
       "import": "./dist/next.js"
     }
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,20 +29,27 @@
     "build": "concurrently pnpm:build:*",
     "build:pkg": "tsup",
     "ci:test": "concurrently pnpm:ci:test:*",
-    "ci:test:lint": "biome check .",
+    "ci:test:lint": "eslint --max-warnings 0 .",
+    "ci:test:pretty": "prettier --check .",
+    "ci:test:typecheck": "tsc --noEmit",
     "dev": "concurrently pnpm:dev:*",
     "dev:pkg": "pnpm run generate:dev && tsup --watch",
     "generate:pkg": "openapi-typescript https://www.generate-metadata.com/api/schema -o ./src/__generated__/api.ts",
     "generate:dev": "openapi-typescript http://localhost:3000/api/schema -o ./src/__generated__/api.ts",
+    "prepare": "husky",
     "test": "concurrently pnpm:test:*",
-    "test:lint": "biome check . --write --unsafe",
+    "test:lint": "eslint --fix --max-warnings 0 .",
+    "test:pretty": "prettier --write .",
     "test:typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ludicroushq/generate-metadata.git"
   },
-  "keywords": ["generate", "metadata"],
+  "keywords": [
+    "generate",
+    "metadata"
+  ],
   "author": "ludicrous",
   "license": "MIT",
   "bugs": {
@@ -47,17 +57,26 @@
   },
   "homepage": "https://github.com/ludicroushq/generate-metadata#readme",
   "devDependencies": {
-    "@biomejs/biome": "^1.9.3",
     "@types/node": "^22.7.5",
     "concurrently": "^9.0.1",
-    "lefthook": "^1.7.18",
+    "eslint": "^9.17.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "neostandard": "^0.12.0",
     "next": "^14.2.15",
     "openapi-typescript": "^7.4.1",
+    "prettier": "^3.4.2",
     "tsup": "^8.3.0",
     "typescript": "^5.6.3"
   },
   "dependencies": {
     "openapi-fetch": "^0.12.2",
     "ts-pattern": "^5.4.0"
+  },
+  "lint-staged": {
+    "*": [
+      "eslint --fix",
+      "prettier --ignore-unknown --write"
+    ]
   }
 }
