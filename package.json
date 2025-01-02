@@ -24,7 +24,7 @@
   },
   "scripts": {
     "build": "concurrently pnpm:build:*",
-    "build:pkg": "pnpm run generate:pkg && tsup",
+    "build:pkg": "tsup",
     "ci:test": "concurrently pnpm:ci:test:*",
     "ci:test:lint": "biome check .",
     "dev": "concurrently pnpm:dev:*",
