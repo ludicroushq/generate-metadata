@@ -16,9 +16,7 @@ type NextGenerateMetadata<Props> = (
 
 type GenerateMetadataOptions = {
   path: string;
-  opts?: {
-    ai?: boolean;
-  };
+  opts?: {};
 };
 
 type Status = {
