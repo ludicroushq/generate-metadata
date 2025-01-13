@@ -3,7 +3,7 @@ import type { paths } from "../__generated__/api";
 
 export const api = createClient<paths>({
   baseUrl:
-    process.env.NODE_ENV === "development"
+    process.env.GENERATE_METADATA_NODE_ENV === "development"
       ? "http://localhost:3000"
       : "https://www.generate-metadata.com",
 });
