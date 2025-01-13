@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "concurrently pnpm:build:*",
-    "build:pkg": "tsup",
+    "build:pkg": "pnpm run generate:pkg && tsup",
     "ci:test": "concurrently pnpm:ci:test:*",
     "ci:test:lint": "eslint --max-warnings 0 .",
     "ci:test:pretty": "prettier --check .",
