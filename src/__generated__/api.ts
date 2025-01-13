@@ -50,7 +50,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": Record<string, never>;
+            "application/json": {
+              message: string;
+            };
           };
         };
       };
@@ -85,7 +87,6 @@ export interface paths {
         content: {
           "application/json": {
             path: string;
-            buildId: string;
           };
         };
       };
