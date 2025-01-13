@@ -67,9 +67,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   private _generateMetadata<Props>(
-    getGenerateMetadataOptions: () =>
-      | Promise<GenerateMetadataOptions>
-      | GenerateMetadataOptions,
+    getGenerateMetadataOptions: (
+      props: Props,
+      parent: ResolvingMetadata,
+    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
   ): NextGenerateMetadata<Props> {
     const isProduction = process.env.NODE_ENV === "production";
     // const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
@@ -80,8 +81,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const warnOrError = isProduction ? console.error : console.warn;
       warnOrError("GenerateMetadata - API key is not set.");
 
-      return async (): Promise<Metadata> => {
-        const generateMetadataOptions = await getGenerateMetadataOptions();
+      return async (props, parent): Promise<Metadata> => {
+        const generateMetadataOptions = await getGenerateMetadataOptions(
+          props,
+          parent,
+        );
         return {
           title: `${generateMetadataOptions.path} - GenerateMetadata`,
           other: {
@@ -94,8 +98,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       };
     }
 
-    return async (): Promise<Metadata> => {
-      const generateMetadataOptions = await getGenerateMetadataOptions();
+    return async (props, parent): Promise<Metadata> => {
+      const generateMetadataOptions = await getGenerateMetadataOptions(
+        props,
+        parent,
+      );
       const { path, opts } = generateMetadataOptions;
       try {
         const getMetadata = await (async () => {
@@ -192,14 +199,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generateMetadataOptions: GenerateMetadataOptions,
   ): NextGenerateMetadata<Props>;
   public generateMetadata<Props>(
-    generateMetadataFn: () =>
-      | Promise<GenerateMetadataOptions>
-      | GenerateMetadataOptions,
+    generateMetadataFn: (
+      props: Props,
+      parent: ResolvingMetadata,
+    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
   ): NextGenerateMetadata<Props>;
   public generateMetadata<Props>(
     generateMetadataOptionsOrFn:
       | GenerateMetadataOptions
-      | (() => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
+      | ((
+          props: Props,
+          parent: ResolvingMetadata,
+        ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
   ): NextGenerateMetadata<Props> {
     return this._generateMetadata(
       typeof generateMetadataOptionsOrFn === "function"
