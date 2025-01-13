@@ -26,9 +26,9 @@ type Status = {
 
 type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
 
-function md5(str: string): string {
-  return crypto.createHash("md5").update(str).digest("hex");
-}
+// function md5(str: string): string {
+//   return crypto.createHash("md5").update(str).digest("hex");
+// }
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   buildId: string;
@@ -56,7 +56,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   private generateMetadataStatus(status: Status): Metadata["other"] {
     const metadata: Record<string, string> = {
       "generate-metadata:status": status.status,
-      "generate-metadata:build-id": md5(this.buildId),
+      // "generate-metadata:build-id": md5(this.buildId),
     };
 
     if (status.message) {
@@ -66,8 +66,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return metadata;
   }
 
-  public generateMetadata<Props>(
-    generateMetadataOptions: GenerateMetadataOptions,
+  private _generateMetadata<Props>(
+    getGenerateMetadataOptions: () =>
+      | Promise<GenerateMetadataOptions>
+      | GenerateMetadataOptions,
   ): NextGenerateMetadata<Props> {
     const isProduction = process.env.NODE_ENV === "production";
     // const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
@@ -78,18 +80,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const warnOrError = isProduction ? console.error : console.warn;
       warnOrError("GenerateMetadata - API key is not set.");
 
-      return async (): Promise<Metadata> => ({
-        title: `${generateMetadataOptions.path} - GenerateMetadata`,
-        other: {
-          ...this.generateMetadataStatus({
-            status: "error",
-            message: "GenerateMetadata - API key is not set",
-          }),
-        },
-      });
+      return async (): Promise<Metadata> => {
+        const generateMetadataOptions = await getGenerateMetadataOptions();
+        return {
+          title: `${generateMetadataOptions.path} - GenerateMetadata`,
+          other: {
+            ...this.generateMetadataStatus({
+              status: "error",
+              message: "GenerateMetadata - API key is not set",
+            }),
+          },
+        };
+      };
     }
 
     return async (): Promise<Metadata> => {
+      const generateMetadataOptions = await getGenerateMetadataOptions();
       const { path, opts } = generateMetadataOptions;
       try {
         const getMetadata = await (async () => {
@@ -180,5 +186,25 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         };
       }
     };
+  }
+
+  public generateMetadata<Props>(
+    generateMetadataOptions: GenerateMetadataOptions,
+  ): NextGenerateMetadata<Props>;
+  public generateMetadata<Props>(
+    generateMetadataFn: () =>
+      | Promise<GenerateMetadataOptions>
+      | GenerateMetadataOptions,
+  ): NextGenerateMetadata<Props>;
+  public generateMetadata<Props>(
+    generateMetadataOptionsOrFn:
+      | GenerateMetadataOptions
+      | (() => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
+  ): NextGenerateMetadata<Props> {
+    return this._generateMetadata(
+      typeof generateMetadataOptionsOrFn === "function"
+        ? generateMetadataOptionsOrFn
+        : () => generateMetadataOptionsOrFn,
+    );
   }
 }
