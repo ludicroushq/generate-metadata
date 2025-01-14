@@ -104,7 +104,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           () => this.getMetadata({ path, opts }),
           [path, JSON.stringify(opts)],
           {
-            tags: [`metadata:${path}`],
+            tags: [`generate-metadata:${path}`],
           },
         );
         const metadata = await getMetadata();
