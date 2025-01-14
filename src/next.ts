@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import fs from "fs";
-import path from "path";
 import type { Metadata, ResolvingMetadata } from "next";
+import { unstable_cache as nextCache } from "next/cache";
+import path from "path";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -32,13 +33,6 @@ type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   buildId: string;
-  cache: Record<
-    string,
-    {
-      cachedAt: Date;
-      data: components["schemas"]["metadata-response"];
-    }
-  > = {};
   constructor(opts: GenerateMetadataClientOptions) {
     super(opts);
     this.buildId = this.getBuildId();
@@ -103,26 +97,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         props,
         parent,
       );
-      const { path, opts } = generateMetadataOptions;
+      const { path, opts = {} } = generateMetadataOptions;
+
       try {
-        const getMetadata = await (async () => {
-          const cached = this.cache[path];
-          if (cached) {
-            return cached.data;
-          }
-          const getMetadata = await this.getMetadata({ path, opts });
-          if (!getMetadata.ok) {
-            throw getMetadata.err;
-          }
+        const getMetadata = nextCache(
+          () => this.getMetadata({ path, opts }),
+          [path, JSON.stringify(opts)],
+          {
+            tags: [`metadata:${path}`],
+          },
+        );
+        const metadata = await getMetadata();
+        if (!metadata.ok) {
+          throw metadata.err;
+        }
 
-          this.cache[path] = {
-            cachedAt: new Date(),
-            data: getMetadata.data.data,
-          };
-          return getMetadata.data.data;
-        })();
-
-        return match(getMetadata)
+        return match(metadata.data.data)
           .with({ status: "error" }, (data) => {
             console.error(
               `Failed to generate metadata for path: ${path}:`,
