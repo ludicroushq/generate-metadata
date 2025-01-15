@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import fs from "fs";
 import type { Metadata, ResolvingMetadata } from "next";
-import { unstable_cache as nextCache } from "next/cache";
 import path from "path";
 import { match } from "ts-pattern";
 import {
@@ -33,9 +32,14 @@ type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   buildId: string;
+  cache: Map<
+    string,
+    { cachedAt: Date; data: components["schemas"]["metadata-response"] }
+  >;
   constructor(opts: GenerateMetadataClientOptions) {
     super(opts);
     this.buildId = this.getBuildId();
+    this.cache = new Map();
   }
 
   private getBuildId() {
@@ -60,6 +64,33 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return metadata;
   }
 
+  private async getCachedMetadata(opts: GenerateMetadataOptions) {
+    const cacheKey = opts.path;
+    const cached = this.cache.get(cacheKey);
+    // Bypass cache in build phase
+    if (cached) {
+      return cached.data;
+    }
+
+    const metadata = await this.getMetadata(opts);
+
+    if (!metadata.ok) {
+      throw metadata.err;
+    }
+
+    this.cache.set(cacheKey, {
+      cachedAt: new Date(),
+      data: metadata.data.data,
+    });
+
+    return metadata.data.data;
+  }
+
+  public revalidateCache(opts: GenerateMetadataOptions) {
+    const cacheKey = opts.path;
+    this.cache.delete(cacheKey);
+  }
+
   private _generateMetadata<Props>(
     getGenerateMetadataOptions: (
       props: Props,
@@ -67,7 +98,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
   ): NextGenerateMetadata<Props> {
     const isProduction = process.env.NODE_ENV === "production";
-    // const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
     // const isProductionBuild = isProduction && isBuildPhase;
     // const isProductionLambda = isProduction && !isBuildPhase;
 
@@ -100,19 +130,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const { path, opts = {} } = generateMetadataOptions;
 
       try {
-        const getMetadata = nextCache(
-          () => this.getMetadata({ path, opts }),
-          [path, JSON.stringify(opts)],
-          {
-            tags: [`generate-metadata:${path}`],
-          },
-        );
-        const metadata = await getMetadata();
-        if (!metadata.ok) {
-          throw metadata.err;
-        }
+        const metadata = await this.getCachedMetadata({ path, opts });
 
-        return match(metadata.data.data)
+        return match(metadata)
           .with({ status: "error" }, (data) => {
             console.error(
               `Failed to generate metadata for path: ${path}:`,
