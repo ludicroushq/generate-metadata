@@ -8,6 +8,9 @@ import {
   type GenerateMetadataClientBaseOptions,
 } from ".";
 import type { components } from "./__generated__/api";
+import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 type NextGenerateMetadata<Props> = (
   props: Props,
@@ -23,6 +26,8 @@ type Status = {
   status: components["schemas"]["metadata-response"]["status"];
   message?: string;
 };
+
+type NextRouteHandler = (request: NextRequest) => Promise<NextResponse>;
 
 type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
 
@@ -89,6 +94,80 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public revalidateCache(opts: GenerateMetadataOptions) {
     const cacheKey = opts.path;
     this.cache.delete(cacheKey);
+  }
+
+  public routeHandler(): {
+    GET: NextRouteHandler;
+    POST: NextRouteHandler;
+    PATCH: NextRouteHandler;
+    PUT: NextRouteHandler;
+    DELETE: NextRouteHandler;
+    HEAD: NextRouteHandler;
+    OPTIONS: NextRouteHandler;
+  } {
+    const schema = z.object({
+      page: z.object({
+        path: z.string(),
+      }),
+    });
+
+    const handler = async (request: NextRequest) => {
+      if (request.nextUrl.pathname.endsWith("/revalidate")) {
+        // revalidate
+        if (request.headers.get("Authorization") !== `Bearer ${this.apiKey}`) {
+          return NextResponse.json(
+            {
+              error: "Unauthorized",
+            },
+            {
+              status: 401,
+            },
+          );
+        }
+        const body = await request.json();
+        const parsed = await schema.safeParseAsync(body);
+        if (!parsed.success) {
+          return NextResponse.json(
+            {
+              error: "Invalid request body" + parsed.error.message,
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+
+        const {
+          page: { path },
+        } = parsed.data;
+        await this.revalidateCache({
+          path,
+        });
+        await revalidatePath(path);
+        return NextResponse.json({
+          revalidated: true,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error: "Not found",
+        },
+        {
+          status: 404,
+        },
+      );
+    };
+
+    return {
+      GET: handler,
+      POST: handler,
+      PATCH: handler,
+      PUT: handler,
+      DELETE: handler,
+      HEAD: handler,
+      OPTIONS: handler,
+    };
   }
 
   private _generateMetadata<Props>(
