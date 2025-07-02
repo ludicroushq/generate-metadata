@@ -4,125 +4,16 @@
  */
 
 export interface paths {
-  "/api/v1/metadata": {
+  "/sites/get-key-site": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: {
-      parameters: {
-        query: {
-          path: string;
-        };
-        header: {
-          authorization: string;
-        };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Return the scrape */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["metadata-response"];
-          };
-        };
-        /** @description Invalid input */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              message: string;
-            };
-          };
-        };
-        /** @description Invalid token */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              message: string;
-            };
-          };
-        };
-      };
-    };
+    get: operations["sites.getSite"];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/scrape": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header: {
-          authorization: string;
-        };
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: {
-        content: {
-          "application/json": {
-            path: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Return the scrape status */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["metadata-response"] &
-              Record<string, never>;
-          };
-        };
-        /** @description Invalid input */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": {
-              message: string;
-            };
-          };
-        };
-        /** @description Invalid token */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": Record<string, never>;
-          };
-        };
-      };
-    };
     delete?: never;
     options?: never;
     head?: never;
@@ -132,32 +23,7 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    "metadata-response":
-      | {
-          /** @enum {string} */
-          status: "missing";
-        }
-      | {
-          status: "success" | "revalidating";
-          metadata: {
-            title?: string;
-            description?: string;
-            openGraph?: {
-              title?: string;
-              description?: string;
-            };
-            alternates?: {
-              canonical?: string;
-            };
-          };
-        }
-      | {
-          /** @enum {string} */
-          status: "error";
-          message: string;
-        };
-  };
+  schemas: never;
   responses: never;
   parameters: never;
   requestBodies: never;
@@ -165,4 +31,34 @@ export interface components {
   pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+  "sites.getSite": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            site: {
+              id: string;
+              name: string;
+              hostname: string;
+              titleTemplate: string | null;
+              autoScrapeEnabled: boolean;
+              autoAcceptAiSuggestions: boolean;
+            };
+          };
+        };
+      };
+    };
+  };
+}

@@ -2,6 +2,20 @@
   "name": "generate-metadata",
   "version": "0.0.0",
   "description": "generate metadata",
+  "keywords": [
+    "generate",
+    "metadata"
+  ],
+  "homepage": "https://github.com/ludicroushq/generate-metadata#readme",
+  "bugs": {
+    "url": "https://github.com/ludicroushq/generate-metadata/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ludicroushq/generate-metadata.git"
+  },
+  "license": "MIT",
+  "author": "ludicrous",
   "type": "module",
   "exports": {
     ".": {
@@ -13,78 +27,136 @@
       "types": "./dist/next.d.ts",
       "require": "./dist/next.cjs",
       "import": "./dist/next.js"
+    },
+    "./tanstack-start": {
+      "types": "./dist/tanstack-start.d.ts",
+      "require": "./dist/tanstack-start.cjs",
+      "import": "./dist/tanstack-start.js"
     }
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "src"
   ],
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "concurrently pnpm:build:*",
-    "build:pkg": "pnpm run generate:pkg && tsup --env.GENERATE_METADATA_NODE_ENV production",
-    "ci:test": "concurrently pnpm:ci:test:*",
-    "ci:test:lint": "eslint --max-warnings 0 .",
-    "ci:test:pretty": "prettier --check .",
-    "ci:test:typecheck": "tsc --noEmit",
-    "dev": "concurrently pnpm:dev:*",
-    "dev:pkg": "pnpm run generate:dev && tsup --env.GENERATE_METADATA_NODE_ENV development --watch",
-    "generate:pkg": "openapi-typescript https://www.generate-metadata.com/api/schema -o ./src/__generated__/api.ts",
-    "generate:dev": "openapi-typescript http://localhost:3000/api/schema -o ./src/__generated__/api.ts",
+    "build": "wireit",
+    "dev": "wireit",
+    "dev:local": "wireit",
     "prepare": "husky",
-    "test": "concurrently pnpm:test:*",
-    "test:lint": "eslint --fix --max-warnings 0 .",
-    "test:pretty": "prettier --write .",
-    "test:typecheck": "tsc --noEmit"
+    "test": "wireit",
+    "test:ci": "wireit"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ludicroushq/generate-metadata.git"
-  },
-  "keywords": [
-    "generate",
-    "metadata"
-  ],
-  "author": "ludicrous",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/ludicroushq/generate-metadata/issues"
-  },
-  "homepage": "https://github.com/ludicroushq/generate-metadata#readme",
-  "devDependencies": {
-    "@types/node": "^22.7.5",
-    "concurrently": "^9.0.1",
-    "eslint": "^9.17.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.3.0",
-    "neostandard": "^0.12.0",
-    "openapi-typescript": "^7.4.1",
-    "prettier": "^3.4.2",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.3"
+  "lint-staged": {
+    "*": [
+      "eslint --max-warnings 0 --no-warn-ignored --fix",
+      "prettier --ignore-unknown --write"
+    ]
   },
   "dependencies": {
-    "openapi-fetch": "^0.12.2",
-    "ts-pattern": "^5.4.0",
-    "zod": "^3.24.1"
+    "openapi-fetch": "^0.14.0",
+    "ts-pattern": "^5.7.1",
+    "wireit": "^0.14.12",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.10",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.30.1",
+    "eslint-plugin-package-json": "^0.42.1",
+    "husky": "^9.1.7",
+    "jiti": "^2.4.2",
+    "lint-staged": "^16.1.2",
+    "neostandard": "^0.12.1",
+    "openapi-typescript": "^7.8.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
   },
   "peerDependencies": {
-    "next": ">= 13.0.0"
+    "next": ">=13.0.0"
   },
   "peerDependenciesMeta": {
     "next": {
       "optional": true
     }
   },
-  "lint-staged": {
-    "*": [
-      "eslint --fix",
-      "prettier --ignore-unknown --write"
-    ]
+  "packageManager": "pnpm@10.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "wireit": {
+    "build": {
+      "dependencies": [
+        "pkg:build"
+      ]
+    },
+    "dev": {
+      "dependencies": [
+        "pkg:dev"
+      ]
+    },
+    "dev:local": {
+      "dependencies": [
+        "pkg:dev:local"
+      ]
+    },
+    "eslint:check": {
+      "command": "eslint --max-warnings 0 --no-warn-ignored ."
+    },
+    "eslint:fix": {
+      "command": "eslint --fix --max-warnings 0 --no-warn-ignored ."
+    },
+    "generate:local": {
+      "command": "openapi-typescript http://localhost:3000/api/openapi/spec.json -o ./src/__generated__/api.ts"
+    },
+    "generate:production": {
+      "command": "openapi-typescript https://www.generate-metadata.com/api/openapi/spec.json -o ./src/__generated__/api.ts"
+    },
+    "pkg:build": {
+      "command": "tsup",
+      "dependencies": [
+        "generate:production"
+      ]
+    },
+    "pkg:dev": {
+      "command": "tsup --watch",
+      "dependencies": [
+        "generate:production"
+      ],
+      "service": true
+    },
+    "pkg:dev:local": {
+      "command": "tsup --env.GENERATE_METADATA_NODE_ENV local --watch",
+      "dependencies": [
+        "generate:local"
+      ],
+      "service": true
+    },
+    "prettier:check": {
+      "command": "prettier --check ."
+    },
+    "prettier:write": {
+      "command": "prettier --write ."
+    },
+    "test": {
+      "dependencies": [
+        "eslint:fix",
+        "prettier:write",
+        "typescript:check"
+      ]
+    },
+    "test:ci": {
+      "dependencies": [
+        "eslint:check",
+        "prettier:check",
+        "typescript:check"
+      ]
+    },
+    "typescript:check": {
+      "command": "tsc --noEmit"
+    }
   }
 }
