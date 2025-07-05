@@ -6,6 +6,7 @@ import {
   type MetadataApiResponse,
 } from ".";
 import { generateBuildId } from "./utils/build-id";
+import type { NextRequest } from "next/server";
 
 export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
@@ -88,6 +89,64 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         console.warn("Failed to generate metadata:", error);
         return {};
       }
+    };
+  }
+
+  /**
+   * Returns a Next.js API route handler for revalidating metadata.
+   *
+   * Usage (app/api/generate-metadata/revalidate/route.ts):
+   *
+   *   import { GenerateMetadataClient } from 'generate-metadata/next';
+   *   const client = new GenerateMetadataClient({ apiKey: process.env.GENERATE_METADATA_API_KEY });
+   *   export const POST = client.getRevalidateRouteHandler({ secret: process.env.REVALIDATE_SECRET });
+   *
+   * @param opts.secret Secret key to authorize revalidation requests
+   * @param opts.onRevalidate Optional callback after revalidation
+   * @returns Next.js route handler (POST)
+   */
+  public getRevalidateRouteHandler({
+    secret,
+    onRevalidate,
+  }: {
+    secret: string;
+    onRevalidate?: (path: string) => Promise<void> | void;
+  }): (req: NextRequest) => Promise<Response> {
+    return async (req: NextRequest) => {
+      // Accepts POST only
+      if (req.method && req.method !== "POST") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), {
+          status: 405,
+        });
+      }
+      // Check secret
+      const auth =
+        req.headers.get("authorization") || req.headers.get("Authorization");
+      if (!auth || auth !== `Bearer ${secret}`) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+        });
+      }
+      let body: any;
+      try {
+        body = await req.json();
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+          status: 400,
+        });
+      }
+      const path = body?.path;
+      if (!path || typeof path !== "string") {
+        return new Response(
+          JSON.stringify({ error: "Missing or invalid path" }),
+          { status: 400 },
+        );
+      }
+      this.revalidateCache({ path });
+      if (onRevalidate) await onRevalidate(path);
+      return new Response(JSON.stringify({ revalidated: true }), {
+        status: 200,
+      });
     };
   }
 }

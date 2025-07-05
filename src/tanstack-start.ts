@@ -159,4 +159,63 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       }
     };
   }
+
+  /**
+   * Returns a TanStack Start fileApiRoute handler for ejecting a path from the metadata cache.
+   *
+   * Usage (src/routes/api/generate-metadata/revalidate.ts):
+   *
+   *   import { GenerateMetadataClient } from 'generate-metadata/tanstack-start';
+   *   const client = new GenerateMetadataClient({ apiKey: process.env.GENERATE_METADATA_API_KEY });
+   *   export const fileApiRoute = client.getRevalidateFileApiRoute({ secret: process.env.REVALIDATE_SECRET });
+   *
+   * @param opts.secret Secret key to authorize revalidation requests
+   * @param opts.onRevalidate Optional callback after revalidation
+   * @returns TanStack Start fileApiRoute handler
+   */
+  public getRevalidateFileApiRoute({
+    secret,
+    onRevalidate,
+  }: {
+    secret: string;
+    onRevalidate?: (path: string) => Promise<void> | void;
+  }): ({ request }: { request: Request }) => Promise<Response> {
+    return async ({ request }: { request: Request }) => {
+      if (request.method !== "POST") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), {
+          status: 405,
+        });
+      }
+      const auth =
+        request.headers.get("authorization") ||
+        request.headers.get("Authorization");
+      if (!auth || auth !== `Bearer ${secret}`) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+        });
+      }
+      let body: any;
+      try {
+        body = await request.json();
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+          status: 400,
+        });
+      }
+      const path = body?.path;
+      if (!path || typeof path !== "string") {
+        return new Response(
+          JSON.stringify({ error: "Missing or invalid path" }),
+          {
+            status: 400,
+          },
+        );
+      }
+      this.revalidateCache({ path });
+      if (onRevalidate) await onRevalidate(path);
+      return new Response(JSON.stringify({ revalidated: true }), {
+        status: 200,
+      });
+    };
+  }
 }
