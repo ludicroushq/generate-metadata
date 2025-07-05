@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, NextApiRequest, NextApiResponse } from "next";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -7,7 +7,68 @@ import {
 } from ".";
 import { generateBuildId } from "./utils/build-id";
 
+export type RevalidateRouteConfig = {
+  /**
+   * The path where the revalidation endpoint will be exposed.
+   * @default "/api/generate-metadata/revalidate"
+   */
+  path?: string;
+  /**
+   * The secret key used to authenticate revalidation requests.
+   * This should match the `REVALIDATION_SECRET` environment variable.
+   */
+  secret: string;
+};
+
 export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
+
+/**
+ * Creates a Next.js API route handler for revalidating metadata.
+ * This should be used in your `pages/api` or `app/api` directory.
+ *
+ * @example
+ * // In pages/api/revalidate/route.ts or app/api/revalidate/route.ts
+ * import { createRevalidationHandler } from "@your-package/next";
+ *
+ * export default createRevalidationHandler({
+ *   secret: process.env.REVALIDATION_SECRET!,
+ *   // Optional: path: "/api/custom-path/revalidate"
+ * });
+ */
+export function createRevalidationHandler(config: RevalidateRouteConfig) {
+  return async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // Only allow POST requests
+    if (req.method !== "POST") {
+      return res.status(405).json({ message: "Method not allowed" });
+    }
+
+    // Verify the secret key
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(" ")[1]; // Bearer <token>
+
+    if (token !== config.secret) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    const { path } = req.body;
+
+    if (!path) {
+      return res.status(400).json({ message: "Missing path parameter" });
+    }
+
+    try {
+      // Revalidate the specific path
+      await res.revalidate(path);
+      return res.json({ revalidated: true });
+    } catch (err) {
+      console.error("Error revalidating:", err);
+      return res.status(500).json({
+        message: "Error revalidating",
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  };
+}
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   constructor(opts: GenerateMetadataClientOptions = {}) {
