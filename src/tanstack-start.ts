@@ -160,3 +160,66 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 }
+
+export type CreateRevalidateServerFnOptions = {
+  secret?: string;
+  client?: GenerateMetadataClient;
+};
+
+export function createRevalidateServerFn(
+  options: CreateRevalidateServerFnOptions = {},
+) {
+  const { secret = process.env.GENERATE_METADATA_REVALIDATE_SECRET, client } =
+    options;
+
+  // Import createServerFn - this will be tree-shaken in environments where it's not available
+  let createServerFn: any;
+  try {
+    createServerFn = require("@tanstack/react-start").createServerFn;
+  } catch (error) {
+    throw new Error(
+      "createRevalidateServerFn requires @tanstack/react-start to be installed. " +
+        "Please install it with: npm install @tanstack/react-start",
+    );
+  }
+
+  return createServerFn({ method: "POST" })
+    .validator((data: unknown) => {
+      if (typeof data !== "object" || data === null) {
+        throw new Error("Invalid request body");
+      }
+
+      const body = data as Record<string, unknown>;
+      const { path, authorization } = body;
+
+      if (typeof path !== "string" || !path) {
+        throw new Error("Missing or invalid 'path' in request body");
+      }
+
+      if (secret && typeof authorization !== "string") {
+        throw new Error("Missing authorization header");
+      }
+
+      if (secret && authorization !== `Bearer ${secret}`) {
+        throw new Error("Invalid authorization token");
+      }
+
+      return { path };
+    })
+    .handler(async ({ data }: { data: { path: string } }) => {
+      try {
+        // Revalidate client cache if client is provided
+        if (client) {
+          client.revalidateCache({ path: data.path });
+        }
+
+        return {
+          success: true,
+          message: `Revalidated ${data.path}`,
+        };
+      } catch (error) {
+        console.error("Error in revalidate server function:", error);
+        throw new Error("Failed to revalidate cache");
+      }
+    });
+}

@@ -6,6 +6,8 @@ import {
   type MetadataApiResponse,
 } from ".";
 import { generateBuildId } from "./utils/build-id";
+import { revalidatePath } from "next/cache";
+import type { NextRequest } from "next/server";
 
 export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
@@ -90,4 +92,63 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       }
     };
   }
+}
+
+export type CreateRevalidateRouteOptions = {
+  secret?: string;
+  path?: string;
+  client?: GenerateMetadataClient;
+};
+
+export function createRevalidateRoute(
+  options: CreateRevalidateRouteOptions = {},
+): (request: NextRequest) => Promise<Response> {
+  const { secret = process.env.GENERATE_METADATA_REVALIDATE_SECRET, client } =
+    options;
+
+  return async function handler(request: NextRequest): Promise<Response> {
+    try {
+      // Check if method is POST
+      if (request.method !== "POST") {
+        return Response.json({ error: "Method not allowed" }, { status: 405 });
+      }
+
+      // Verify secret if provided
+      if (secret) {
+        const authHeader = request.headers.get("authorization");
+        const providedSecret = authHeader?.replace("Bearer ", "");
+
+        if (!providedSecret || providedSecret !== secret) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+      }
+
+      // Parse request body
+      const body = (await request.json()) as { path?: string };
+      const { path: pathToRevalidate } = body;
+
+      if (!pathToRevalidate || typeof pathToRevalidate !== "string") {
+        return Response.json(
+          { error: "Missing or invalid 'path' in request body" },
+          { status: 400 },
+        );
+      }
+
+      // Revalidate Next.js cache
+      revalidatePath(pathToRevalidate);
+
+      // Revalidate client cache if client is provided
+      if (client) {
+        client.revalidateCache({ path: pathToRevalidate });
+      }
+
+      return Response.json({
+        success: true,
+        message: `Revalidated ${pathToRevalidate}`,
+      });
+    } catch (error) {
+      console.error("Error in revalidate route:", error);
+      return Response.json({ error: "Internal server error" }, { status: 500 });
+    }
+  };
 }
