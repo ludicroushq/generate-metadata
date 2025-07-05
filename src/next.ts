@@ -1,310 +1,93 @@
-import crypto from "crypto";
-import fs from "fs";
-import type { Metadata, ResolvingMetadata } from "next";
-import path from "path";
-import { match } from "ts-pattern";
+import type { Metadata } from "next";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
+  type GenerateMetadataOptions,
+  type MetadataApiResponse,
 } from ".";
-import type { components } from "./__generated__/api";
-import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { generateBuildId } from "./utils/build-id";
 
-type NextGenerateMetadata<Props> = (
-  props: Props,
-  parent: ResolvingMetadata,
-) => Promise<Metadata>;
-
-type GenerateMetadataOptions = {
-  path: string;
-  opts?: {};
-};
-
-type Status = {
-  status: components["schemas"]["metadata-response"]["status"];
-  message?: string;
-};
-
-type NextRouteHandler = (request: NextRequest) => Promise<NextResponse>;
-
-type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
-
-// function md5(str: string): string {
-//   return crypto.createHash("md5").update(str).digest("hex");
-// }
+export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  buildId: string;
-  cache: Map<
-    string,
-    { cachedAt: Date; data: components["schemas"]["metadata-response"] }
-  >;
-  constructor(opts: GenerateMetadataClientOptions) {
-    super(opts);
-    this.buildId = this.getBuildId();
-    this.cache = new Map();
+  constructor(opts: GenerateMetadataClientOptions = {}) {
+    // Disable cache for Next.js since it has its own caching
+    super({ ...opts, disableCache: true });
   }
 
-  private getBuildId() {
-    try {
-      const buildIdPath = path.join(process.cwd(), ".next", "BUILD_ID");
-      return fs.readFileSync(buildIdPath, "utf8").trim();
-    } catch (err) {
-      return crypto.randomUUID();
-    }
+  protected getBuildId(): string {
+    return process.env.NEXT_BUILD_ID || generateBuildId();
   }
 
-  private generateMetadataStatus(status: Status): Metadata["other"] {
-    const metadata: Record<string, string> = {
-      "generate-metadata:status": status.status,
-      // "generate-metadata:build-id": md5(this.buildId),
-    };
+  protected getFrameworkName(): "next" {
+    return "next";
+  }
 
-    if (status.message) {
-      metadata["generate-metadata:message"] = status.message;
+  private convertToNextMetadata(response: MetadataApiResponse): Metadata {
+    if (!response.metadata) {
+      return {};
     }
 
-    return metadata;
-  }
+    const { metadata } = response;
+    const nextMetadata: Metadata = {};
 
-  private async getCachedMetadata(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    const cached = this.cache.get(cacheKey);
-    // Bypass cache in build phase
-    if (cached) {
-      return cached.data;
+    if (metadata.title) {
+      nextMetadata.title = metadata.title;
     }
 
-    const metadata = await this.getMetadata(opts);
-
-    if (!metadata.ok) {
-      throw metadata.err;
+    if (metadata.description) {
+      nextMetadata.description = metadata.description;
     }
 
-    this.cache.set(cacheKey, {
-      cachedAt: new Date(),
-      data: metadata.data.data,
-    });
-
-    return metadata.data.data;
-  }
-
-  public revalidateCache(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    this.cache.delete(cacheKey);
-  }
-
-  public routeHandler(): {
-    GET: NextRouteHandler;
-    POST: NextRouteHandler;
-    PATCH: NextRouteHandler;
-    PUT: NextRouteHandler;
-    DELETE: NextRouteHandler;
-    HEAD: NextRouteHandler;
-    OPTIONS: NextRouteHandler;
-  } {
-    const schema = z.object({
-      page: z.object({
-        path: z.string(),
-      }),
-    });
-
-    const handler = async (request: NextRequest) => {
-      if (request.nextUrl.pathname.endsWith("/revalidate")) {
-        // revalidate
-        if (request.headers.get("Authorization") !== `Bearer ${this.apiKey}`) {
-          return NextResponse.json(
-            {
-              error: "Unauthorized",
-            },
-            {
-              status: 401,
-            },
-          );
-        }
-        const body = await request.json();
-        const parsed = await schema.safeParseAsync(body);
-        if (!parsed.success) {
-          return NextResponse.json(
-            {
-              error: "Invalid request body" + parsed.error.message,
-            },
-            {
-              status: 400,
-            },
-          );
-        }
-
-        const {
-          page: { path },
-        } = parsed.data;
-        await this.revalidateCache({
-          path,
-        });
-        await revalidatePath(path);
-        return NextResponse.json({
-          revalidated: true,
-        });
-      }
-
-      return NextResponse.json(
-        {
-          error: "Not found",
-        },
-        {
-          status: 404,
-        },
-      );
-    };
-
-    return {
-      GET: handler,
-      POST: handler,
-      PATCH: handler,
-      PUT: handler,
-      DELETE: handler,
-      HEAD: handler,
-      OPTIONS: handler,
-    };
-  }
-
-  private _generateMetadata<Props>(
-    getGenerateMetadataOptions: (
-      props: Props,
-      parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props> {
-    const isProduction = process.env.NODE_ENV === "production";
-    // const isProductionBuild = isProduction && isBuildPhase;
-    // const isProductionLambda = isProduction && !isBuildPhase;
-
-    if (!this.apiKey) {
-      const warnOrError = isProduction ? console.error : console.warn;
-      warnOrError("GenerateMetadata - API key is not set.");
-
-      return async (props, parent): Promise<Metadata> => {
-        const generateMetadataOptions = await getGenerateMetadataOptions(
-          props,
-          parent,
-        );
-        return {
-          title: `${generateMetadataOptions.path} - GenerateMetadata`,
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "GenerateMetadata - API key is not set",
-            }),
-          },
-        };
+    if (metadata.openGraph) {
+      nextMetadata.openGraph = {
+        title: metadata.openGraph.title || undefined,
+        description: metadata.openGraph.description || undefined,
+        images: metadata.openGraph.images.map((img) => ({
+          url: img.url,
+          alt: img.alt || undefined,
+          width: img.width || undefined,
+          height: img.height || undefined,
+        })),
       };
     }
 
-    return async (props, parent): Promise<Metadata> => {
-      const generateMetadataOptions = await getGenerateMetadataOptions(
-        props,
-        parent,
-      );
-      const { path, opts = {} } = generateMetadataOptions;
+    if (metadata.twitter) {
+      nextMetadata.twitter = {
+        title: metadata.twitter.title || undefined,
+        description: metadata.twitter.description || undefined,
+        ...(metadata.twitter.card && { card: metadata.twitter.card }),
+        images: metadata.twitter.images.map((img) => ({
+          url: img.url,
+          alt: img.alt || undefined,
+          width: img.width || undefined,
+          height: img.height || undefined,
+        })),
+      };
+    }
 
-      try {
-        const metadata = await this.getCachedMetadata({ path, opts });
-
-        return match(metadata)
-          .with({ status: "error" }, (data) => {
-            console.error(
-              `Failed to generate metadata for path: ${path}:`,
-              data.message,
-            );
-            return {
-              other: {
-                ...this.generateMetadataStatus({
-                  status: "error",
-                  message: data.message,
-                }),
-              },
-            };
-          })
-          .with(
-            {
-              status: "missing",
-            },
-            () => {
-              return {
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: "missing",
-                  }),
-                },
-              };
-            },
-          )
-          .with(
-            {
-              status: "success",
-            },
-            {
-              status: "revalidating",
-            },
-            (data): Metadata => {
-              return {
-                title: data.metadata.title,
-                description: data.metadata.description,
-                openGraph: {
-                  title: data.metadata.openGraph?.title,
-                  description: data.metadata.openGraph?.description,
-                },
-                alternates: {
-                  canonical: data.metadata.alternates?.canonical,
-                },
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: data.status,
-                  }),
-                },
-              };
-            },
-          )
-          .exhaustive();
-      } catch (err) {
-        console.error(
-          "Failed to fetch metadata for path: /",
-          err instanceof Error ? err.message : err,
-        );
-        return {
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "Failed to fetch metadata",
-            }),
-          },
-        };
-      }
-    };
+    return nextMetadata;
   }
 
-  public generateMetadata<Props>(
-    generateMetadataOptions: GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataFn: (
-      props: Props,
-      parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataOptionsOrFn:
+  public generateMetadata(
+    opts:
       | GenerateMetadataOptions
-      | ((
-          props: Props,
-          parent: ResolvingMetadata,
-        ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
-  ): NextGenerateMetadata<Props> {
-    return this._generateMetadata(
-      typeof generateMetadataOptionsOrFn === "function"
-        ? generateMetadataOptionsOrFn
-        : () => generateMetadataOptionsOrFn,
-    );
+      | (() => GenerateMetadataOptions | Promise<GenerateMetadataOptions>),
+  ) {
+    return async (): Promise<Metadata> => {
+      try {
+        const resolvedOpts = typeof opts === "function" ? await opts() : opts;
+        const response = await this.getMetadata(resolvedOpts);
+
+        if (!response) {
+          return {};
+        }
+
+        return this.convertToNextMetadata(response);
+      } catch (error) {
+        console.warn("Failed to generate metadata:", error);
+        return {};
+      }
+    };
   }
 }

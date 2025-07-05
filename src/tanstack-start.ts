@@ -1,310 +1,162 @@
-import crypto from "crypto";
-import fs from "fs";
-import type { Metadata, ResolvingMetadata } from "next";
-import path from "path";
-import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
+  type GenerateMetadataOptions,
+  type MetadataApiResponse,
 } from ".";
-import type { components } from "./__generated__/api";
-import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { generateBuildId } from "./utils/build-id";
 
-type NextGenerateMetadata<Props> = (
-  props: Props,
-  parent: ResolvingMetadata,
-) => Promise<Metadata>;
-
-type GenerateMetadataOptions = {
-  path: string;
-  opts?: {};
+// TanStack Start's head function return type
+type TanstackHeadResult = {
+  links?: Array<{
+    href: string;
+    rel: string;
+    [key: string]: any;
+  }>;
+  scripts?: Array<{
+    src?: string;
+    children?: string;
+    [key: string]: any;
+  }>;
+  meta?: Array<{
+    name?: string;
+    property?: string;
+    content: string;
+    [key: string]: any;
+  }>;
+  styles?: Array<{
+    href?: string;
+    children?: string;
+    [key: string]: any;
+  }>;
 };
 
-type Status = {
-  status: components["schemas"]["metadata-response"]["status"];
-  message?: string;
-};
-
-type NextRouteHandler = (request: NextRequest) => Promise<NextResponse>;
-
-type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
-
-// function md5(str: string): string {
-//   return crypto.createHash("md5").update(str).digest("hex");
-// }
+export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  buildId: string;
-  cache: Map<
-    string,
-    { cachedAt: Date; data: components["schemas"]["metadata-response"] }
-  >;
-  constructor(opts: GenerateMetadataClientOptions) {
-    super(opts);
-    this.buildId = this.getBuildId();
-    this.cache = new Map();
+  protected getBuildId(): string {
+    return generateBuildId();
   }
 
-  private getBuildId() {
-    try {
-      const buildIdPath = path.join(process.cwd(), ".next", "BUILD_ID");
-      return fs.readFileSync(buildIdPath, "utf8").trim();
-    } catch (err) {
-      return crypto.randomUUID();
-    }
+  protected getFrameworkName(): "tanstack-start" {
+    return "tanstack-start";
   }
 
-  private generateMetadataStatus(status: Status): Metadata["other"] {
-    const metadata: Record<string, string> = {
-      "generate-metadata:status": status.status,
-      // "generate-metadata:build-id": md5(this.buildId),
-    };
-
-    if (status.message) {
-      metadata["generate-metadata:message"] = status.message;
+  private convertToTanstackHead(
+    response: MetadataApiResponse,
+  ): TanstackHeadResult {
+    if (!response.metadata) {
+      return {};
     }
 
-    return metadata;
-  }
+    const { metadata } = response;
+    const meta: Array<{ name?: string; property?: string; content: string }> =
+      [];
 
-  private async getCachedMetadata(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    const cached = this.cache.get(cacheKey);
-    // Bypass cache in build phase
-    if (cached) {
-      return cached.data;
+    // Add title as meta tag
+    if (metadata.title) {
+      meta.push({ name: "title", content: metadata.title });
     }
 
-    const metadata = await this.getMetadata(opts);
-
-    if (!metadata.ok) {
-      throw metadata.err;
+    // Add description
+    if (metadata.description) {
+      meta.push({ name: "description", content: metadata.description });
     }
 
-    this.cache.set(cacheKey, {
-      cachedAt: new Date(),
-      data: metadata.data.data,
-    });
-
-    return metadata.data.data;
-  }
-
-  public revalidateCache(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    this.cache.delete(cacheKey);
-  }
-
-  public routeHandler(): {
-    GET: NextRouteHandler;
-    POST: NextRouteHandler;
-    PATCH: NextRouteHandler;
-    PUT: NextRouteHandler;
-    DELETE: NextRouteHandler;
-    HEAD: NextRouteHandler;
-    OPTIONS: NextRouteHandler;
-  } {
-    const schema = z.object({
-      page: z.object({
-        path: z.string(),
-      }),
-    });
-
-    const handler = async (request: NextRequest) => {
-      if (request.nextUrl.pathname.endsWith("/revalidate")) {
-        // revalidate
-        if (request.headers.get("Authorization") !== `Bearer ${this.apiKey}`) {
-          return NextResponse.json(
-            {
-              error: "Unauthorized",
-            },
-            {
-              status: 401,
-            },
-          );
-        }
-        const body = await request.json();
-        const parsed = await schema.safeParseAsync(body);
-        if (!parsed.success) {
-          return NextResponse.json(
-            {
-              error: "Invalid request body" + parsed.error.message,
-            },
-            {
-              status: 400,
-            },
-          );
-        }
-
-        const {
-          page: { path },
-        } = parsed.data;
-        await this.revalidateCache({
-          path,
-        });
-        await revalidatePath(path);
-        return NextResponse.json({
-          revalidated: true,
+    // Add OpenGraph meta tags
+    if (metadata.openGraph) {
+      if (metadata.openGraph.title) {
+        meta.push({ property: "og:title", content: metadata.openGraph.title });
+      }
+      if (metadata.openGraph.description) {
+        meta.push({
+          property: "og:description",
+          content: metadata.openGraph.description,
         });
       }
-
-      return NextResponse.json(
-        {
-          error: "Not found",
-        },
-        {
-          status: 404,
-        },
-      );
-    };
-
-    return {
-      GET: handler,
-      POST: handler,
-      PATCH: handler,
-      PUT: handler,
-      DELETE: handler,
-      HEAD: handler,
-      OPTIONS: handler,
-    };
-  }
-
-  private _generateMetadata<Props>(
-    getGenerateMetadataOptions: (
-      props: Props,
-      parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props> {
-    const isProduction = process.env.NODE_ENV === "production";
-    // const isProductionBuild = isProduction && isBuildPhase;
-    // const isProductionLambda = isProduction && !isBuildPhase;
-
-    if (!this.apiKey) {
-      const warnOrError = isProduction ? console.error : console.warn;
-      warnOrError("GenerateMetadata - API key is not set.");
-
-      return async (props, parent): Promise<Metadata> => {
-        const generateMetadataOptions = await getGenerateMetadataOptions(
-          props,
-          parent,
-        );
-        return {
-          title: `${generateMetadataOptions.path} - GenerateMetadata`,
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "GenerateMetadata - API key is not set",
-            }),
-          },
-        };
-      };
+      if (metadata.openGraph.image) {
+        meta.push({
+          property: "og:image",
+          content: metadata.openGraph.image.url,
+        });
+        if (metadata.openGraph.image.alt) {
+          meta.push({
+            property: "og:image:alt",
+            content: metadata.openGraph.image.alt,
+          });
+        }
+      }
+      metadata.openGraph.images.forEach((img) => {
+        meta.push({ property: "og:image", content: img.url });
+        if (img.alt) {
+          meta.push({ property: "og:image:alt", content: img.alt });
+        }
+      });
     }
 
-    return async (props, parent): Promise<Metadata> => {
-      const generateMetadataOptions = await getGenerateMetadataOptions(
-        props,
-        parent,
-      );
-      const { path, opts = {} } = generateMetadataOptions;
-
-      try {
-        const metadata = await this.getCachedMetadata({ path, opts });
-
-        return match(metadata)
-          .with({ status: "error" }, (data) => {
-            console.error(
-              `Failed to generate metadata for path: ${path}:`,
-              data.message,
-            );
-            return {
-              other: {
-                ...this.generateMetadataStatus({
-                  status: "error",
-                  message: data.message,
-                }),
-              },
-            };
-          })
-          .with(
-            {
-              status: "missing",
-            },
-            () => {
-              return {
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: "missing",
-                  }),
-                },
-              };
-            },
-          )
-          .with(
-            {
-              status: "success",
-            },
-            {
-              status: "revalidating",
-            },
-            (data): Metadata => {
-              return {
-                title: data.metadata.title,
-                description: data.metadata.description,
-                openGraph: {
-                  title: data.metadata.openGraph?.title,
-                  description: data.metadata.openGraph?.description,
-                },
-                alternates: {
-                  canonical: data.metadata.alternates?.canonical,
-                },
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: data.status,
-                  }),
-                },
-              };
-            },
-          )
-          .exhaustive();
-      } catch (err) {
-        console.error(
-          "Failed to fetch metadata for path: /",
-          err instanceof Error ? err.message : err,
-        );
-        return {
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "Failed to fetch metadata",
-            }),
-          },
-        };
+    // Add Twitter meta tags
+    if (metadata.twitter) {
+      if (metadata.twitter.card) {
+        meta.push({ name: "twitter:card", content: metadata.twitter.card });
       }
-    };
+      if (metadata.twitter.title) {
+        meta.push({ name: "twitter:title", content: metadata.twitter.title });
+      }
+      if (metadata.twitter.description) {
+        meta.push({
+          name: "twitter:description",
+          content: metadata.twitter.description,
+        });
+      }
+      if (metadata.twitter.image) {
+        meta.push({
+          name: "twitter:image",
+          content: metadata.twitter.image.url,
+        });
+      }
+      metadata.twitter.images.forEach((img) => {
+        meta.push({ name: "twitter:image", content: img.url });
+      });
+    }
+
+    return { meta };
   }
 
-  public generateMetadata<Props>(
-    generateMetadataOptions: GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataFn: (
-      props: Props,
-      parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataOptionsOrFn:
+  public getHead<T = any>(
+    opts:
       | GenerateMetadataOptions
-      | ((
-          props: Props,
-          parent: ResolvingMetadata,
-        ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
-  ): NextGenerateMetadata<Props> {
-    return this._generateMetadata(
-      typeof generateMetadataOptionsOrFn === "function"
-        ? generateMetadataOptionsOrFn
-        : () => generateMetadataOptionsOrFn,
-    );
+      | (() => GenerateMetadataOptions | Promise<GenerateMetadataOptions>),
+    customizationFn?: (
+      metadata: MetadataApiResponse | null,
+      ctx: T,
+    ) => TanstackHeadResult | Promise<TanstackHeadResult>,
+  ) {
+    return async (ctx: T): Promise<TanstackHeadResult> => {
+      try {
+        const resolvedOpts = typeof opts === "function" ? await opts() : opts;
+        const response = await this.getMetadata(resolvedOpts);
+
+        // If customization function is provided, use it
+        if (customizationFn) {
+          return await customizationFn(response, ctx);
+        }
+
+        // Otherwise, return the default conversion
+        if (!response) {
+          return {};
+        }
+
+        return this.convertToTanstackHead(response);
+      } catch (error) {
+        console.warn("Failed to get head metadata:", error);
+
+        // If customization function is provided, call it with null
+        if (customizationFn) {
+          return await customizationFn(null, ctx);
+        }
+
+        return {};
+      }
+    };
   }
 }
