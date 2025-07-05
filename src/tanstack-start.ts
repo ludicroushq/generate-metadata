@@ -160,3 +160,82 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 }
+
+export type CreateRevalidateApiRouteOptions = {
+  client: GenerateMetadataClient;
+  secretKey: string;
+  path?: string;
+};
+
+export function createRevalidateApiRoute(
+  options: CreateRevalidateApiRouteOptions,
+): {
+  POST: ({ request }: { request: Request }) => Promise<Response>;
+} {
+  const {
+    client,
+    secretKey,
+    path = "/api/generate-metadata/revalidate",
+  } = options;
+
+  return {
+    POST: async ({ request }: { request: Request }) => {
+      try {
+        // Check if the request path matches the configured path
+        const url = new URL(request.url);
+        if (url.pathname !== path) {
+          return new Response(JSON.stringify({ error: "Not found" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Verify secret key
+        const providedSecret = request.headers.get("x-secret-key");
+        if (!providedSecret || providedSecret !== secretKey) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Parse request body
+        const body = (await request.json()) as { path?: string };
+        const { path: pagePath } = body;
+
+        if (!pagePath || typeof pagePath !== "string") {
+          return new Response(
+            JSON.stringify({ error: "Invalid path parameter" }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        // Revalidate the cache for the specified path
+        client.revalidateCache({ path: pagePath });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Cache revalidated for path: ${pagePath}`,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      } catch (error) {
+        console.error("Revalidate API route error:", error);
+        return new Response(
+          JSON.stringify({ error: "Internal server error" }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    },
+  };
+}

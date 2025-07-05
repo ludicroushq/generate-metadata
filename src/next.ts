@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { NextRequest } from "next/server";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -90,4 +91,63 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       }
     };
   }
+}
+
+export type CreateRevalidateHandlerOptions = {
+  client: GenerateMetadataClient;
+  secretKey: string;
+  path?: string;
+};
+
+export function createRevalidateHandler(
+  options: CreateRevalidateHandlerOptions,
+): (request: NextRequest) => Promise<Response> {
+  const {
+    client,
+    secretKey,
+    path = "/api/generate-metadata/revalidate",
+  } = options;
+
+  return async function revalidateHandler(request: NextRequest) {
+    try {
+      // Check if the request path matches the configured path
+      const url = new URL(request.url);
+      if (url.pathname !== path) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+
+      // Only allow POST requests
+      if (request.method !== "POST") {
+        return Response.json({ error: "Method not allowed" }, { status: 405 });
+      }
+
+      // Verify secret key
+      const providedSecret = request.headers.get("x-secret-key");
+      if (!providedSecret || providedSecret !== secretKey) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Parse request body
+      const body = (await request.json()) as { path?: string };
+      const { path: pagePath } = body;
+
+      if (!pagePath || typeof pagePath !== "string") {
+        return Response.json(
+          { error: "Invalid path parameter" },
+          { status: 400 },
+        );
+      }
+
+      // Revalidate the cache for the specified path
+      client.revalidateCache({ path: pagePath });
+
+      return Response.json({
+        success: true,
+        message: `Cache revalidated for path: ${pagePath}`,
+      });
+    } catch (error) {
+      console.error("Revalidate handler error:", error);
+      return Response.json({ error: "Internal server error" }, { status: 500 });
+    }
+  };
 }
