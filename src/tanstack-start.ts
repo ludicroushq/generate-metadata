@@ -122,6 +122,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return { meta };
   }
 
+  protected async revalidate(opts: GenerateMetadataOptions) {
+    this.revalidateCache(opts);
+
+    return {
+      ok: true,
+      data: {
+        success: true,
+        message: `Cleared cache for path: ${opts.path}`,
+      },
+    } as const;
+  }
+
   public getHead<T = any>(
     opts:
       | GenerateMetadataOptions

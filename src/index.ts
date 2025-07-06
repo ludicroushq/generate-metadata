@@ -41,6 +41,10 @@ export abstract class GenerateMetadataClientBase {
 
   protected abstract getBuildId(): string;
   protected abstract getFrameworkName(): "next" | "tanstack-start";
+  protected abstract revalidate(opts: GenerateMetadataOptions): Promise<{
+    ok: true;
+    data: { success: true; message: string };
+  }>;
 
   private async ensureBuildRegistered() {
     if (this.buildRegistered || !this.apiKey) {
@@ -58,7 +62,7 @@ export abstract class GenerateMetadataClientBase {
     }
   }
 
-  async registerBuild({
+  protected async registerBuild({
     buildId,
     framework,
   }: {
@@ -156,7 +160,7 @@ export abstract class GenerateMetadataClientBase {
     }
   }
 
-  public revalidateCache(opts: GenerateMetadataOptions) {
+  protected revalidateCache(opts: GenerateMetadataOptions) {
     const cacheKey = opts.path;
     this.cache.delete(cacheKey);
   }
