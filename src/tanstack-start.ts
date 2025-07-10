@@ -4,10 +4,9 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
-import { generateBuildId } from "./utils/build-id";
 
 // TanStack Start's head function return type
-type TanstackHeadResult = {
+type TanstackHead = {
   links?: Array<{
     href: string;
     rel: string;
@@ -19,9 +18,10 @@ type TanstackHeadResult = {
     [key: string]: any;
   }>;
   meta?: Array<{
+    title?: string;
     name?: string;
     property?: string;
-    content: string;
+    content?: string;
     [key: string]: any;
   }>;
   styles?: Array<{
@@ -34,28 +34,22 @@ type TanstackHeadResult = {
 export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  protected getBuildId(): string {
-    return generateBuildId();
-  }
-
   protected getFrameworkName(): "tanstack-start" {
     return "tanstack-start";
   }
 
-  private convertToTanstackHead(
-    response: MetadataApiResponse,
-  ): TanstackHeadResult {
+  private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
     if (!response.metadata) {
       return {};
     }
 
     const { metadata } = response;
-    const meta: Array<{ name?: string; property?: string; content: string }> =
-      [];
+    const meta: TanstackHead["meta"] = [];
 
     // Add title as meta tag
     if (metadata.title) {
       meta.push({ name: "title", content: metadata.title });
+      meta.push({ title: metadata.title });
     }
 
     // Add description
@@ -122,52 +116,87 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return { meta };
   }
 
-  protected async revalidate(opts: GenerateMetadataOptions) {
-    this.revalidateCache(opts);
-
-    return {
-      ok: true,
-      data: {
-        success: true,
-        message: `Cleared cache for path: ${opts.path}`,
-      },
-    } as const;
-  }
-
-  public getHead<T = any>(
-    opts:
-      | GenerateMetadataOptions
-      | (() => GenerateMetadataOptions | Promise<GenerateMetadataOptions>),
-    customizationFn?: (
-      metadata: MetadataApiResponse | null,
-      ctx: T,
-    ) => TanstackHeadResult | Promise<TanstackHeadResult>,
-  ) {
-    return async (ctx: T): Promise<TanstackHeadResult> => {
+  public getHead<Ctx = any, Head extends TanstackHead = TanstackHead>(
+    opts: GenerateMetadataOptions,
+    options?: {
+      head?: Head;
+      transformResult?: (
+        head: TanstackHead,
+        ctx: Ctx,
+      ) => TanstackHead | Promise<TanstackHead>;
+    },
+  ): (ctx: Ctx) => Promise<TanstackHead> {
+    return async (ctx: Ctx) => {
       try {
-        const resolvedOpts = typeof opts === "function" ? await opts() : opts;
-        const response = await this.getMetadata(resolvedOpts);
+        const metadata = await this.getMetadata(opts);
 
-        // If customization function is provided, use it
-        if (customizationFn) {
-          return await customizationFn(response, ctx);
+        // Start with generated metadata
+        let head: TanstackHead = {};
+        if (metadata) {
+          head = this.convertToTanstackHead(metadata);
         }
 
-        // Otherwise, return the default conversion
-        if (!response) {
-          return {};
+        // Merge user's head (user takes priority)
+        if (options?.head) {
+          const userHead = options.head as any;
+          const generatedHead = head as any;
+
+          head = {
+            ...generatedHead,
+            ...userHead,
+            // Handle array properties - user items first, then generated
+            ...(userHead.meta || generatedHead.meta
+              ? {
+                  meta: [
+                    ...(userHead.meta || []),
+                    ...(generatedHead.meta || []),
+                  ],
+                }
+              : {}),
+            ...(userHead.links || generatedHead.links
+              ? {
+                  links: [
+                    ...(userHead.links || []),
+                    ...(generatedHead.links || []),
+                  ],
+                }
+              : {}),
+            ...(userHead.scripts || generatedHead.scripts
+              ? {
+                  scripts: [
+                    ...(userHead.scripts || []),
+                    ...(generatedHead.scripts || []),
+                  ],
+                }
+              : {}),
+            ...(userHead.styles || generatedHead.styles
+              ? {
+                  styles: [
+                    ...(userHead.styles || []),
+                    ...(generatedHead.styles || []),
+                  ],
+                }
+              : {}),
+          };
         }
 
-        return this.convertToTanstackHead(response);
+        // Transform the result if transform function is provided
+        if (options?.transformResult) {
+          return await options.transformResult(head, ctx);
+        }
+
+        return head;
       } catch (error) {
         console.warn("Failed to get head metadata:", error);
 
-        // If customization function is provided, call it with null
-        if (customizationFn) {
-          return await customizationFn(null, ctx);
+        // On error, use user's head or empty object, then transform
+        const fallbackHead = options?.head ?? {};
+
+        if (options?.transformResult) {
+          return await options.transformResult(fallbackHead, ctx);
         }
 
-        return {};
+        return fallbackHead;
       }
     };
   }

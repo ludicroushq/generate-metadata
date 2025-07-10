@@ -45,9 +45,12 @@
     "build": "wireit",
     "dev": "wireit",
     "dev:local": "wireit",
+    "generate:local": "wireit",
     "prepare": "husky",
     "test": "wireit",
-    "test:ci": "wireit"
+    "test:ci": "wireit",
+    "test:vitest": "vitest",
+    "test:vitest:ui": "vitest --ui"
   },
   "lint-staged": {
     "*": [
@@ -56,6 +59,7 @@
     ]
   },
   "dependencies": {
+    "immer": "^10.1.1",
     "openapi-fetch": "^0.14.0",
     "ts-pattern": "^5.7.1",
     "wireit": "^0.14.12",
@@ -63,7 +67,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.10",
+    "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.0",
+    "dotenv": "^17.1.0",
     "eslint": "^9.30.1",
     "eslint-plugin-package-json": "^0.42.1",
     "husky": "^9.1.7",
@@ -73,13 +79,18 @@
     "openapi-typescript": "^7.8.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
+    "@tanstack/react-start": ">=1.0.0",
     "next": ">=13.0.0"
   },
   "peerDependenciesMeta": {
     "next": {
+      "optional": true
+    },
+    "@tanstack/react-start": {
       "optional": true
     }
   },
@@ -129,10 +140,10 @@
       "service": true
     },
     "pkg:dev:local": {
-      "command": "tsup --env.GENERATE_METADATA_NODE_ENV local --watch",
-      "dependencies": [
-        "generate:local"
-      ],
+      "command": "tsup --watch",
+      "env": {
+        "GENERATE_METADATA_NODE_ENV": "local"
+      },
       "service": true
     },
     "prettier:check": {

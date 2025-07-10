@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-  "/sites/get-key-site": {
+  "/v1/{dsn}/sites/get-site": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["sites.getSite"];
+    get: operations["v1.sites.getSite"];
     put?: never;
     post?: never;
     delete?: never;
@@ -20,7 +20,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/sites/register-build": {
+  "/v1/{dsn}/sites/register-build": {
     parameters: {
       query?: never;
       header?: never;
@@ -29,21 +29,21 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations["sites.registerBuild"];
+    post: operations["v1.sites.registerBuild"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/metadata/get-latest": {
+  "/v1/{dsn}/metadata/get-latest": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["metadata.getLatest"];
+    get: operations["v1.metadata.getLatest"];
     put?: never;
     post?: never;
     delete?: never;
@@ -64,11 +64,13 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  "sites.getSite": {
+  "v1.sites.getSite": {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        dsn: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -93,11 +95,13 @@ export interface operations {
       };
     };
   };
-  "sites.registerBuild": {
+  "v1.sites.registerBuild": {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        dsn: string;
+      };
       cookie?: never;
     };
     requestBody: {
@@ -124,13 +128,15 @@ export interface operations {
       };
     };
   };
-  "metadata.getLatest": {
+  "v1.metadata.getLatest": {
     parameters: {
       query: {
         path: string;
       };
       header?: never;
-      path?: never;
+      path: {
+        dsn: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
