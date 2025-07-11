@@ -72,7 +72,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead({ path: "/test" });
+      const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
       expect(result.meta).toEqual([
@@ -99,139 +99,146 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       ]);
     });
 
-    it("should merge user head with generated metadata (user takes priority)", async () => {
+    it("should merge override head with generated metadata (override takes priority)", async () => {
       vi.mocked(api.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const userHead = {
+      const overrideHead = {
         meta: [
-          { name: "title", content: "User Title" }, // Should override generated
-          { name: "custom", content: "User Custom Meta" }, // Should be kept
+          { name: "title", content: "Override Title" }, // Should override generated
+          { name: "custom", content: "Override Custom Meta" }, // Should be kept
         ],
         links: [{ rel: "canonical", href: "https://example.com/canonical" }],
       };
 
-      const headFn = client.getHead({ path: "/test" }, { head: userHead });
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        override: overrideHead,
+      }));
       const result = await headFn({});
 
-      // User meta should come first
-      expect(result.meta?.[0]).toEqual({
-        name: "title",
-        content: "User Title",
-      });
-      expect(result.meta?.[1]).toEqual({
-        name: "custom",
-        content: "User Custom Meta",
-      });
-
-      // Generated meta should come after user meta (the title meta tag has a title property)
-      const titleMeta = result.meta?.find((m) => m.title === "Test Page Title");
-      expect(titleMeta).toBeDefined();
-
-      // Check for description meta tag
-      const descriptionMeta = result.meta?.find(
-        (m) => m.name === "description",
+      // Override meta should take priority
+      expect(result.meta).toEqual(
+        expect.arrayContaining([
+          { name: "title", content: "Override Title" },
+          { name: "custom", content: "Override Custom Meta" },
+          { name: "description", content: "Test page description" },
+        ]),
       );
-      expect(descriptionMeta).toEqual({
-        name: "description",
-        content: "Test page description",
-      });
 
-      // User links should be preserved
-      expect(result.links?.[0]).toEqual({
-        rel: "canonical",
-        href: "https://example.com/canonical",
-      });
+      // Override links should be preserved
+      expect(result.links).toEqual([
+        {
+          rel: "canonical",
+          href: "https://example.com/canonical",
+        },
+      ]);
     });
 
-    it("should handle transform function correctly", async () => {
+    it("should handle fallback metadata when API call fails", async () => {
+      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+
+      const fallbackHead = {
+        meta: [{ name: "fallback", content: "Fallback Meta" }],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+      }));
+      const result = await headFn({});
+
+      expect(result).toEqual(fallbackHead);
+    });
+
+    it("should merge override metadata with generated metadata", async () => {
       vi.mocked(api.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const transformResult = vi.fn().mockImplementation((head, ctx) => ({
-        ...head,
-        meta: [
-          ...(head.meta || []),
-          { name: "custom-transform", content: `transformed-${ctx.userId}` },
-        ],
+      const overrideHead = {
+        meta: [{ name: "custom", content: "Override Meta" }],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        override: overrideHead,
       }));
+      const result = await headFn({});
 
-      const headFn = client.getHead({ path: "/test" }, { transformResult });
-
-      const result = await headFn({ userId: "123" });
-
-      expect(transformResult).toHaveBeenCalledWith(
-        expect.objectContaining({
-          meta: expect.arrayContaining([
-            expect.objectContaining({
-              name: "title",
-              content: "Test Page Title",
-            }),
-          ]),
-        }),
-        { userId: "123" },
+      // Should have both generated and override metadata
+      expect(result.meta).toEqual(
+        expect.arrayContaining([
+          { name: "custom", content: "Override Meta" },
+          { name: "title", content: "Test Page Title" },
+        ]),
       );
-
-      const customMeta = result.meta?.find(
-        (m) => m.name === "custom-transform",
-      );
-      expect(customMeta).toEqual({
-        name: "custom-transform",
-        content: "transformed-123",
-      });
     });
 
-    it("should return user head when API call fails", async () => {
+    it("should return fallback head when API call fails", async () => {
       vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
 
-      const userHead = {
+      const fallbackHead = {
         meta: [{ name: "fallback", content: "Fallback Meta" }],
       };
 
-      const headFn = client.getHead({ path: "/test" }, { head: userHead });
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+      }));
       const result = await headFn({});
 
-      expect(result).toEqual(userHead);
+      expect(result).toEqual(fallbackHead);
     });
 
-    it("should return empty object when API fails and no user head provided", async () => {
+    it("should return empty object when API fails and no fallback head provided", async () => {
       vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
 
-      const headFn = client.getHead({ path: "/test" });
+      const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
       expect(result).toEqual({});
     });
 
-    it("should call transform function with fallback head on error", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+    it("should use fallback, generated, and override in correct priority order", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
 
-      const userHead = {
-        meta: [{ name: "fallback", content: "Fallback Meta" }],
+      const fallbackHead = {
+        meta: [
+          { name: "fallback-only", content: "Fallback Only" },
+          { name: "title", content: "Fallback Title" },
+        ],
       };
 
-      const transformResult = vi.fn().mockImplementation((head) => ({
-        ...head,
+      const overrideHead = {
         meta: [
-          ...(head.meta || []),
-          { name: "error-handled", content: "true" },
+          { name: "override-only", content: "Override Only" },
+          { name: "title", content: "Override Title" },
         ],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+        override: overrideHead,
       }));
+      const result = await headFn({});
 
-      const headFn = client.getHead(
-        { path: "/test" },
-        { head: userHead, transformResult },
+      // Should have override title, generated description, fallback-only meta
+      expect(result.meta).toEqual(
+        expect.arrayContaining([
+          { name: "override-only", content: "Override Only" },
+          { name: "title", content: "Override Title" },
+          { name: "fallback-only", content: "Fallback Only" },
+          { name: "description", content: "Test page description" },
+        ]),
       );
-
-      const result = await headFn({ error: true });
-
-      expect(transformResult).toHaveBeenCalledWith(userHead, { error: true });
-      const errorMeta = result.meta?.find((m) => m.name === "error-handled");
-      expect(errorMeta).toEqual({ name: "error-handled", content: "true" });
     });
 
     it("should handle empty API response gracefully", async () => {
@@ -240,7 +247,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead({ path: "/test" });
+      const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
       expect(result).toEqual({});
@@ -252,7 +259,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead({ path: "/test" });
+      const headFn = client.getHead(() => ({ path: "/test" }));
 
       // First call
       await headFn({});
@@ -269,8 +276,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn1 = client.getHead({ path: "/test1" });
-      const headFn2 = client.getHead({ path: "/test2" });
+      const headFn1 = client.getHead(() => ({ path: "/test1" }));
+      const headFn2 = client.getHead(() => ({ path: "/test2" }));
 
       await headFn1({});
       await headFn2({});

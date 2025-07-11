@@ -1,5 +1,6 @@
 .DS_Store
 .env*
+.next
 .wireit
 *.local
 *.tsbuildinfo

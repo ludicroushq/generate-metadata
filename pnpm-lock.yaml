@@ -13,6 +13,9 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
+      lodash.merge:
+        specifier: ^4.6.2
+        version: 4.6.2
       next:
         specifier: ">=13.0.0"
         version: 14.2.15(@babel/core@7.28.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -29,6 +32,9 @@ importers:
         specifier: ^3.25.67
         version: 3.25.67
     devDependencies:
+      "@types/lodash.merge":
+        specifier: ^4.6.9
+        version: 4.6.9
       "@types/node":
         specifier: ^24.0.10
         version: 24.0.10
@@ -1738,6 +1744,18 @@ packages:
     resolution:
       {
         integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==,
+      }
+
+  "@types/lodash.merge@4.6.9":
+    resolution:
+      {
+        integrity: sha512-23sHDPmzd59kUgWyKGiOMO2Qb9YtqRO/x4IhkgNUiPQ1+5MUVqi6bCZeq9nBJ17msjIMbEIO5u+XW4Kz6aGUhQ==,
+      }
+
+  "@types/lodash@4.17.20":
+    resolution:
+      {
+        integrity: sha512-H3MHACvFUEiujabxhaI/ImO6gUrd8oOurg7LQtS7mbwIXA/cUqWrvBsaeJ23aZEPk1TAYkurjfMbSELfoCXlGA==,
       }
 
   "@types/node@24.0.10":
@@ -8898,6 +8916,12 @@ snapshots:
   "@types/estree@1.0.8": {}
 
   "@types/json-schema@7.0.15": {}
+
+  "@types/lodash.merge@4.6.9":
+    dependencies:
+      "@types/lodash": 4.17.20
+
+  "@types/lodash@4.17.20": {}
 
   "@types/node@24.0.10":
     dependencies:

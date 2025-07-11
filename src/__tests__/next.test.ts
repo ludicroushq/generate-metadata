@@ -72,8 +72,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
-      const result = await metadataFn();
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
         title: "Test Page Title",
@@ -115,7 +115,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const optsFn = vi.fn().mockResolvedValue({ path: "/dynamic-test" });
       const metadataFn = client.generateMetadata(optsFn);
 
-      await metadataFn();
+      await metadataFn({}, {} as any);
 
       expect(optsFn).toHaveBeenCalled();
       expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
@@ -129,8 +129,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
     it("should return empty object when API call fails", async () => {
       vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
-      const result = await metadataFn();
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
@@ -141,8 +141,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: { message: "Not found" },
       });
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
-      const result = await metadataFn();
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
@@ -153,8 +153,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
-      const result = await metadataFn();
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
@@ -185,8 +185,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
-      const result = await metadataFn();
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
         title: "Only Title",
@@ -206,12 +206,12 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata({ path: "/test" });
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
 
       // First call
-      await metadataFn();
+      await metadataFn({}, {} as any);
       // Second call
-      await metadataFn();
+      await metadataFn({}, {} as any);
 
       // API should only be called once due to caching
       expect(api.GET).toHaveBeenCalledTimes(1);
@@ -223,11 +223,11 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn1 = client.generateMetadata({ path: "/test1" });
-      const metadataFn2 = client.generateMetadata({ path: "/test2" });
+      const metadataFn1 = client.generateMetadata(() => ({ path: "/test1" }));
+      const metadataFn2 = client.generateMetadata(() => ({ path: "/test2" }));
 
-      await metadataFn1();
-      await metadataFn2();
+      await metadataFn1({}, {} as any);
+      await metadataFn2({}, {} as any);
 
       // API should be called twice for different paths
       expect(api.GET).toHaveBeenCalledTimes(2);
@@ -245,7 +245,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       };
 
       const metadataFn = client.generateMetadata(asyncOptsFn);
-      const result = await metadataFn();
+      const result = await metadataFn({}, {} as any);
 
       expect(result.title).toBe("Test Page Title");
       expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
@@ -254,6 +254,75 @@ describe("GenerateMetadataClient (Next.js)", () => {
           query: { path: "/async-test" },
         },
       });
+    });
+
+    it("should use fallback metadata when API call fails", async () => {
+      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+
+      const fallbackMetadata = {
+        title: "Fallback Title",
+        description: "Fallback Description",
+      };
+
+      const metadataFn = client.generateMetadata(() => ({
+        path: "/test",
+        fallback: fallbackMetadata,
+      }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual(fallbackMetadata);
+    });
+
+    it("should merge override metadata with generated metadata", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const overrideMetadata = {
+        title: "Override Title",
+        keywords: ["override", "test"],
+      };
+
+      const metadataFn = client.generateMetadata(() => ({
+        path: "/test",
+        override: overrideMetadata,
+      }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result.title).toBe("Override Title");
+      expect(result.keywords).toEqual(["override", "test"]);
+      expect(result.description).toBe("Test page description");
+    });
+
+    it("should use fallback, generated, and override in correct priority order", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const fallbackMetadata = {
+        title: "Fallback Title",
+        description: "Fallback Description",
+        keywords: ["fallback"],
+      };
+
+      const overrideMetadata = {
+        title: "Override Title",
+        robots: "noindex",
+      };
+
+      const metadataFn = client.generateMetadata(() => ({
+        path: "/test",
+        fallback: fallbackMetadata,
+        override: overrideMetadata,
+      }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result.title).toBe("Override Title");
+      expect(result.description).toBe("Test page description");
+      expect(result.keywords).toEqual(["fallback"]);
+      expect(result.robots).toBe("noindex");
     });
   });
 });

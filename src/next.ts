@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, ResolvingMetadata } from "next";
+import merge from "lodash.merge";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -59,24 +60,40 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return nextMetadata;
   }
 
-  public generateMetadata(
-    opts:
-      | GenerateMetadataOptions
-      | (() => GenerateMetadataOptions | Promise<GenerateMetadataOptions>),
+  public generateMetadata<Props>(
+    factory: (
+      props: Props,
+      parent: ResolvingMetadata,
+    ) =>
+      | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
+      | Promise<
+          GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
+        >,
   ) {
-    return async (): Promise<Metadata> => {
+    return async (
+      props: Props,
+      parent: ResolvingMetadata,
+    ): Promise<Metadata> => {
+      const opts = await factory(props, parent);
       try {
-        const resolvedOpts = typeof opts === "function" ? await opts() : opts;
-        const response = await this.getMetadata(resolvedOpts);
+        const metadata = await this.getMetadata(opts);
 
-        if (!response) {
-          return {};
-        }
+        const nextMetadata = metadata
+          ? this.convertToNextMetadata(metadata)
+          : {};
 
-        return this.convertToNextMetadata(response);
+        // Deep merge: override > generated > fallback
+        const result = merge(
+          {},
+          opts.fallback || {},
+          nextMetadata,
+          opts.override || {},
+        );
+
+        return result;
       } catch (error) {
         console.warn("Failed to generate metadata:", error);
-        return {};
+        return opts.fallback || {};
       }
     };
   }

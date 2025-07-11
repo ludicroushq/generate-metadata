@@ -41,8 +41,6 @@ export abstract class GenerateMetadataClientBase {
     // Make API call
 
     try {
-      // For now, we'll use the latest endpoint which returns a 307 redirect
-      // This will need to be updated once the API provides the proper endpoint
       const res = await api.GET("/v1/{dsn}/metadata/get-latest", {
         params: {
           path: {
@@ -55,7 +53,7 @@ export abstract class GenerateMetadataClientBase {
       });
 
       if (!res.data) {
-        throw new Error(res.error);
+        throw res.error;
       }
 
       this.cache.latestMetadata.set(cacheKey, res.data);

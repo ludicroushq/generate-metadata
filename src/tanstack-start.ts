@@ -1,3 +1,4 @@
+import merge from "lodash.merge";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -116,87 +117,40 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return { meta };
   }
 
-  public getHead<Ctx = any, Head extends TanstackHead = TanstackHead>(
-    opts: GenerateMetadataOptions,
-    options?: {
-      head?: Head;
-      transformResult?: (
-        head: TanstackHead,
-        ctx: Ctx,
-      ) => TanstackHead | Promise<TanstackHead>;
-    },
-  ): (ctx: Ctx) => Promise<TanstackHead> {
-    return async (ctx: Ctx) => {
+  public getHead<Ctx = any>(
+    factory: (ctx: Ctx) =>
+      | (GenerateMetadataOptions & {
+          override?: TanstackHead;
+          fallback?: TanstackHead;
+        })
+      | Promise<
+          GenerateMetadataOptions & {
+            override?: TanstackHead;
+            fallback?: TanstackHead;
+          }
+        >,
+  ) {
+    return async (ctx: Ctx): Promise<TanstackHead> => {
+      const opts = await factory(ctx);
       try {
         const metadata = await this.getMetadata(opts);
 
-        // Start with generated metadata
-        let head: TanstackHead = {};
-        if (metadata) {
-          head = this.convertToTanstackHead(metadata);
-        }
+        const tanstackHead = metadata
+          ? this.convertToTanstackHead(metadata)
+          : {};
 
-        // Merge user's head (user takes priority)
-        if (options?.head) {
-          const userHead = options.head as any;
-          const generatedHead = head as any;
+        // Deep merge: override > generated > fallback
+        const result = merge(
+          {},
+          opts.fallback || {},
+          tanstackHead,
+          opts.override || {},
+        );
 
-          head = {
-            ...generatedHead,
-            ...userHead,
-            // Handle array properties - user items first, then generated
-            ...(userHead.meta || generatedHead.meta
-              ? {
-                  meta: [
-                    ...(userHead.meta || []),
-                    ...(generatedHead.meta || []),
-                  ],
-                }
-              : {}),
-            ...(userHead.links || generatedHead.links
-              ? {
-                  links: [
-                    ...(userHead.links || []),
-                    ...(generatedHead.links || []),
-                  ],
-                }
-              : {}),
-            ...(userHead.scripts || generatedHead.scripts
-              ? {
-                  scripts: [
-                    ...(userHead.scripts || []),
-                    ...(generatedHead.scripts || []),
-                  ],
-                }
-              : {}),
-            ...(userHead.styles || generatedHead.styles
-              ? {
-                  styles: [
-                    ...(userHead.styles || []),
-                    ...(generatedHead.styles || []),
-                  ],
-                }
-              : {}),
-          };
-        }
-
-        // Transform the result if transform function is provided
-        if (options?.transformResult) {
-          return await options.transformResult(head, ctx);
-        }
-
-        return head;
+        return result;
       } catch (error) {
         console.warn("Failed to get head metadata:", error);
-
-        // On error, use user's head or empty object, then transform
-        const fallbackHead = options?.head ?? {};
-
-        if (options?.transformResult) {
-          return await options.transformResult(fallbackHead, ctx);
-        }
-
-        return fallbackHead;
+        return opts.fallback || {};
       }
     };
   }

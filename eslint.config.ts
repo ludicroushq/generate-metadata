@@ -3,7 +3,7 @@ import packageJson from "eslint-plugin-package-json";
 
 export default [
   ...neostandard({
-    ignores: [...resolveIgnoresFromGitignore(), "package-lock.json"],
+    ignores: [...resolveIgnoresFromGitignore(), "examples/next/package.json"],
     noStyle: true,
     ts: true,
   }),
