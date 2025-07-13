@@ -309,5 +309,39 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       ]);
     });
+
+    it("should return empty metadata when DSN is undefined (development mode)", async () => {
+      const devClient = new GenerateMetadataClient({
+        dsn: undefined,
+      });
+
+      const headFn = devClient.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({ meta: [] });
+      expect(api.GET).not.toHaveBeenCalled();
+    });
+
+    it("should use fallback metadata when DSN is undefined", async () => {
+      const devClient = new GenerateMetadataClient({
+        dsn: undefined,
+      });
+
+      const fallbackHead = {
+        meta: [
+          { name: "title", content: "Development Title" },
+          { name: "description", content: "Development Description" },
+        ],
+      };
+
+      const headFn = devClient.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+      }));
+      const result = await headFn({});
+
+      expect(result).toEqual(fallbackHead);
+      expect(api.GET).not.toHaveBeenCalled();
+    });
   });
 });

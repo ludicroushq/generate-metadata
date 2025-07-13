@@ -34,12 +34,13 @@ src/
 
 ### Data Flow
 
-1. **Client Init**: Developer creates client with DSN (identifies site/project)
+1. **Client Init**: Developer creates client with DSN (identifies site/project) or `undefined` for development mode
 2. **Metadata Request**: Call `generateMetadata()` or `getHead()` with factory function
-3. **Caching Check**: Check in-memory cache for existing metadata
-4. **API Call**: Fetch from `/v1/{dsn}/metadata/get-latest` if not cached
-5. **Format Conversion**: Transform API response to framework-specific format
-6. **Metadata Merging**: Apply priority: Override > Generated > Fallback
+3. **Development Mode Check**: If DSN is undefined, skip to step 6 with empty metadata
+4. **Caching Check**: Check in-memory cache for existing metadata
+5. **API Call**: Fetch from `/v1/{dsn}/metadata/get-latest` if not cached
+6. **Format Conversion**: Transform API response to framework-specific format
+7. **Metadata Merging**: Apply priority: Override > Generated > Fallback
 
 ### Framework Adapters
 
@@ -200,7 +201,10 @@ expect(result).toEqual(expectedMetadata);
 import { GenerateMetadataClient } from "generate-metadata/next";
 
 export const metadataClient = new GenerateMetadataClient({
-  dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN!,
+  // In production, provide the DSN
+  dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+  // In development, you can pass undefined to disable API calls
+  // dsn: undefined, // This will skip API calls and use only fallback metadata
 });
 
 // app/page.tsx
@@ -225,7 +229,10 @@ export const generateMetadata = metadataClient.generateMetadata(() => ({
 import { GenerateMetadataClient } from "generate-metadata/tanstack-start";
 
 const metadataClient = new GenerateMetadataClient({
-  dsn: process.env.GENERATE_METADATA_DSN!,
+  // In production, provide the DSN
+  dsn: process.env.GENERATE_METADATA_DSN,
+  // In development, you can pass undefined to disable API calls
+  // dsn: undefined, // This will skip API calls and use only fallback metadata
 });
 
 export const head = metadataClient.getHead(() => ({
@@ -270,11 +277,27 @@ Uses `lodash.merge` for deep merging with priority order:
 2. **Generated** (from API response)
 3. **Fallback** (lowest priority - fills gaps)
 
+### Development Mode
+
+When `dsn` is `undefined`, the library operates in development mode:
+
+- **No API calls**: All requests to the metadata API are skipped
+- **Fallback only**: Only fallback metadata is returned (if provided)
+- **Performance**: Faster development builds with no network dependencies
+- **Offline support**: Works without internet connection or API availability
+
+This is particularly useful for:
+
+- Local development environments
+- CI/CD pipelines where metadata API access isn't needed
+- Testing environments where you want predictable, static metadata
+
 ### Error Handling
 
 - **API failures**: Gracefully fall back to provided fallback metadata
 - **Network issues**: Return fallback metadata without throwing
 - **Partial responses**: Handle missing fields gracefully
+- **Development mode**: When DSN is undefined, skip API calls entirely
 - **Logging**: Console warnings for failed API calls (preserves debugging info)
 
 ### Twitter Card Implementation

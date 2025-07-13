@@ -10,11 +10,11 @@ export type GenerateMetadataOptions = {
 };
 
 export type GenerateMetadataClientBaseOptions = {
-  dsn: string;
+  dsn: string | undefined;
 };
 
 export abstract class GenerateMetadataClientBase {
-  protected dsn: string;
+  protected dsn: string | undefined;
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
@@ -32,6 +32,29 @@ export abstract class GenerateMetadataClientBase {
   protected async getMetadata(
     opts: GenerateMetadataOptions,
   ): Promise<MetadataApiResponse | null> {
+    // If DSN is undefined, return empty metadata structure (development mode)
+    if (this.dsn === undefined) {
+      return {
+        metadata: {
+          title: null,
+          description: null,
+          favicon: null,
+          openGraph: {
+            title: null,
+            description: null,
+            image: null,
+            images: [],
+          },
+          twitter: {
+            title: null,
+            description: null,
+            card: null,
+            image: null,
+          },
+        },
+      };
+    }
+
     const cacheKey = opts.path;
     const cached = this.cache.latestMetadata.get(cacheKey);
     if (cached) {

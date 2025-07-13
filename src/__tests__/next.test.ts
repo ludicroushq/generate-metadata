@@ -345,5 +345,37 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       });
     });
+
+    it("should return empty metadata when DSN is undefined (development mode)", async () => {
+      const devClient = new GenerateMetadataClient({
+        dsn: undefined,
+      });
+
+      const metadataFn = devClient.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({});
+      expect(api.GET).not.toHaveBeenCalled();
+    });
+
+    it("should use fallback metadata when DSN is undefined", async () => {
+      const devClient = new GenerateMetadataClient({
+        dsn: undefined,
+      });
+
+      const fallbackMetadata = {
+        title: "Development Title",
+        description: "Development Description",
+      };
+
+      const metadataFn = devClient.generateMetadata(() => ({
+        path: "/test",
+        fallback: fallbackMetadata,
+      }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual(fallbackMetadata);
+      expect(api.GET).not.toHaveBeenCalled();
+    });
   });
 });
