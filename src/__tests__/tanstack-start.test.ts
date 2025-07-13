@@ -15,6 +15,12 @@ const mockApiResponse: MetadataApiResponse = {
   metadata: {
     title: "Test Page Title",
     description: "Test page description",
+    favicon: {
+      url: "https://example.com/favicon.ico",
+      alt: "Site Favicon",
+      width: 32,
+      height: 32,
+    },
     openGraph: {
       title: "OG Test Title",
       description: "OG Test Description",
@@ -43,14 +49,6 @@ const mockApiResponse: MetadataApiResponse = {
         width: 1200,
         height: 630,
       },
-      images: [
-        {
-          url: "https://example.com/twitter-image-1.jpg",
-          alt: "Twitter Image 1 Alt",
-          width: 800,
-          height: 600,
-        },
-      ],
     },
   },
 };
@@ -93,8 +91,16 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
           content: "https://example.com/twitter-image.jpg",
         },
         {
-          name: "twitter:image",
-          content: "https://example.com/twitter-image-1.jpg",
+          name: "twitter:image:alt",
+          content: "Twitter Image Alt",
+        },
+      ]);
+
+      expect(result.links).toEqual([
+        {
+          rel: "icon",
+          href: "https://example.com/favicon.ico",
+          sizes: "32x32",
         },
       ]);
     });
@@ -284,6 +290,24 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       // API should be called twice for different paths
       expect(api.GET).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle favicon metadata correctly", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result.links).toEqual([
+        {
+          rel: "icon",
+          href: "https://example.com/favicon.ico",
+          sizes: "32x32",
+        },
+      ]);
     });
   });
 });

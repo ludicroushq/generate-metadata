@@ -11,6 +11,8 @@ type TanstackHead = {
   links?: Array<{
     href: string;
     rel: string;
+    type?: string;
+    sizes?: string;
     [key: string]: any;
   }>;
   scripts?: Array<{
@@ -46,6 +48,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
     const { metadata } = response;
     const meta: TanstackHead["meta"] = [];
+    const links: TanstackHead["links"] = [];
 
     // Add title as meta tag
     if (metadata.title) {
@@ -56,6 +59,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     // Add description
     if (metadata.description) {
       meta.push({ name: "description", content: metadata.description });
+    }
+
+    // Add favicon
+    if (metadata.favicon) {
+      links.push({
+        rel: "icon",
+        href: metadata.favicon.url,
+        ...(metadata.favicon.width &&
+          metadata.favicon.height && {
+            sizes: `${metadata.favicon.width}x${metadata.favicon.height}`,
+          }),
+      });
     }
 
     // Add OpenGraph meta tags
@@ -103,18 +118,27 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           content: metadata.twitter.description,
         });
       }
-      if (metadata.twitter.image) {
+
+      // Twitter cards only support a single image
+      const twitterImage = metadata.twitter.image;
+      if (twitterImage) {
         meta.push({
           name: "twitter:image",
-          content: metadata.twitter.image.url,
+          content: twitterImage.url,
         });
+        if (twitterImage.alt) {
+          meta.push({
+            name: "twitter:image:alt",
+            content: twitterImage.alt,
+          });
+        }
       }
-      metadata.twitter.images.forEach((img) => {
-        meta.push({ name: "twitter:image", content: img.url });
-      });
     }
 
-    return { meta };
+    return {
+      meta,
+      ...(links.length > 0 && { links }),
+    };
   }
 
   public getHead<Ctx = any>(

@@ -15,6 +15,12 @@ const mockApiResponse: MetadataApiResponse = {
   metadata: {
     title: "Test Page Title",
     description: "Test page description",
+    favicon: {
+      url: "https://example.com/favicon.ico",
+      alt: "Site Favicon",
+      width: 32,
+      height: 32,
+    },
     openGraph: {
       title: "OG Test Title",
       description: "OG Test Description",
@@ -43,14 +49,6 @@ const mockApiResponse: MetadataApiResponse = {
         width: 1200,
         height: 630,
       },
-      images: [
-        {
-          url: "https://example.com/twitter-image-1.jpg",
-          alt: "Twitter Image 1 Alt",
-          width: 800,
-          height: 600,
-        },
-      ],
     },
   },
 };
@@ -78,6 +76,13 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(result).toEqual({
         title: "Test Page Title",
         description: "Test page description",
+        icons: {
+          icon: {
+            url: "https://example.com/favicon.ico",
+            width: 32,
+            height: 32,
+          },
+        },
         openGraph: {
           title: "OG Test Title",
           description: "OG Test Description",
@@ -96,10 +101,10 @@ describe("GenerateMetadataClient (Next.js)", () => {
           description: "Twitter Test Description",
           images: [
             {
-              url: "https://example.com/twitter-image-1.jpg",
-              alt: "Twitter Image 1 Alt",
-              width: 800,
-              height: 600,
+              url: "https://example.com/twitter-image.jpg",
+              alt: "Twitter Image Alt",
+              width: 1200,
+              height: 630,
             },
           ],
         },
@@ -164,6 +169,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         metadata: {
           title: "Only Title",
           description: null,
+          favicon: null,
           openGraph: {
             title: "OG Title Only",
             description: null,
@@ -175,7 +181,6 @@ describe("GenerateMetadataClient (Next.js)", () => {
             title: null,
             description: null,
             image: null,
-            images: [],
           },
         },
       };
@@ -194,9 +199,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
           title: "OG Title Only",
           images: [],
         },
-        twitter: {
-          images: [],
-        },
+        twitter: {},
       });
     });
 
@@ -323,6 +326,24 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(result.description).toBe("Test page description");
       expect(result.keywords).toEqual(["fallback"]);
       expect(result.robots).toBe("noindex");
+    });
+
+    it("should handle favicon metadata correctly", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result.icons).toEqual({
+        icon: {
+          url: "https://example.com/favicon.ico",
+          width: 32,
+          height: 32,
+        },
+      });
     });
   });
 });

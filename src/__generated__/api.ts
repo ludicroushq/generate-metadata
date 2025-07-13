@@ -151,6 +151,12 @@ export interface operations {
             metadata: {
               title: string | null;
               description: string | null;
+              favicon: {
+                url: string;
+                alt: string | null;
+                width: number | null;
+                height: number | null;
+              } | null;
               openGraph: {
                 title: string | null;
                 description: string | null;
@@ -177,12 +183,6 @@ export interface operations {
                   width: number | null;
                   height: number | null;
                 } | null;
-                images: {
-                  url: string;
-                  alt: string | null;
-                  width: number | null;
-                  height: number | null;
-                }[];
               };
             };
           };

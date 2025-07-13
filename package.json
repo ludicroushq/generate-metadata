@@ -46,6 +46,7 @@
     "dev": "wireit",
     "dev:local": "wireit",
     "generate:local": "wireit",
+    "generate:production": "wireit",
     "prepare": "husky",
     "test": "wireit",
     "test:ci": "wireit",

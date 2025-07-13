@@ -30,6 +30,16 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       nextMetadata.description = metadata.description;
     }
 
+    if (metadata.favicon) {
+      nextMetadata.icons = {
+        icon: {
+          url: metadata.favicon.url,
+          ...(metadata.favicon.width && { width: metadata.favicon.width }),
+          ...(metadata.favicon.height && { height: metadata.favicon.height }),
+        },
+      };
+    }
+
     if (metadata.openGraph) {
       nextMetadata.openGraph = {
         title: metadata.openGraph.title || undefined,
@@ -44,16 +54,23 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
 
     if (metadata.twitter) {
+      // Twitter cards only support a single image
+      const twitterImage = metadata.twitter.image;
+
       nextMetadata.twitter = {
         title: metadata.twitter.title || undefined,
         description: metadata.twitter.description || undefined,
         ...(metadata.twitter.card && { card: metadata.twitter.card }),
-        images: metadata.twitter.images.map((img) => ({
-          url: img.url,
-          alt: img.alt || undefined,
-          width: img.width || undefined,
-          height: img.height || undefined,
-        })),
+        ...(twitterImage && {
+          images: [
+            {
+              url: twitterImage.url,
+              alt: twitterImage.alt || undefined,
+              width: twitterImage.width || undefined,
+              height: twitterImage.height || undefined,
+            },
+          ],
+        }),
       };
     }
 
