@@ -9,6 +9,9 @@ import {
 } from "fumadocs-ui/page";
 import { executeMdxSync } from "@fumadocs/mdx-remote/client";
 import defaultMdxComponents from "fumadocs-ui/mdx";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { Card, Cards } from "fumadocs-ui/components/card";
+import { Callout } from "fumadocs-ui/components/callout";
 import { createServerFn } from "@tanstack/react-start";
 import type { PageTree } from "fumadocs-core/server";
 import { createCompiler } from "@fumadocs/mdx-remote";
@@ -63,7 +66,16 @@ function Page() {
         <DocsTitle>{data.title}</DocsTitle>
         <DocsDescription>{data.title}</DocsDescription>
         <DocsBody>
-          <MdxContent components={defaultMdxComponents} />
+          <MdxContent
+            components={{
+              ...defaultMdxComponents,
+              Tab,
+              Tabs,
+              Card,
+              Cards,
+              Callout,
+            }}
+          />
         </DocsBody>
       </DocsPage>
     </DocsLayout>

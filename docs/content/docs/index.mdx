@@ -1,35 +1,69 @@
 ---
-title: Hello World
+title: Generate Metadata
 description: |
-  Your first `document`
-  You'll love it!
+  AI-powered SEO metadata generation for modern web frameworks
 ---
 
-Hey there! Fumadocs is a docs framework built for Next.js, but do you know it also works on Tanstack Start?
+# Generate Metadata
 
-## Heading
+Generate Metadata is a TypeScript library that provides AI-powered, dynamic SEO metadata generation for web applications. It fetches optimized metadata from a remote API service and integrates seamlessly with popular frameworks like Next.js and TanStack Start.
 
-Hello World!
+## Features
+
+- **AI-Powered**: Generates optimized titles, descriptions, and social tags
+- **Framework Support**: Next.js and TanStack Start adapters
+- **Type Safe**: Full TypeScript support
+- **Smart Caching**: Built-in caching with graceful fallbacks
+- **Development Mode**: Works offline with fallback metadata
+- **Social Ready**: OpenGraph and Twitter Card support
+
+## Quick Start
 
 <Cards>
   <Card
-    title="Learn more about Tanstack Start"
-    href="https://tanstack.com/start"
+    title="Installation & Setup"
+    href="/docs/installation"
+    description="Get started with generate-metadata in minutes"
   />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.vercel.app" />
+  <Card
+    title="Next.js Integration"
+    href="/docs/nextjs"
+    description="Add dynamic metadata to your Next.js application"
+  />
+  <Card
+    title="TanStack Start Integration"
+    href="/docs/tanstack-start"
+    description="Integrate with TanStack Start for server-side metadata"
+  />
 </Cards>
 
-### CodeBlock
+## How It Works
+
+1. **Initialize**: Create a client with your project's DSN (Data Source Name)
+2. **Generate**: Call metadata functions with your page path and configuration
+3. **Optimize**: The AI service analyzes your content and generates optimized metadata
+4. **Render**: Framework-specific adapters format the metadata for your application
 
 ```ts
-console.log("Hello World");
+import { GenerateMetadataClient } from "generate-metadata/next";
+
+const client = new GenerateMetadataClient({
+  dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+});
+
+export const generateMetadata = client.getMetadata(() => ({
+  path: "/",
+  fallback: {
+    title: "My App",
+    description: "Welcome to my application",
+  },
+}));
 ```
 
-#### Table
+## Benefits
 
-| Head                            | Description                         |
-| ------------------------------- | ----------------------------------- |
-| `hello`                         | Hello World                         |
-| very **important**              | Hey                                 |
-| _Surprisingly_                  | Fumadocs                            |
-| very long text that looks weird | hello world hello world hello world |
+- **Save Time**: AI handles SEO optimization automatically
+- **Better Rankings**: Optimized metadata improves search visibility
+- **Higher Engagement**: Better social media previews
+- **Great DX**: Simple, type-safe API
+- **Fast**: Built-in caching for optimal performance

@@ -1,0 +1,345 @@
+---
+title: Next.js Integration
+description: Complete guide to integrating generate-metadata with Next.js applications
+---
+
+# Next.js Integration
+
+Learn how to integrate generate-metadata with your Next.js application for dynamic, AI-powered SEO metadata generation.
+
+## Installation
+
+First, ensure you have generate-metadata installed:
+
+```bash
+npm install generate-metadata
+```
+
+## Setup
+
+### 1. Create a Metadata Client
+
+Create a shared client instance that you can use throughout your application:
+
+```ts title="lib/metadata.ts"
+import { GenerateMetadataClient } from "generate-metadata/next";
+
+export const metadataClient = new GenerateMetadataClient({
+  dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+});
+```
+
+### 2. Environment Configuration
+
+Add your DSN to your environment variables:
+
+```bash title=".env.local"
+NEXT_PUBLIC_GENERATE_METADATA_DSN=your_dsn_here
+```
+
+<Callout type="info">
+  Use `NEXT_PUBLIC_` prefix for client-side access in Next.js applications.
+</Callout>
+
+## Page Metadata
+
+Use the `getMetadata` method to generate metadata for individual pages:
+
+```tsx title="app/page.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+export const generateMetadata = metadataClient.getMetadata(() => ({
+  path: "/",
+  fallback: {
+    title: "Home - My App",
+    description: "Welcome to my application",
+  },
+  override: {
+    robots: "index,follow",
+  },
+}));
+
+export default function HomePage() {
+  return (
+    <div>
+      <h1>Welcome to My App</h1>
+      <p>This page will have AI-optimized metadata!</p>
+    </div>
+  );
+}
+```
+
+## Dynamic Pages
+
+For dynamic pages, use the page props to generate path-specific metadata:
+
+```tsx title="app/blog/[slug]/page.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+interface PageProps {
+  params: { slug: string };
+}
+
+export const generateMetadata = metadataClient.getMetadata(
+  async (props: PageProps) => ({
+    path: `/blog/${props.params.slug}`,
+    fallback: {
+      title: "Blog Post - My App",
+      description: "Read our latest blog post",
+    },
+  }),
+);
+
+export default function BlogPost({ params }: PageProps) {
+  return (
+    <article>
+      <h1>Blog Post: {params.slug}</h1>
+      <p>Content goes here...</p>
+    </article>
+  );
+}
+```
+
+## Layout Metadata
+
+Use `getRootMetadata` for layout-level metadata that applies to multiple pages:
+
+```tsx title="app/layout.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+export const generateMetadata = metadataClient.getRootMetadata(() => ({
+  path: "/",
+  fallback: {
+    title: "My App",
+    description: "The best app on the internet",
+  },
+  override: {
+    viewport: "width=device-width, initial-scale=1",
+    themeColor: "#000000",
+  },
+}));
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Priority System
+
+Metadata merging priority:
+
+1. **Override** - Always wins
+2. **Generated** - From API
+3. **Fallback** - When API fails
+
+```tsx
+export const generateMetadata = metadataClient.getMetadata(() => ({
+  path: "/products",
+  fallback: {
+    title: "Products - Default Title",
+    description: "Default description",
+  },
+  override: {
+    robots: "index,follow", // Always applied
+    alternates: {
+      canonical: "https://myapp.com/products",
+    },
+  },
+}));
+```
+
+### Social Media Optimization
+
+The library automatically generates OpenGraph and Twitter Card metadata:
+
+```tsx
+export const generateMetadata = metadataClient.getMetadata(() => ({
+  path: "/products/new-product",
+  fallback: {
+    title: "New Product Launch",
+    description: "Check out our latest product",
+    openGraph: {
+      title: "New Product Launch",
+      description: "Check out our latest product",
+      images: [
+        {
+          url: "https://myapp.com/og-image.jpg",
+          width: 1200,
+          height: 630,
+          alt: "New Product",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "New Product Launch",
+      description: "Check out our latest product",
+    },
+  },
+}));
+```
+
+### Error Handling
+
+API failures automatically fallback to your metadata:
+
+```tsx
+export const generateMetadata = metadataClient.getMetadata(() => ({
+  path: "/contact",
+  fallback: {
+    title: "Contact Us - My App",
+    description: "Get in touch with our team",
+  },
+  // If API fails, fallback metadata will be used
+}));
+```
+
+## Development Mode
+
+During development, you can disable API calls by setting `dsn` to `undefined`:
+
+```ts title="lib/metadata.ts"
+export const metadataClient = new GenerateMetadataClient({
+  dsn:
+    process.env.NODE_ENV === "development"
+      ? undefined
+      : process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+});
+```
+
+## TypeScript Support
+
+The library provides full TypeScript support with Next.js types:
+
+```tsx
+import type { Metadata } from "next";
+
+export const generateMetadata = metadataClient.getMetadata(
+  (props: {
+    params: { id: string };
+  }): {
+    path: string;
+    fallback?: Metadata;
+    override?: Metadata;
+  } => ({
+    path: `/user/${props.params.id}`,
+    fallback: {
+      title: "User Profile",
+      description: "View user profile information",
+    },
+  }),
+);
+```
+
+## Performance Considerations
+
+### Caching
+
+The library automatically caches API responses based on the path parameter:
+
+- Same path = cached response (no additional API call)
+- Different paths = separate cache entries
+- Cache persists for the lifetime of the client instance
+
+### Bundle Size
+
+Only import the Next.js adapter to keep your bundle size minimal:
+
+```ts
+// ✅ Good - only imports Next.js adapter
+import { GenerateMetadataClient } from "generate-metadata/next";
+
+// ❌ Avoid - imports all adapters
+import { GenerateMetadataClient } from "generate-metadata";
+```
+
+## Examples
+
+### E-commerce Product Page
+
+```tsx title="app/products/[id]/page.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+interface ProductPageProps {
+  params: { id: string };
+}
+
+export const generateMetadata = metadataClient.getMetadata(
+  async ({ params }: ProductPageProps) => {
+    return {
+      path: `/products/${params.id}`,
+      fallback: {
+        title: "Product - My Store",
+        description: "View product details and purchase",
+        openGraph: {
+          type: "product",
+        },
+      },
+      override: {
+        robots: "index,follow",
+      },
+    };
+  },
+);
+```
+
+### Blog Article
+
+```tsx title="app/blog/[slug]/page.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+interface BlogPostProps {
+  params: { slug: string };
+}
+
+export const generateMetadata = metadataClient.getMetadata(
+  ({ params }: BlogPostProps) => ({
+    path: `/blog/${params.slug}`,
+    fallback: {
+      title: "Blog Post - My Blog",
+      description: "Read our latest insights and updates",
+      openGraph: {
+        type: "article",
+        authors: ["My Blog Team"],
+      },
+    },
+  }),
+);
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Metadata not updating**: Check that your path parameter is unique for each page.
+
+**API errors**: Verify your DSN is correct and check the browser console for error messages.
+
+**TypeScript errors**: Ensure you're importing from `generate-metadata/next` and have the latest version installed.
+
+### Debug Mode
+
+Enable detailed logging by checking the browser console for warnings about failed API calls.
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Examples"
+    href="/docs/examples"
+    description="See real-world usage examples"
+  />
+  <Card
+    title="Troubleshooting"
+    href="/docs/troubleshooting"
+    description="Solve common issues and problems"
+  />
+</Cards>

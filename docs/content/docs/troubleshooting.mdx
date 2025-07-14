@@ -1,0 +1,244 @@
+---
+title: Troubleshooting & FAQ
+description: Common issues and solutions for generate-metadata
+---
+
+# Troubleshooting & FAQ
+
+Quick solutions to common issues and frequently asked questions about generate-metadata.
+
+## Common Issues
+
+### API Connection Problems
+
+**Issue**: API errors in console
+
+**Solutions**:
+
+- Verify DSN at generate-metadata.com
+- Check environment variables
+- Test with `dsn: undefined`
+
+```ts
+// Test with development mode
+const client = new GenerateMetadataClient({
+  dsn: undefined, // This will use only fallback metadata
+});
+```
+
+### TypeScript Errors
+
+**Issue**: Import errors or type mismatches
+
+**Solutions**:
+
+- Import from framework-specific paths:
+
+  ```ts
+  // ✅ Correct
+  import { GenerateMetadataClient } from "generate-metadata/next";
+
+  // ❌ Incorrect
+  import { GenerateMetadataClient } from "generate-metadata";
+  ```
+
+- Update `tsconfig.json` for better module resolution:
+  ```json
+  {
+    "compilerOptions": {
+      "moduleResolution": "bundler",
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true
+    }
+  }
+  ```
+
+### Metadata Not Updating
+
+**Issue**: Changes not reflected in browser
+
+**Solutions**:
+
+- Clear browser cache and hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
+- Verify path parameter is unique for each page
+- Check that cache isn't preventing updates (restart dev server)
+- Inspect Network tab for API calls
+
+### Environment Variables Not Loading
+
+**Issue**: DSN undefined or not found
+
+**Solutions**:
+
+- **Next.js**: Use `NEXT_PUBLIC_` prefix for client-side access
+- **TanStack Start**: Ensure `.env` file is in correct location
+- Restart development server after adding environment variables
+- Check `.env` file is not ignored by git
+
+## Framework-Specific Issues
+
+### Next.js
+
+**Issue**: `generateMetadata` not working
+
+**Solutions**:
+
+- Ensure you're using App Router (not Pages Router)
+- Export as `generateMetadata`, not `metadata`
+- Check file naming conventions (page.tsx, layout.tsx)
+
+```tsx
+// ✅ Correct
+export const generateMetadata = client.getMetadata(/* ... */);
+
+// ❌ Incorrect
+export const metadata = client.getMetadata(/* ... */);
+```
+
+**Issue**: Build errors in production
+
+**Solutions**:
+
+- Run `npx wireit generate:production` to update API types
+- Ensure all peer dependencies are installed
+- Check Next.js version compatibility (>=13.0.0)
+
+### TanStack Start
+
+**Issue**: Head metadata not appearing
+
+**Solutions**:
+
+- Export as `head`, not `metadata`
+- Ensure TanStack Start version compatibility (>=1.0.0)
+- Check route file naming conventions
+
+```tsx
+// ✅ Correct
+export const head = client.getHead(/* ... */);
+
+// ❌ Incorrect
+export const metadata = client.getHead(/* ... */);
+```
+
+**Issue**: Meta tag duplication
+
+**Solutions**:
+
+- Library automatically deduplicates, but check for manual meta tags elsewhere
+- Review override and fallback configurations for conflicts
+
+## Performance Issues
+
+### Slow Page Loading
+
+**Solutions**:
+
+- Use caching effectively (same path = cached response)
+- Implement development mode for local development
+- Consider using fallback metadata for critical pages
+
+### Bundle Size Concerns
+
+**Solutions**:
+
+- Import only framework-specific adapters
+- Use tree-shaking compatible bundlers
+- Monitor bundle analyzer for unexpected imports
+
+## Development Issues
+
+### Local Development Problems
+
+**Solutions**:
+
+- Use development mode: `dsn: undefined`
+- Set up local API for testing: `npx wireit dev:local`
+- Check environment variable loading
+
+### Testing Issues
+
+**Solutions**:
+
+- Mock API calls in tests
+- Use fallback metadata for predictable test results
+- Test both success and failure scenarios
+
+```ts
+// Test setup example
+vi.mocked(api.GET).mockResolvedValue({
+  data: mockApiResponse,
+  error: undefined,
+});
+```
+
+## FAQ
+
+### How does caching work?
+
+Responses are cached in memory based on the `path` parameter. Same path = cached response, different paths = separate cache entries. Cache lasts for the client instance lifetime.
+
+### Can I use without an API key?
+
+Yes, set `dsn: undefined` for development mode. This skips API calls and uses only fallback metadata.
+
+### Does it work with SSR?
+
+Yes, both Next.js and TanStack Start support server-side rendering with this library.
+
+### How do I handle API failures?
+
+The library automatically falls back to your provided fallback metadata. No additional error handling required.
+
+### Can I override specific meta tags?
+
+Yes, use the `override` parameter. It has the highest priority and always takes precedence.
+
+### Is it compatible with my framework?
+
+Currently supports Next.js (>=13.0.0) and TanStack Start (>=1.0.0). More frameworks coming soon.
+
+### How do I debug API calls?
+
+Check browser/server console for warnings. Failed API calls are logged with details.
+
+### Can I use in production?
+
+Yes, designed for production use with robust error handling and fallbacks.
+
+### How much does it cost?
+
+See pricing at [generate-metadata.com](https://generate-metadata.com). Free tier available for small projects.
+
+### Does it affect page performance?
+
+Minimal impact due to caching and efficient API calls. Development mode has zero API overhead.
+
+## Getting Help
+
+Still having issues? Here are additional resources:
+
+- **Examples**: Check [Examples](/docs/examples) for real-world implementations
+- **GitHub Issues**: Report bugs at the repository issue tracker
+- **Community**: Join discussions and get help from other users
+
+### Debug Checklist
+
+Before reporting issues, verify:
+
+1. ✅ DSN is correct and project exists
+2. ✅ Environment variables are properly set
+3. ✅ Using correct import paths for your framework
+4. ✅ Browser console shows no unrelated errors
+5. ✅ Fallback metadata works in development mode
+6. ✅ Network tab shows API calls (if DSN is set)
+
+### Error Reporting
+
+When reporting issues, include:
+
+- Framework and version (Next.js 14.0.0, etc.)
+- Library version
+- Console error messages
+- Minimal reproduction code
+- Environment (development/production)
