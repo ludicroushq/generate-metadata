@@ -29,7 +29,7 @@ export abstract class GenerateMetadataClientBase {
   }
   protected abstract getFrameworkName(): "next" | "tanstack-start";
 
-  protected async getMetadata(
+  protected async fetchMetadata(
     opts: GenerateMetadataOptions,
   ): Promise<MetadataApiResponse | null> {
     // If DSN is undefined, return empty metadata structure (development mode)

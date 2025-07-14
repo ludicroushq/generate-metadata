@@ -14,6 +14,15 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return "next";
   }
 
+  private mergeMetadata(
+    fallback: Metadata | undefined,
+    generated: Metadata,
+    override: Metadata | undefined,
+  ): Metadata {
+    // Deep merge: override > generated > fallback
+    return merge({}, fallback || {}, generated, override || {});
+  }
+
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
     if (!response.metadata) {
       return {};
@@ -77,7 +86,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return nextMetadata;
   }
 
-  public generateMetadata<Props>(
+  public getMetadata<Props>(
     factory: (
       props: Props,
       parent: ResolvingMetadata,
@@ -93,25 +102,38 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     ): Promise<Metadata> => {
       const opts = await factory(props, parent);
       try {
-        const metadata = await this.getMetadata(opts);
+        const metadata = await this.fetchMetadata(opts);
 
         const nextMetadata = metadata
           ? this.convertToNextMetadata(metadata)
           : {};
 
         // Deep merge: override > generated > fallback
-        const result = merge(
-          {},
-          opts.fallback || {},
-          nextMetadata,
-          opts.override || {},
-        );
-
-        return result;
+        return this.mergeMetadata(opts.fallback, nextMetadata, opts.override);
       } catch (error) {
         console.warn("Failed to generate metadata:", error);
         return opts.fallback || {};
       }
+    };
+  }
+
+  public getRootMetadata<Props>(
+    factory: (
+      props: Props,
+      parent: ResolvingMetadata,
+    ) =>
+      | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
+      | Promise<
+          GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
+        >,
+  ) {
+    return async (
+      props: Props,
+      parent: ResolvingMetadata,
+    ): Promise<Metadata> => {
+      const opts = await factory(props, parent);
+      // For now, return empty metadata merged with fallback and override
+      return this.mergeMetadata(opts.fallback, {}, opts.override);
     };
   }
 }

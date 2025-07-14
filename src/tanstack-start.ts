@@ -41,6 +41,70 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return "tanstack-start";
   }
 
+  private mergeMetadata(
+    fallback: TanstackHead | undefined,
+    generated: TanstackHead,
+    override: TanstackHead | undefined,
+  ): TanstackHead {
+    // Start with base structure
+    const result: TanstackHead = {};
+
+    // Merge non-meta properties normally using lodash.merge
+    const nonMetaFallback = { ...fallback };
+    const nonMetaGenerated = { ...generated };
+    const nonMetaOverride = { ...override };
+
+    delete nonMetaFallback?.meta;
+    delete nonMetaGenerated?.meta;
+    delete nonMetaOverride?.meta;
+
+    const mergedBase = merge(
+      {},
+      nonMetaFallback || {},
+      nonMetaGenerated,
+      nonMetaOverride || {},
+    );
+    Object.assign(result, mergedBase);
+
+    // Handle meta arrays with deduplication and priority
+    const allMeta = [
+      ...(fallback?.meta || []),
+      ...(generated.meta || []),
+      ...(override?.meta || []),
+    ];
+
+    if (allMeta.length > 0) {
+      const metaMap = new Map<string, any>();
+
+      // Process in priority order: fallback -> generated -> override
+      for (const metaItem of allMeta) {
+        const key = this.getMetaKey(metaItem);
+        if (key) {
+          metaMap.set(key, metaItem);
+        }
+      }
+
+      result.meta = Array.from(metaMap.values());
+    }
+
+    return result;
+  }
+
+  private getMetaKey(metaItem: any): string | null {
+    // Create a unique key for meta items to handle deduplication
+    if (metaItem.name) {
+      return `name:${metaItem.name}`;
+    }
+    if (metaItem.property) {
+      return `property:${metaItem.property}`;
+    }
+    if (metaItem.title !== undefined) {
+      return "title";
+    }
+    // For items without identifiable keys, return null (they won't be deduplicated)
+    return null;
+  }
+
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
     if (!response.metadata) {
       return {};
@@ -157,25 +221,38 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return async (ctx: Ctx): Promise<TanstackHead> => {
       const opts = await factory(ctx);
       try {
-        const metadata = await this.getMetadata(opts);
+        const metadata = await this.fetchMetadata(opts);
 
         const tanstackHead = metadata
           ? this.convertToTanstackHead(metadata)
           : {};
 
         // Deep merge: override > generated > fallback
-        const result = merge(
-          {},
-          opts.fallback || {},
-          tanstackHead,
-          opts.override || {},
-        );
-
-        return result;
+        return this.mergeMetadata(opts.fallback, tanstackHead, opts.override);
       } catch (error) {
         console.warn("Failed to get head metadata:", error);
         return opts.fallback || {};
       }
+    };
+  }
+
+  public getRootHead<Ctx = any>(
+    factory: (ctx: Ctx) =>
+      | (GenerateMetadataOptions & {
+          override?: TanstackHead;
+          fallback?: TanstackHead;
+        })
+      | Promise<
+          GenerateMetadataOptions & {
+            override?: TanstackHead;
+            fallback?: TanstackHead;
+          }
+        >,
+  ) {
+    return async (ctx: Ctx): Promise<TanstackHead> => {
+      const opts = await factory(ctx);
+      // For now, return empty metadata merged with fallback and override
+      return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
 }

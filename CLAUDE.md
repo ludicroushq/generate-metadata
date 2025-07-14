@@ -35,7 +35,7 @@ src/
 ### Data Flow
 
 1. **Client Init**: Developer creates client with DSN (identifies site/project) or `undefined` for development mode
-2. **Metadata Request**: Call `generateMetadata()` or `getHead()` with factory function
+2. **Metadata Request**: Call `getMetadata()` or `getHead()` with factory function
 3. **Development Mode Check**: If DSN is undefined, skip to step 6 with empty metadata
 4. **Caching Check**: Check in-memory cache for existing metadata
 5. **API Call**: Fetch from `/v1/{dsn}/metadata/get-latest` if not cached
@@ -46,16 +46,16 @@ src/
 
 #### Next.js (`src/next.ts`)
 
-- **Method**: `generateMetadata(factory)`
+- **Methods**: `getMetadata(factory)`, `getRootMetadata(factory)`
 - **Output**: Next.js `Metadata` object
 - **Features**: Icons support, deep merging with lodash.merge
 - **Usage**: Export from page/layout files
 
 #### TanStack Start (`src/tanstack-start.ts`)
 
-- **Method**: `getHead(factory)`
+- **Methods**: `getHead(factory)`, `getRootHead(factory)`
 - **Output**: HTML meta tags and link elements
-- **Features**: Meta arrays, link elements (favicon, etc.)
+- **Features**: Meta arrays with deduplication, link elements (favicon, etc.)
 - **Usage**: Export as `head` function from routes
 
 ## API Schema
@@ -170,7 +170,7 @@ vi.mocked(api.GET).mockResolvedValue({
 });
 
 // Test framework-specific output
-const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+const metadataFn = client.getMetadata(() => ({ path: "/test" }));
 const result = await metadataFn({}, {} as any);
 expect(result).toEqual(expectedMetadata);
 ```
@@ -210,7 +210,7 @@ export const metadataClient = new GenerateMetadataClient({
 // app/page.tsx
 import { metadataClient } from "@/lib/metadata";
 
-export const generateMetadata = metadataClient.generateMetadata(() => ({
+export const getMetadata = metadataClient.getMetadata(() => ({
   path: "/",
   fallback: {
     title: "Default Home Title",
@@ -218,6 +218,18 @@ export const generateMetadata = metadataClient.generateMetadata(() => ({
   },
   override: {
     robots: "index,follow",
+  },
+}));
+
+// For root layout metadata
+export const getRootMetadata = metadataClient.getRootMetadata(() => ({
+  path: "/",
+  fallback: {
+    title: "My App",
+    description: "Default app description",
+  },
+  override: {
+    viewport: "width=device-width, initial-scale=1",
   },
 }));
 ```
@@ -239,6 +251,22 @@ export const head = metadataClient.getHead(() => ({
   path: "/",
   fallback: {
     meta: [{ name: "title", content: "Default Title" }],
+  },
+}));
+
+// For root layout head metadata
+export const rootHead = metadataClient.getRootHead(() => ({
+  path: "/",
+  fallback: {
+    meta: [
+      { name: "title", content: "My App" },
+      { name: "description", content: "Default app description" },
+    ],
+  },
+  override: {
+    meta: [
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+    ],
   },
 }));
 ```
@@ -271,11 +299,36 @@ export const head = metadataClient.getHead(() => ({
 
 ### Metadata Priority System
 
+Each framework adapter has its own merge behavior:
+
+#### Next.js Merging
+
 Uses `lodash.merge` for deep merging with priority order:
 
 1. **Override** (highest priority - always wins)
 2. **Generated** (from API response)
 3. **Fallback** (lowest priority - fills gaps)
+
+#### TanStack Start Merging
+
+Uses custom merge logic with meta array deduplication:
+
+**Non-meta properties**: Standard `lodash.merge` behavior (Override > Generated > Fallback)
+
+**Meta arrays**: Deduplication based on meta tag keys with priority order:
+
+1. **Override** (highest priority - always wins)
+2. **Generated** (from API response)
+3. **Fallback** (lowest priority - fills gaps)
+
+**Deduplication rules**:
+
+- Meta tags with `name` attribute: Deduplicated by `name:${value}`
+- Meta tags with `property` attribute: Deduplicated by `property:${value}`
+- Meta tags with `title` attribute: Deduplicated by `title`
+- Meta tags without identifiable keys: Not deduplicated (preserved as-is)
+
+**Example**: If fallback has `{ name: "title", content: "Fallback" }` and override has `{ name: "title", content: "Override" }`, only the override version appears in the final meta array.
 
 ### Development Mode
 
@@ -369,4 +422,4 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: When modifying this file, update this timestamp and add a brief note about what changed.
+**Last Updated**: 2025-01-14 - Updated function names from `generateMetadata` to `getMetadata` and `generateRootMetadata` to `getRootMetadata`. Added documentation for TanStack Start meta array deduplication behavior. Added examples for root metadata functions. Updated merge behavior documentation to reflect framework-specific implementations.

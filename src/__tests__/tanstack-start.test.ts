@@ -344,4 +344,128 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(api.GET).not.toHaveBeenCalled();
     });
   });
+
+  describe("getRootHead", () => {
+    it("should return empty head metadata", async () => {
+      const rootHeadFn = client.getRootHead(() => ({
+        path: "/root",
+      }));
+      const result = await rootHeadFn({});
+
+      expect(result).toEqual({ meta: [] });
+    });
+
+    it("should return fallback metadata when provided", async () => {
+      const fallbackHead = {
+        meta: [
+          { name: "title", content: "Root Fallback Title" },
+          { name: "description", content: "Root Fallback Description" },
+        ],
+      };
+
+      const rootHeadFn = client.getRootHead(() => ({
+        path: "/root",
+        fallback: fallbackHead,
+      }));
+      const result = await rootHeadFn({});
+
+      expect(result).toEqual(fallbackHead);
+    });
+
+    it("should merge override metadata properly", async () => {
+      const fallbackHead = {
+        meta: [
+          { name: "title", content: "Root Fallback Title" },
+          { name: "description", content: "Root Fallback Description" },
+        ],
+      };
+
+      const overrideHead = {
+        meta: [
+          { name: "title", content: "Root Override Title" },
+          { name: "keywords", content: "root,override" },
+        ],
+        links: [{ rel: "canonical", href: "https://example.com/root" }],
+      };
+
+      const rootHeadFn = client.getRootHead(() => ({
+        path: "/root",
+        fallback: fallbackHead,
+        override: overrideHead,
+      }));
+      const result = await rootHeadFn({});
+
+      // With deduplication, title should come from override, description from fallback
+      expect(result.meta).toEqual([
+        { name: "description", content: "Root Fallback Description" }, // From fallback
+        { name: "title", content: "Root Override Title" }, // Override wins over fallback
+        { name: "keywords", content: "root,override" }, // From override
+      ]);
+
+      expect(result.links).toEqual([
+        { rel: "canonical", href: "https://example.com/root" },
+      ]);
+    });
+
+    it("should handle meta deduplication with priority: override > generated > fallback", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: {
+          metadata: {
+            title: "Generated Title",
+            description: "Generated Description",
+            favicon: null,
+            openGraph: {
+              title: null,
+              description: null,
+              image: null,
+              images: [],
+            },
+            twitter: {
+              title: null,
+              description: null,
+              card: null,
+              image: null,
+            },
+          },
+        },
+        error: undefined,
+      });
+
+      const fallbackHead = {
+        meta: [
+          { name: "title", content: "Fallback Title" },
+          { name: "description", content: "Fallback Description" },
+          { name: "author", content: "Fallback Author" },
+        ],
+      };
+
+      const overrideHead = {
+        meta: [
+          { name: "title", content: "Override Title" },
+          { name: "keywords", content: "override,test" },
+        ],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+        override: overrideHead,
+      }));
+      const result = await headFn({});
+
+      // Expected priority:
+      // - title: Override > Generated > Fallback = "Override Title"
+      // - description: Generated > Fallback = "Generated Description"
+      // - author: Fallback only = "Fallback Author"
+      // - keywords: Override only = "override,test"
+      // The actual order based on deduplication logic
+      expect(result.meta).toEqual([
+        { name: "title", content: "Override Title" }, // Override wins over all
+        { name: "description", content: "Generated Description" }, // Generated wins over fallback
+        { name: "author", content: "Fallback Author" }, // Only in fallback
+        { title: "Generated Title" }, // From generated (different key)
+        { name: "keywords", content: "override,test" }, // From override
+      ]);
+    });
+  });
 });

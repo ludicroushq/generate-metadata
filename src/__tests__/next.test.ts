@@ -63,14 +63,14 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
-  describe("generateMetadata", () => {
+  describe("getMetadata", () => {
     it("should return Next.js metadata when API call succeeds", async () => {
       vi.mocked(api.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
@@ -118,7 +118,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
 
       const optsFn = vi.fn().mockResolvedValue({ path: "/dynamic-test" });
-      const metadataFn = client.generateMetadata(optsFn);
+      const metadataFn = client.getMetadata(optsFn);
 
       await metadataFn({}, {} as any);
 
@@ -134,7 +134,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     it("should return empty object when API call fails", async () => {
       vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
@@ -146,7 +146,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: { message: "Not found" },
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
@@ -158,7 +158,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
@@ -190,7 +190,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
@@ -209,7 +209,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
 
       // First call
       await metadataFn({}, {} as any);
@@ -226,8 +226,8 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn1 = client.generateMetadata(() => ({ path: "/test1" }));
-      const metadataFn2 = client.generateMetadata(() => ({ path: "/test2" }));
+      const metadataFn1 = client.getMetadata(() => ({ path: "/test1" }));
+      const metadataFn2 = client.getMetadata(() => ({ path: "/test2" }));
 
       await metadataFn1({}, {} as any);
       await metadataFn2({}, {} as any);
@@ -247,7 +247,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         return { path: "/async-test" };
       };
 
-      const metadataFn = client.generateMetadata(asyncOptsFn);
+      const metadataFn = client.getMetadata(asyncOptsFn);
       const result = await metadataFn({}, {} as any);
 
       expect(result.title).toBe("Test Page Title");
@@ -267,7 +267,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         description: "Fallback Description",
       };
 
-      const metadataFn = client.generateMetadata(() => ({
+      const metadataFn = client.getMetadata(() => ({
         path: "/test",
         fallback: fallbackMetadata,
       }));
@@ -287,7 +287,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         keywords: ["override", "test"],
       };
 
-      const metadataFn = client.generateMetadata(() => ({
+      const metadataFn = client.getMetadata(() => ({
         path: "/test",
         override: overrideMetadata,
       }));
@@ -315,7 +315,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         robots: "noindex",
       };
 
-      const metadataFn = client.generateMetadata(() => ({
+      const metadataFn = client.getMetadata(() => ({
         path: "/test",
         fallback: fallbackMetadata,
         override: overrideMetadata,
@@ -334,7 +334,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result.icons).toEqual({
@@ -351,7 +351,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         dsn: undefined,
       });
 
-      const metadataFn = devClient.generateMetadata(() => ({ path: "/test" }));
+      const metadataFn = devClient.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
@@ -368,7 +368,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         description: "Development Description",
       };
 
-      const metadataFn = devClient.generateMetadata(() => ({
+      const metadataFn = devClient.getMetadata(() => ({
         path: "/test",
         fallback: fallbackMetadata,
       }));
@@ -376,6 +376,57 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       expect(result).toEqual(fallbackMetadata);
       expect(api.GET).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getRootMetadata", () => {
+    it("should return empty metadata", async () => {
+      const rootMetadataFn = client.getRootMetadata(() => ({
+        path: "/root",
+      }));
+      const result = await rootMetadataFn({}, {} as any);
+
+      expect(result).toEqual({});
+    });
+
+    it("should return fallback metadata when provided", async () => {
+      const fallbackMetadata = {
+        title: "Root Fallback Title",
+        description: "Root Fallback Description",
+      };
+
+      const rootMetadataFn = client.getRootMetadata(() => ({
+        path: "/root",
+        fallback: fallbackMetadata,
+      }));
+      const result = await rootMetadataFn({}, {} as any);
+
+      expect(result).toEqual(fallbackMetadata);
+    });
+
+    it("should merge override metadata properly", async () => {
+      const fallbackMetadata = {
+        title: "Root Fallback Title",
+        description: "Root Fallback Description",
+      };
+
+      const overrideMetadata = {
+        title: "Root Override Title",
+        keywords: ["root", "override"],
+      };
+
+      const rootMetadataFn = client.getRootMetadata(() => ({
+        path: "/root",
+        fallback: fallbackMetadata,
+        override: overrideMetadata,
+      }));
+      const result = await rootMetadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Root Override Title", // Override wins
+        description: "Root Fallback Description", // Fallback preserved
+        keywords: ["root", "override"], // Override added
+      });
     });
   });
 });
