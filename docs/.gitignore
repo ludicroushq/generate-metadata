@@ -1,0 +1,11 @@
+.DS_Store
+.env*
+.nitro
+.output
+.tanstack
+.wireit
+*.local
+*.tsbuildinfo
+dist
+dist-ssr
+node_modules
