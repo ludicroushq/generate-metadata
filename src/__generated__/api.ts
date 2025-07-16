@@ -149,40 +149,55 @@ export interface operations {
         content: {
           "application/json": {
             metadata: {
-              title: string | null;
-              description: string | null;
-              favicon: {
+              title?: string;
+              description?: string;
+              icon?: {
                 url: string;
-                alt: string | null;
-                width: number | null;
-                height: number | null;
-              } | null;
-              openGraph: {
-                title: string | null;
-                description: string | null;
-                image: {
+                alt?: string;
+                width: number;
+                height: number;
+                mimeType: string;
+              }[];
+              appleTouchIcon?: {
+                url: string;
+                alt?: string;
+                width: number;
+                height: number;
+                mimeType: string;
+              }[];
+              openGraph?: {
+                title?: string;
+                description?: string;
+                locale?: string;
+                siteName?: string;
+                type?: string;
+                image?: {
                   url: string;
-                  alt: string | null;
-                  width: number | null;
-                  height: number | null;
-                } | null;
-                images: {
+                  alt?: string;
+                  width: number;
+                  height: number;
+                  mimeType: string;
+                };
+                images?: {
                   url: string;
-                  alt: string | null;
-                  width: number | null;
-                  height: number | null;
+                  alt?: string;
+                  width: number;
+                  height: number;
+                  mimeType: string;
                 }[];
               };
-              twitter: {
-                title: string | null;
-                description: string | null;
-                card: ("summary" | "summary_large_image") | null;
-                image: {
+              twitter?: {
+                title?: string;
+                description?: string;
+                /** @enum {unknown} */
+                card?: "summary" | "summary_large_image";
+                image?: {
                   url: string;
-                  alt: string | null;
-                  width: number | null;
-                  height: number | null;
-                } | null;
+                  alt?: string;
+                  width: number;
+                  height: number;
+                  mimeType: string;
+                };
               };
             };
           };

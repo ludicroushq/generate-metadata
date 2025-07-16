@@ -35,23 +35,7 @@ export abstract class GenerateMetadataClientBase {
     // If DSN is undefined, return empty metadata structure (development mode)
     if (this.dsn === undefined) {
       return {
-        metadata: {
-          title: null,
-          description: null,
-          favicon: null,
-          openGraph: {
-            title: null,
-            description: null,
-            image: null,
-            images: [],
-          },
-          twitter: {
-            title: null,
-            description: null,
-            card: null,
-            image: null,
-          },
-        },
+        metadata: {},
       };
     }
 
@@ -60,8 +44,6 @@ export abstract class GenerateMetadataClientBase {
     if (cached) {
       return cached;
     }
-
-    // Make API call
 
     try {
       const res = await api.GET("/v1/{dsn}/metadata/get-latest", {

@@ -1,5 +1,6 @@
-import type { Metadata, ResolvingMetadata } from "next";
 import merge from "lodash.merge";
+import type { Metadata, ResolvingMetadata } from "next";
+import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -31,57 +32,155 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const { metadata } = response;
     const nextMetadata: Metadata = {};
 
-    if (metadata.title) {
-      nextMetadata.title = metadata.title;
-    }
+    const keys: (keyof typeof metadata)[] = Object.keys(
+      metadata,
+    ) as (keyof typeof metadata)[];
 
-    if (metadata.description) {
-      nextMetadata.description = metadata.description;
-    }
+    keys.forEach((key) => {
+      match(key)
+        .with("title", () => {
+          nextMetadata.title = metadata.title;
+        })
+        .with("description", () => {
+          nextMetadata.description = metadata.description;
+        })
+        .with("appleTouchIcon", () => {
+          if (!nextMetadata.icons) {
+            nextMetadata.icons = [];
+          }
 
-    if (metadata.favicon) {
-      nextMetadata.icons = {
-        icon: {
-          url: metadata.favicon.url,
-          ...(metadata.favicon.width && { width: metadata.favicon.width }),
-          ...(metadata.favicon.height && { height: metadata.favicon.height }),
-        },
-      };
-    }
+          if (!Array.isArray(nextMetadata.icons) || !metadata.appleTouchIcon) {
+            return;
+          }
 
-    if (metadata.openGraph) {
-      nextMetadata.openGraph = {
-        title: metadata.openGraph.title || undefined,
-        description: metadata.openGraph.description || undefined,
-        images: metadata.openGraph.images.map((img) => ({
-          url: img.url,
-          alt: img.alt || undefined,
-          width: img.width || undefined,
-          height: img.height || undefined,
-        })),
-      };
-    }
+          for (const icon of metadata.appleTouchIcon) {
+            nextMetadata.icons.push({
+              rel: "apple-touch-icon",
+              url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
+            });
+          }
+        })
+        .with("icon", () => {
+          if (!nextMetadata.icons) {
+            nextMetadata.icons = [];
+          }
 
-    if (metadata.twitter) {
-      // Twitter cards only support a single image
-      const twitterImage = metadata.twitter.image;
+          if (!Array.isArray(nextMetadata.icons) || !metadata.icon) {
+            return;
+          }
 
-      nextMetadata.twitter = {
-        title: metadata.twitter.title || undefined,
-        description: metadata.twitter.description || undefined,
-        ...(metadata.twitter.card && { card: metadata.twitter.card }),
-        ...(twitterImage && {
-          images: [
-            {
-              url: twitterImage.url,
-              alt: twitterImage.alt || undefined,
-              width: twitterImage.width || undefined,
-              height: twitterImage.height || undefined,
-            },
-          ],
-        }),
-      };
-    }
+          for (const icon of metadata.icon) {
+            nextMetadata.icons.push({
+              rel: "icon",
+              url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
+            });
+          }
+        })
+        .with("openGraph", () => {
+          if (!metadata.openGraph) {
+            return;
+          }
+
+          const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
+            metadata.openGraph,
+          ) as (keyof typeof metadata.openGraph)[];
+
+          const openGraph: any = {};
+
+          ogKeys.forEach((ogKey) => {
+            match(ogKey)
+              .with("title", () => {
+                openGraph.title = metadata.openGraph!.title;
+              })
+              .with("description", () => {
+                openGraph.description = metadata.openGraph!.description;
+              })
+              .with("images", () => {
+                if (metadata.openGraph!.images) {
+                  openGraph.images = metadata.openGraph!.images.map((img) => ({
+                    url: img.url,
+                    alt: img.alt || undefined,
+                    width: img.width || undefined,
+                    height: img.height || undefined,
+                  }));
+                }
+              })
+              .with("locale", () => {
+                openGraph.locale = metadata.openGraph!.locale;
+              })
+              .with("siteName", () => {
+                openGraph.siteName = metadata.openGraph!.siteName;
+              })
+              .with("type", () => {
+                openGraph.type = metadata.openGraph!.type;
+              })
+              .with("image", () => {
+                const ogImage = metadata.openGraph!.image;
+                if (ogImage) {
+                  if (!openGraph.images) {
+                    openGraph.images = [];
+                  }
+                  openGraph.images.push({
+                    url: ogImage.url,
+                    alt: ogImage.alt || undefined,
+                    width: ogImage.width || undefined,
+                    height: ogImage.height || undefined,
+                  });
+                }
+              })
+              .exhaustive();
+          });
+
+          nextMetadata.openGraph = openGraph;
+        })
+        .with("twitter", () => {
+          if (!metadata.twitter) {
+            return;
+          }
+
+          const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
+            metadata.twitter,
+          ) as (keyof typeof metadata.twitter)[];
+
+          const twitter: any = {};
+
+          twitterKeys.forEach((twitterKey) => {
+            match(twitterKey)
+              .with("title", () => {
+                twitter.title = metadata.twitter!.title;
+              })
+              .with("description", () => {
+                twitter.description = metadata.twitter!.description;
+              })
+              .with("card", () => {
+                if (metadata.twitter!.card) {
+                  twitter.card = metadata.twitter!.card;
+                }
+              })
+              .with("image", () => {
+                const twitterImage = metadata.twitter!.image;
+                if (twitterImage) {
+                  twitter.images = [
+                    {
+                      url: twitterImage.url,
+                      alt: twitterImage.alt || undefined,
+                      width: twitterImage.width || undefined,
+                      height: twitterImage.height || undefined,
+                    },
+                  ];
+                }
+              })
+              .exhaustive();
+          });
+
+          nextMetadata.twitter = twitter;
+        })
+        .exhaustive();
+    });
 
     return nextMetadata;
   }

@@ -1,4 +1,5 @@
 import merge from "lodash.merge";
+import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -46,63 +47,41 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generated: TanstackHead,
     override: TanstackHead | undefined,
   ): TanstackHead {
-    // Start with base structure
-    const result: TanstackHead = {};
+    // Merge non-meta properties (destructure to exclude meta)
+    const { meta: _, ...fallbackBase } = fallback || {};
+    const { meta: __, ...generatedBase } = generated;
+    const { meta: ___, ...overrideBase } = override || {};
 
-    // Merge non-meta properties normally using lodash.merge
-    const nonMetaFallback = { ...fallback };
-    const nonMetaGenerated = { ...generated };
-    const nonMetaOverride = { ...override };
-
-    delete nonMetaFallback?.meta;
-    delete nonMetaGenerated?.meta;
-    delete nonMetaOverride?.meta;
-
-    const mergedBase = merge(
+    const result: TanstackHead = merge(
       {},
-      nonMetaFallback || {},
-      nonMetaGenerated,
-      nonMetaOverride || {},
+      fallbackBase,
+      generatedBase,
+      overrideBase,
     );
-    Object.assign(result, mergedBase);
 
-    // Handle meta arrays with deduplication and priority
+    // Merge meta arrays with deduplication
     const allMeta = [
       ...(fallback?.meta || []),
       ...(generated.meta || []),
       ...(override?.meta || []),
     ];
 
-    if (allMeta.length > 0) {
-      const metaMap = new Map<string, any>();
+    const metaMap = new Map();
+    const nonNameMeta = [];
 
-      // Process in priority order: fallback -> generated -> override
-      for (const metaItem of allMeta) {
-        const key = this.getMetaKey(metaItem);
-        if (key) {
-          metaMap.set(key, metaItem);
-        }
+    for (const metaItem of allMeta) {
+      if (metaItem.name) {
+        metaMap.set(metaItem.name, metaItem);
+      } else {
+        nonNameMeta.push(metaItem);
       }
+    }
 
-      result.meta = Array.from(metaMap.values());
+    if (metaMap.size > 0 || nonNameMeta.length > 0) {
+      result.meta = [...Array.from(metaMap.values()), ...nonNameMeta];
     }
 
     return result;
-  }
-
-  private getMetaKey(metaItem: any): string | null {
-    // Create a unique key for meta items to handle deduplication
-    if (metaItem.name) {
-      return `name:${metaItem.name}`;
-    }
-    if (metaItem.property) {
-      return `property:${metaItem.property}`;
-    }
-    if (metaItem.title !== undefined) {
-      return "title";
-    }
-    // For items without identifiable keys, return null (they won't be deduplicated)
-    return null;
   }
 
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
@@ -114,90 +93,181 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const meta: TanstackHead["meta"] = [];
     const links: TanstackHead["links"] = [];
 
-    // Add title as meta tag
-    if (metadata.title) {
-      meta.push({ name: "title", content: metadata.title });
-      meta.push({ title: metadata.title });
-    }
+    const keys: (keyof typeof metadata)[] = Object.keys(
+      metadata,
+    ) as (keyof typeof metadata)[];
 
-    // Add description
-    if (metadata.description) {
-      meta.push({ name: "description", content: metadata.description });
-    }
+    keys.forEach((key) => {
+      match(key)
+        .with("title", () => {
+          if (metadata.title) {
+            meta.push({ name: "title", content: metadata.title });
+            meta.push({ title: metadata.title });
+          }
+        })
+        .with("description", () => {
+          if (metadata.description) {
+            meta.push({ name: "description", content: metadata.description });
+          }
+        })
+        .with("icon", () => {
+          if (metadata.icon) {
+            for (const icon of metadata.icon) {
+              links.push({
+                rel: "icon",
+                href: icon.url,
+                type: icon.mimeType,
+                sizes: `${icon.width}x${icon.height}`,
+              });
+            }
+          }
+        })
+        .with("appleTouchIcon", () => {
+          if (metadata.appleTouchIcon) {
+            for (const icon of metadata.appleTouchIcon) {
+              links.push({
+                rel: "apple-touch-icon",
+                href: icon.url,
+                type: icon.mimeType,
+                sizes: `${icon.width}x${icon.height}`,
+              });
+            }
+          }
+        })
+        .with("openGraph", () => {
+          if (!metadata.openGraph) {
+            return;
+          }
 
-    // Add favicon
-    if (metadata.favicon) {
-      links.push({
-        rel: "icon",
-        href: metadata.favicon.url,
-        ...(metadata.favicon.width &&
-          metadata.favicon.height && {
-            sizes: `${metadata.favicon.width}x${metadata.favicon.height}`,
-          }),
-      });
-    }
+          const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
+            metadata.openGraph,
+          ) as (keyof typeof metadata.openGraph)[];
 
-    // Add OpenGraph meta tags
-    if (metadata.openGraph) {
-      if (metadata.openGraph.title) {
-        meta.push({ property: "og:title", content: metadata.openGraph.title });
-      }
-      if (metadata.openGraph.description) {
-        meta.push({
-          property: "og:description",
-          content: metadata.openGraph.description,
-        });
-      }
-      if (metadata.openGraph.image) {
-        meta.push({
-          property: "og:image",
-          content: metadata.openGraph.image.url,
-        });
-        if (metadata.openGraph.image.alt) {
-          meta.push({
-            property: "og:image:alt",
-            content: metadata.openGraph.image.alt,
+          ogKeys.forEach((ogKey) => {
+            match(ogKey)
+              .with("title", () => {
+                if (metadata.openGraph!.title) {
+                  meta.push({
+                    property: "og:title",
+                    content: metadata.openGraph!.title,
+                  });
+                }
+              })
+              .with("description", () => {
+                if (metadata.openGraph!.description) {
+                  meta.push({
+                    property: "og:description",
+                    content: metadata.openGraph!.description,
+                  });
+                }
+              })
+              .with("locale", () => {
+                if (metadata.openGraph!.locale) {
+                  meta.push({
+                    property: "og:locale",
+                    content: metadata.openGraph!.locale,
+                  });
+                }
+              })
+              .with("siteName", () => {
+                if (metadata.openGraph!.siteName) {
+                  meta.push({
+                    property: "og:site_name",
+                    content: metadata.openGraph!.siteName,
+                  });
+                }
+              })
+              .with("type", () => {
+                if (metadata.openGraph!.type) {
+                  meta.push({
+                    property: "og:type",
+                    content: metadata.openGraph!.type,
+                  });
+                }
+              })
+              .with("image", () => {
+                const ogImage = metadata.openGraph!.image;
+                if (ogImage) {
+                  meta.push({
+                    property: "og:image",
+                    content: ogImage.url,
+                  });
+                  if (ogImage.alt) {
+                    meta.push({
+                      property: "og:image:alt",
+                      content: ogImage.alt,
+                    });
+                  }
+                }
+              })
+              .with("images", () => {
+                if (metadata.openGraph!.images) {
+                  metadata.openGraph!.images.forEach((img) => {
+                    meta.push({ property: "og:image", content: img.url });
+                    if (img.alt) {
+                      meta.push({ property: "og:image:alt", content: img.alt });
+                    }
+                  });
+                }
+              })
+              .exhaustive();
           });
-        }
-      }
-      metadata.openGraph.images.forEach((img) => {
-        meta.push({ property: "og:image", content: img.url });
-        if (img.alt) {
-          meta.push({ property: "og:image:alt", content: img.alt });
-        }
-      });
-    }
+        })
+        .with("twitter", () => {
+          if (!metadata.twitter) {
+            return;
+          }
 
-    // Add Twitter meta tags
-    if (metadata.twitter) {
-      if (metadata.twitter.card) {
-        meta.push({ name: "twitter:card", content: metadata.twitter.card });
-      }
-      if (metadata.twitter.title) {
-        meta.push({ name: "twitter:title", content: metadata.twitter.title });
-      }
-      if (metadata.twitter.description) {
-        meta.push({
-          name: "twitter:description",
-          content: metadata.twitter.description,
-        });
-      }
+          const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
+            metadata.twitter,
+          ) as (keyof typeof metadata.twitter)[];
 
-      // Twitter cards only support a single image
-      const twitterImage = metadata.twitter.image;
-      if (twitterImage) {
-        meta.push({
-          name: "twitter:image",
-          content: twitterImage.url,
-        });
-        if (twitterImage.alt) {
-          meta.push({
-            name: "twitter:image:alt",
-            content: twitterImage.alt,
+          twitterKeys.forEach((twitterKey) => {
+            match(twitterKey)
+              .with("title", () => {
+                if (metadata.twitter!.title) {
+                  meta.push({
+                    name: "twitter:title",
+                    content: metadata.twitter!.title,
+                  });
+                }
+              })
+              .with("description", () => {
+                if (metadata.twitter!.description) {
+                  meta.push({
+                    name: "twitter:description",
+                    content: metadata.twitter!.description,
+                  });
+                }
+              })
+              .with("card", () => {
+                if (metadata.twitter!.card) {
+                  meta.push({
+                    name: "twitter:card",
+                    content: metadata.twitter!.card,
+                  });
+                }
+              })
+              .with("image", () => {
+                const twitterImage = metadata.twitter!.image;
+                if (twitterImage) {
+                  meta.push({
+                    name: "twitter:image",
+                    content: twitterImage.url,
+                  });
+                  if (twitterImage.alt) {
+                    meta.push({
+                      name: "twitter:image:alt",
+                      content: twitterImage.alt,
+                    });
+                  }
+                }
+              })
+              .exhaustive();
           });
-        }
-      }
-    }
+        })
+        .exhaustive();
+    });
 
     return {
       meta,

@@ -379,7 +379,7 @@ This is particularly useful for:
 6. **Test both frameworks** when making core changes
 7. **Keep examples working** in the `examples/` directory
 8. **Audit and update documentation** whenever code is changed - ensure docs in `docs/content/` reflect new behavior
-9. **Follow "less is more" principle** - documentation should be concise and digestible, avoid verbosity and stating obvious things
+9. **Follow "less is more" principle** - documentation should be concise and digestible, avoid verbosity and stating obvious things. Use minimum words needed to convey information clearly.
 
 ### Code Standards
 

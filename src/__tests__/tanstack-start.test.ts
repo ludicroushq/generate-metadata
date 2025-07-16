@@ -206,7 +206,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ meta: [] });
     });
 
     it("should use fallback, generated, and override in correct priority order", async () => {
