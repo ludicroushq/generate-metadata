@@ -1,0 +1,98 @@
+---
+title: Frequently Asked Questions
+description: Common questions and answers about generate-metadata
+---
+
+Find answers to the most common questions about generate-metadata.
+
+## Setup and Installation
+
+### How do I get a DSN?
+
+Sign up at [generate-metadata.com](https://generate-metadata.com) to get your DSN. Each DSN is tied to a specific website/project.
+
+### Do I need to restart my server when changing the DSN?
+
+Yes, environment variables require a server restart to take effect.
+
+## Usage Questions
+
+### What's the difference between `getMetadata()` and `getRootMetadata()`?
+
+- **`getMetadata()`**: Use for individual pages (e.g., `/about`, `/blog/[slug]`)
+- **`getRootMetadata()`**: Use only for root layouts
+
+### When should I use `fallback` vs `override`?
+
+- **`fallback`**: Backup metadata used when the API is unavailable
+- **`override`**: Metadata that always takes priority, regardless of API response
+
+### Should I include search parameters in the path?
+
+Yes, if they affect the content or metadata:
+
+```tsx
+// Include relevant search params
+const path = `/search?q=${query}&category=${category}`;
+
+// Don't include irrelevant params like tracking IDs
+const path = `/products/${id}`; // Skip ?utm_source=...
+```
+
+## Performance and Caching
+
+### How does caching work?
+
+- Responses are cached by the `path` parameter
+- Cache persists for the lifetime of the client instance
+- Same path = cached response (no additional API call)
+- Different paths = separate cache entries
+
+### How can I clear the cache?
+
+Create a new client instance:
+
+```ts
+// This will have a fresh cache
+const newClient = new GenerateMetadataClient({ dsn: "..." });
+```
+
+### What's the performance impact?
+
+- **Bundle size**: ~15KB gzipped when importing framework-specific adapters
+- **API calls**: Cached responses after first request per path
+- **Fallback mode**: Zero overhead when API is unavailable
+
+## Troubleshooting
+
+### My metadata isn't appearing
+
+1. **Check exports**: Ensure `generateMetadata` (Next.js) or `head` (TanStack Start) are properly exported
+2. **Verify DSN**: Check your environment variables and restart your server
+3. **Inspect HTML**: Use browser dev tools to check if meta tags are in the `<head>`
+4. **Console logs**: Look for error messages or warnings
+
+### API calls are failing
+
+1. **Check DSN**: Verify it's correct and active
+2. **Network**: Ensure you have internet connectivity
+3. **Fallback**: Your fallback metadata should still be used
+
+### TypeScript errors
+
+1. **Import path**: Use framework-specific imports (`generate-metadata/next` or `generate-metadata/tanstack-start`)
+2. **Props typing**: Ensure your factory function has correct prop types
+3. **Update**: Make sure you have the latest version installed
+
+### Environment variables not working
+
+1. **File location**: Ensure `.env` files are in the correct location
+2. **Restart server**: Environment changes require a restart
+3. **Prefix**: Use `NEXT_PUBLIC_` for Next.js, regular names for TanStack Start
+4. **Quotes**: Don't wrap values in quotes in `.env` files
+
+### Duplicate meta tags
+
+1. **Library deduplication**: The library automatically deduplicates meta tags
+2. **External sources**: Check if other tools are adding meta tags
+3. **Framework conflicts**: Ensure you're not manually adding the same meta tags elsewhere

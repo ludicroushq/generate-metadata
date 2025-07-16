@@ -1,0 +1,120 @@
+---
+title: Setup
+description: Configure generate-metadata in your TanStack Start application
+---
+
+Complete setup guide for integrating generate-metadata with your TanStack Start application.
+
+## Prerequisites
+
+- TanStack Start 1.0+
+- generate-metadata installed (`npm install generate-metadata`)
+- DSN from [generate-metadata.com](https://generate-metadata.com)
+
+## Environment Configuration
+
+### 1. Add Environment Variables
+
+Create or update your `.env` file:
+
+```bash title=".env"
+GENERATE_METADATA_DSN=your_dsn_here
+```
+
+<Callout type="info">
+  TanStack Start runs on the server, so you don't need the `NEXT_PUBLIC_`
+  prefix.
+</Callout>
+
+### 2. Create Metadata Client
+
+Create a shared client instance:
+
+```ts title="lib/metadata.ts"
+import { GenerateMetadataClient } from "generate-metadata/tanstack-start";
+
+export const metadataClient = new GenerateMetadataClient({
+  dsn: process.env.GENERATE_METADATA_DSN,
+});
+```
+
+## Basic Route Setup
+
+### Static Routes
+
+```tsx title="routes/index.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+export const head = metadataClient.getHead(() => ({
+  path: "/",
+}));
+
+export default function HomePage() {
+  return (
+    <div>
+      <h1>Welcome to My App</h1>
+      <p>This page will have AI-optimized metadata!</p>
+    </div>
+  );
+}
+```
+
+### Dynamic Routes
+
+```tsx title="routes/blog.$slug.tsx"
+import { metadataClient } from "@/lib/metadata";
+import { getRouteApi } from "@tanstack/react-start";
+
+const routeApi = getRouteApi("/blog/$slug");
+
+export const head = metadataClient.getHead(() => {
+  const { slug } = routeApi.useParams();
+
+  return {
+    path: `/blog/${slug}`,
+  };
+});
+
+export default function BlogPost() {
+  const { slug } = routeApi.useParams();
+
+  return (
+    <article>
+      <h1>Blog Post: {slug}</h1>
+      <p>Content goes here...</p>
+    </article>
+  );
+}
+```
+
+### Root Layout
+
+```tsx title="routes/__root.tsx"
+import { metadataClient } from "@/lib/metadata";
+
+// Root metadata doesn't need a path parameter
+export const head = metadataClient.getRootHead();
+
+// ... rest of root component
+```
+
+## Verification
+
+### Check Developer Tools
+
+Open your browser's developer tools and inspect the `<head>` section to verify meta tags are being generated.
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Quick Start Guide"
+    href="/docs/quickstart/tanstack-start"
+    description="Build a complete example with real metadata"
+  />
+  <Card
+    title="TanStack Start Functions"
+    href="/docs/tanstack-start/functions"
+    description="Learn about all available functions and options"
+  />
+</Cards>

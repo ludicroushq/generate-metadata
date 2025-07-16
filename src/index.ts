@@ -1,60 +1,72 @@
 import { api } from "./utils/api";
+import type { operations } from "./__generated__/api";
+
+// Extract the metadata response type from the generated API types
+export type MetadataApiResponse =
+  operations["v1.metadata.getLatest"]["responses"]["200"]["content"]["application/json"];
+
+export type GenerateMetadataOptions = {
+  path: string;
+};
 
 export type GenerateMetadataClientBaseOptions = {
-  apiKey?: string;
+  dsn: string | undefined;
 };
-export class GenerateMetadataClientBase {
-  apiKey: string | undefined;
+
+export abstract class GenerateMetadataClientBase {
+  protected dsn: string | undefined;
+  protected cache: {
+    latestMetadata: Map<string, MetadataApiResponse>;
+  };
 
   constructor(props: GenerateMetadataClientBaseOptions) {
-    const { apiKey = process.env.GENERATE_METADATA_API_KEY } = props;
+    const { dsn } = props;
 
-    if (process.env.NODE_ENV === "production" && !apiKey) {
-      console.warn(
-        "GenerateMetadata - API key was not passed in production mode.",
-      );
-    }
-
-    this.apiKey = apiKey;
+    this.dsn = dsn;
+    this.cache = {
+      latestMetadata: new Map(),
+    };
   }
+  protected abstract getFrameworkName(): "next" | "tanstack-start";
 
-  async getMetadata({ path, opts = {} }: { path: string; opts?: {} }) {
-    if (!this.apiKey) {
-      throw new Error("GenerateMetadata - API key is not set");
+  protected async fetchMetadata(
+    opts: GenerateMetadataOptions,
+  ): Promise<MetadataApiResponse | null> {
+    // If DSN is undefined, return empty metadata structure (development mode)
+    if (this.dsn === undefined) {
+      return {
+        metadata: {},
+      };
     }
 
-    // TODO: opts + trigger scrape on build + caching
+    const cacheKey = opts.path;
+    const cached = this.cache.latestMetadata.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     try {
-      const res = await api.GET("/api/v1/metadata", {
+      const res = await api.GET("/v1/{dsn}/metadata/get-latest", {
         params: {
-          query: {
-            path,
+          path: {
+            dsn: this.dsn,
           },
-          header: {
-            authorization: `Bearer ${this.apiKey}`,
+          query: {
+            path: opts.path,
           },
         },
       });
 
-      if (res.error) {
-        return {
-          ok: false,
-          err: res.error,
-        } as const;
+      if (!res.data) {
+        throw res.error;
       }
 
-      return {
-        ok: true,
-        data: {
-          ...res,
-        },
-      } as const;
+      this.cache.latestMetadata.set(cacheKey, res.data);
+
+      return res.data;
     } catch (err) {
-      return {
-        ok: false,
-        err,
-      } as const;
+      console.warn(`Failed to fetch metadata for ${opts.path}:`, err);
+      return null;
     }
   }
 }

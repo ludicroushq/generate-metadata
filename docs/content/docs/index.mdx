@@ -1,0 +1,49 @@
+---
+title: Generate Metadata
+description: |
+  AI-powered SEO metadata generation for modern web frameworks
+---
+
+Stop writing SEO metadata by hand. [Generate Metadata](https://generate-metadata.com) uses AI to automatically create optimized titles, descriptions, and social tags for every page of your website. Just add one line of code and watch your search rankings and social engagement improve.
+
+## SDK Features
+
+- **AI-Powered**: Automatically generates optimized SEO metadata
+- **Framework Support**: Next.js and TanStack Start adapters
+- **Type Safe**: Full TypeScript support with complete type safety
+- **Smart Caching**: Built-in caching with graceful fallback handling
+- **Social Ready**: OpenGraph and Twitter Card support out of the box
+- **Override Control**: Can override when you need more control
+
+## Example
+
+```ts
+import { GenerateMetadataClient } from "generate-metadata/next";
+
+const client = new GenerateMetadataClient({
+  dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+});
+
+export const generateMetadata = client.getMetadata(() => ({
+  path: "/",
+  fallback: {
+    title: "My App",
+    description: "Welcome to my application",
+  },
+}));
+```
+
+## Get Started
+
+<Cards>
+  <Card
+    title="Next.js"
+    href="/docs/nextjs"
+    description="Complete Next.js integration guide"
+  />
+  <Card
+    title="TanStack Start"
+    href="/docs/tanstack-start"
+    description="Complete TanStack Start integration guide"
+  />
+</Cards>

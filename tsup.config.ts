@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -8,4 +9,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   outDir: "dist",
+  env: {
+    GENERATE_METADATA_NODE_ENV:
+      process.env.GENERATE_METADATA_NODE_ENV || "production",
+  },
 });

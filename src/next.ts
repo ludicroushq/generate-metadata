@@ -1,310 +1,236 @@
-import crypto from "crypto";
-import fs from "fs";
+import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
-import path from "path";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
+  type GenerateMetadataOptions,
+  type MetadataApiResponse,
 } from ".";
-import type { components } from "./__generated__/api";
-import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
-type NextGenerateMetadata<Props> = (
-  props: Props,
-  parent: ResolvingMetadata,
-) => Promise<Metadata>;
-
-type GenerateMetadataOptions = {
-  path: string;
-  opts?: {};
-};
-
-type Status = {
-  status: components["schemas"]["metadata-response"]["status"];
-  message?: string;
-};
-
-type NextRouteHandler = (request: NextRequest) => Promise<NextResponse>;
-
-type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions & {};
-
-// function md5(str: string): string {
-//   return crypto.createHash("md5").update(str).digest("hex");
-// }
+export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  buildId: string;
-  cache: Map<
-    string,
-    { cachedAt: Date; data: components["schemas"]["metadata-response"] }
-  >;
-  constructor(opts: GenerateMetadataClientOptions) {
-    super(opts);
-    this.buildId = this.getBuildId();
-    this.cache = new Map();
+  protected getFrameworkName(): "next" {
+    return "next";
   }
 
-  private getBuildId() {
-    try {
-      const buildIdPath = path.join(process.cwd(), ".next", "BUILD_ID");
-      return fs.readFileSync(buildIdPath, "utf8").trim();
-    } catch (err) {
-      return crypto.randomUUID();
-    }
+  private mergeMetadata(
+    fallback: Metadata | undefined,
+    generated: Metadata,
+    override: Metadata | undefined,
+  ): Metadata {
+    // Deep merge: override > generated > fallback
+    return merge({}, fallback || {}, generated, override || {});
   }
 
-  private generateMetadataStatus(status: Status): Metadata["other"] {
-    const metadata: Record<string, string> = {
-      "generate-metadata:status": status.status,
-      // "generate-metadata:build-id": md5(this.buildId),
-    };
-
-    if (status.message) {
-      metadata["generate-metadata:message"] = status.message;
+  private convertToNextMetadata(response: MetadataApiResponse): Metadata {
+    if (!response.metadata) {
+      return {};
     }
 
-    return metadata;
-  }
+    const { metadata } = response;
+    const nextMetadata: Metadata = {};
 
-  private async getCachedMetadata(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    const cached = this.cache.get(cacheKey);
-    // Bypass cache in build phase
-    if (cached) {
-      return cached.data;
-    }
+    const keys: (keyof typeof metadata)[] = Object.keys(
+      metadata,
+    ) as (keyof typeof metadata)[];
 
-    const metadata = await this.getMetadata(opts);
+    keys.forEach((key) => {
+      match(key)
+        .with("title", () => {
+          nextMetadata.title = metadata.title;
+        })
+        .with("description", () => {
+          nextMetadata.description = metadata.description;
+        })
+        .with("appleTouchIcon", () => {
+          if (!nextMetadata.icons) {
+            nextMetadata.icons = [];
+          }
 
-    if (!metadata.ok) {
-      throw metadata.err;
-    }
+          if (!Array.isArray(nextMetadata.icons) || !metadata.appleTouchIcon) {
+            return;
+          }
 
-    this.cache.set(cacheKey, {
-      cachedAt: new Date(),
-      data: metadata.data.data,
+          for (const icon of metadata.appleTouchIcon) {
+            nextMetadata.icons.push({
+              rel: "apple-touch-icon",
+              url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
+            });
+          }
+        })
+        .with("icon", () => {
+          if (!nextMetadata.icons) {
+            nextMetadata.icons = [];
+          }
+
+          if (!Array.isArray(nextMetadata.icons) || !metadata.icon) {
+            return;
+          }
+
+          for (const icon of metadata.icon) {
+            nextMetadata.icons.push({
+              rel: "icon",
+              url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
+            });
+          }
+        })
+        .with("openGraph", () => {
+          if (!metadata.openGraph) {
+            return;
+          }
+
+          const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
+            metadata.openGraph,
+          ) as (keyof typeof metadata.openGraph)[];
+
+          const openGraph: any = {};
+
+          ogKeys.forEach((ogKey) => {
+            match(ogKey)
+              .with("title", () => {
+                openGraph.title = metadata.openGraph!.title;
+              })
+              .with("description", () => {
+                openGraph.description = metadata.openGraph!.description;
+              })
+              .with("images", () => {
+                if (metadata.openGraph!.images) {
+                  openGraph.images = metadata.openGraph!.images.map((img) => ({
+                    url: img.url,
+                    alt: img.alt || undefined,
+                    width: img.width || undefined,
+                    height: img.height || undefined,
+                  }));
+                }
+              })
+              .with("locale", () => {
+                openGraph.locale = metadata.openGraph!.locale;
+              })
+              .with("siteName", () => {
+                openGraph.siteName = metadata.openGraph!.siteName;
+              })
+              .with("type", () => {
+                openGraph.type = metadata.openGraph!.type;
+              })
+              .with("image", () => {
+                const ogImage = metadata.openGraph!.image;
+                if (ogImage) {
+                  if (!openGraph.images) {
+                    openGraph.images = [];
+                  }
+                  openGraph.images.push({
+                    url: ogImage.url,
+                    alt: ogImage.alt || undefined,
+                    width: ogImage.width || undefined,
+                    height: ogImage.height || undefined,
+                  });
+                }
+              })
+              .exhaustive();
+          });
+
+          nextMetadata.openGraph = openGraph;
+        })
+        .with("twitter", () => {
+          if (!metadata.twitter) {
+            return;
+          }
+
+          const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
+            metadata.twitter,
+          ) as (keyof typeof metadata.twitter)[];
+
+          const twitter: any = {};
+
+          twitterKeys.forEach((twitterKey) => {
+            match(twitterKey)
+              .with("title", () => {
+                twitter.title = metadata.twitter!.title;
+              })
+              .with("description", () => {
+                twitter.description = metadata.twitter!.description;
+              })
+              .with("card", () => {
+                if (metadata.twitter!.card) {
+                  twitter.card = metadata.twitter!.card;
+                }
+              })
+              .with("image", () => {
+                const twitterImage = metadata.twitter!.image;
+                if (twitterImage) {
+                  twitter.images = [
+                    {
+                      url: twitterImage.url,
+                      alt: twitterImage.alt || undefined,
+                      width: twitterImage.width || undefined,
+                      height: twitterImage.height || undefined,
+                    },
+                  ];
+                }
+              })
+              .exhaustive();
+          });
+
+          nextMetadata.twitter = twitter;
+        })
+        .exhaustive();
     });
 
-    return metadata.data.data;
+    return nextMetadata;
   }
 
-  public revalidateCache(opts: GenerateMetadataOptions) {
-    const cacheKey = opts.path;
-    this.cache.delete(cacheKey);
-  }
-
-  public routeHandler(): {
-    GET: NextRouteHandler;
-    POST: NextRouteHandler;
-    PATCH: NextRouteHandler;
-    PUT: NextRouteHandler;
-    DELETE: NextRouteHandler;
-    HEAD: NextRouteHandler;
-    OPTIONS: NextRouteHandler;
-  } {
-    const schema = z.object({
-      page: z.object({
-        path: z.string(),
-      }),
-    });
-
-    const handler = async (request: NextRequest) => {
-      if (request.nextUrl.pathname.endsWith("/revalidate")) {
-        // revalidate
-        if (request.headers.get("Authorization") !== `Bearer ${this.apiKey}`) {
-          return NextResponse.json(
-            {
-              error: "Unauthorized",
-            },
-            {
-              status: 401,
-            },
-          );
-        }
-        const body = await request.json();
-        const parsed = await schema.safeParseAsync(body);
-        if (!parsed.success) {
-          return NextResponse.json(
-            {
-              error: "Invalid request body" + parsed.error.message,
-            },
-            {
-              status: 400,
-            },
-          );
-        }
-
-        const {
-          page: { path },
-        } = parsed.data;
-        await this.revalidateCache({
-          path,
-        });
-        await revalidatePath(path);
-        return NextResponse.json({
-          revalidated: true,
-        });
-      }
-
-      return NextResponse.json(
-        {
-          error: "Not found",
-        },
-        {
-          status: 404,
-        },
-      );
-    };
-
-    return {
-      GET: handler,
-      POST: handler,
-      PATCH: handler,
-      PUT: handler,
-      DELETE: handler,
-      HEAD: handler,
-      OPTIONS: handler,
-    };
-  }
-
-  private _generateMetadata<Props>(
-    getGenerateMetadataOptions: (
+  public getMetadata<Props>(
+    factory: (
       props: Props,
       parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props> {
-    const isProduction = process.env.NODE_ENV === "production";
-    // const isProductionBuild = isProduction && isBuildPhase;
-    // const isProductionLambda = isProduction && !isBuildPhase;
-
-    if (!this.apiKey) {
-      const warnOrError = isProduction ? console.error : console.warn;
-      warnOrError("GenerateMetadata - API key is not set.");
-
-      return async (props, parent): Promise<Metadata> => {
-        const generateMetadataOptions = await getGenerateMetadataOptions(
-          props,
-          parent,
-        );
-        return {
-          title: `${generateMetadataOptions.path} - GenerateMetadata`,
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "GenerateMetadata - API key is not set",
-            }),
-          },
-        };
-      };
-    }
-
-    return async (props, parent): Promise<Metadata> => {
-      const generateMetadataOptions = await getGenerateMetadataOptions(
-        props,
-        parent,
-      );
-      const { path, opts = {} } = generateMetadataOptions;
-
+    ) =>
+      | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
+      | Promise<
+          GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
+        >,
+  ) {
+    return async (
+      props: Props,
+      parent: ResolvingMetadata,
+    ): Promise<Metadata> => {
+      const opts = await factory(props, parent);
       try {
-        const metadata = await this.getCachedMetadata({ path, opts });
+        const metadata = await this.fetchMetadata(opts);
 
-        return match(metadata)
-          .with({ status: "error" }, (data) => {
-            console.error(
-              `Failed to generate metadata for path: ${path}:`,
-              data.message,
-            );
-            return {
-              other: {
-                ...this.generateMetadataStatus({
-                  status: "error",
-                  message: data.message,
-                }),
-              },
-            };
-          })
-          .with(
-            {
-              status: "missing",
-            },
-            () => {
-              return {
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: "missing",
-                  }),
-                },
-              };
-            },
-          )
-          .with(
-            {
-              status: "success",
-            },
-            {
-              status: "revalidating",
-            },
-            (data): Metadata => {
-              return {
-                title: data.metadata.title,
-                description: data.metadata.description,
-                openGraph: {
-                  title: data.metadata.openGraph?.title,
-                  description: data.metadata.openGraph?.description,
-                },
-                alternates: {
-                  canonical: data.metadata.alternates?.canonical,
-                },
-                other: {
-                  ...this.generateMetadataStatus({
-                    status: data.status,
-                  }),
-                },
-              };
-            },
-          )
-          .exhaustive();
-      } catch (err) {
-        console.error(
-          "Failed to fetch metadata for path: /",
-          err instanceof Error ? err.message : err,
-        );
-        return {
-          other: {
-            ...this.generateMetadataStatus({
-              status: "error",
-              message: "Failed to fetch metadata",
-            }),
-          },
-        };
+        const nextMetadata = metadata
+          ? this.convertToNextMetadata(metadata)
+          : {};
+
+        // Deep merge: override > generated > fallback
+        return this.mergeMetadata(opts.fallback, nextMetadata, opts.override);
+      } catch (error) {
+        console.warn("Failed to generate metadata:", error);
+        return opts.fallback || {};
       }
     };
   }
 
-  public generateMetadata<Props>(
-    generateMetadataOptions: GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataFn: (
+  public getRootMetadata<Props = {}>(
+    factory?: (
       props: Props,
       parent: ResolvingMetadata,
-    ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions,
-  ): NextGenerateMetadata<Props>;
-  public generateMetadata<Props>(
-    generateMetadataOptionsOrFn:
-      | GenerateMetadataOptions
-      | ((
-          props: Props,
-          parent: ResolvingMetadata,
-        ) => Promise<GenerateMetadataOptions> | GenerateMetadataOptions),
-  ): NextGenerateMetadata<Props> {
-    return this._generateMetadata(
-      typeof generateMetadataOptionsOrFn === "function"
-        ? generateMetadataOptionsOrFn
-        : () => generateMetadataOptionsOrFn,
-    );
+    ) =>
+      | { override?: Metadata; fallback?: Metadata }
+      | Promise<{ override?: Metadata; fallback?: Metadata }>,
+  ) {
+    return async (
+      props: Props,
+      parent: ResolvingMetadata,
+    ): Promise<Metadata> => {
+      const opts = factory ? await factory(props, parent) : {};
+      // Return empty metadata merged with fallback and override
+      return this.mergeMetadata(opts.fallback, {}, opts.override);
+    };
   }
 }

@@ -1,0 +1,104 @@
+---
+title: Install
+description: How to install generate-metadata in your project
+---
+
+Get started with generate-metadata by installing it in your project.
+
+## Package Installation
+
+Install the generate-metadata package using your preferred package manager:
+
+{/* prettier-ignore */}
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+    ```bash
+      npm install generate-metadata
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+      pnpm add generate-metadata
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```bash
+      yarn add generate-metadata
+    ```
+  </Tab>
+</Tabs>
+{/* prettier-ignore */}
+
+## Verification
+
+To verify the installation was successful, try importing the client:
+
+<Tabs items={['Next.js', 'TanStack Start']}>
+  <Tab value="Next.js">
+    ```ts
+    import { GenerateMetadataClient } from "generate-metadata/next";
+
+    // If this imports without errors, you're ready for setup!
+    ```
+
+  </Tab>
+  <Tab value="TanStack Start">
+    ```ts
+    import { GenerateMetadataClient } from "generate-metadata/tanstack-start";
+
+    // If this imports without errors, you're ready for setup!
+    ```
+
+  </Tab>
+</Tabs>
+
+## TypeScript Configuration
+
+For optimal compatibility, ensure your `tsconfig.json` includes:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler", // Required for subpath imports
+    "allowSyntheticDefaultImports": true, // Recommended
+    "esModuleInterop": true, // Recommended
+    "strict": true // Recommended for best type safety
+  }
+}
+```
+
+## Requirements
+
+- **Node.js**: Version 16 or higher
+- **TypeScript**: Version 5.0 or higher (recommended)
+- **Framework**: Next.js 13+ or TanStack Start 1.0+
+
+## Framework Support
+
+Generate-metadata provides framework-specific imports for optimal integration:
+
+- **Next.js**: `generate-metadata/next`
+- **TanStack Start**: `generate-metadata/tanstack-start`
+
+## Get Your DSN
+
+Before proceeding with setup, you'll need a DSN (Data Source Name) from [generate-metadata.com](https://generate-metadata.com).
+
+The DSN identifies your project and enables AI-powered metadata generation. Sign up to get your free DSN and start optimizing your SEO metadata.
+
+## Next Steps
+
+Once installed, follow the setup guide for your framework:
+
+<Cards>
+  <Card
+    title="Next.js Setup"
+    href="/docs/nextjs/setup"
+    description="Configure generate-metadata in your Next.js application"
+  />
+  <Card
+    title="TanStack Start Setup"
+    href="/docs/tanstack-start/setup"
+    description="Configure generate-metadata in your TanStack Start application"
+  />
+</Cards>
