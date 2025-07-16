@@ -89,31 +89,77 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
-      expect(result.meta).toEqual([
-        { name: "title", content: "Test Page Title" },
-        { name: "description", content: "Test page description" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: "Twitter Test Title" },
-        { name: "twitter:description", content: "Twitter Test Description" },
-        {
-          name: "twitter:image",
-          content: "https://example.com/twitter-image.jpg",
-        },
-        {
-          name: "twitter:image:alt",
-          content: "Twitter Image Alt",
-        },
-        { title: "Test Page Title" },
-        { property: "og:title", content: "OG Test Title" },
-        { property: "og:description", content: "OG Test Description" },
-        { property: "og:locale", content: "en_US" },
-        { property: "og:site_name", content: "Test Site" },
-        { property: "og:type", content: "website" },
-        { property: "og:image", content: "https://example.com/og-image.jpg" },
-        { property: "og:image:alt", content: "OG Image Alt Text" },
-        { property: "og:image", content: "https://example.com/og-image-1.jpg" },
-        { property: "og:image:alt", content: "OG Image 1 Alt" },
-      ]);
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Test Page Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Page Title",
+          },
+          {
+            "content": "Test page description",
+            "name": "description",
+          },
+          {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
+            "content": "OG Test Description",
+            "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
+          },
+          {
+            "content": "https://example.com/og-image.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image Alt Text",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "https://example.com/og-image-1.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image 1 Alt",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "summary_large_image",
+            "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
+          },
+          {
+            "content": "Twitter Test Description",
+            "name": "twitter:description",
+          },
+          {
+            "content": "https://example.com/twitter-image.jpg",
+            "name": "twitter:image",
+          },
+          {
+            "content": "Twitter Image Alt",
+            "name": "twitter:image:alt",
+          },
+        ]
+      `);
 
       expect(result.links).toEqual([
         {
@@ -171,13 +217,45 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await headFn({});
 
       // Override meta should take priority
-      expect(result.meta).toEqual(
-        expect.arrayContaining([
-          { name: "title", content: "Override Title" },
-          { name: "custom", content: "Override Custom Meta" },
-          { name: "description", content: "Test page description" },
-        ]),
-      );
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "title": "Test Page Title",
+          },
+          {
+            "content": "Test page description",
+            "name": "description",
+          },
+          {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
+            "content": "OG Test Description",
+            "property": "og:description",
+          },
+          {
+            "content": "summary_large_image",
+            "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
+          },
+          {
+            "content": "Twitter Test Description",
+            "name": "twitter:description",
+          },
+          {
+            "content": "Override Title",
+            "name": "title",
+          },
+          {
+            "content": "Override Custom Meta",
+            "name": "custom",
+          },
+        ]
+      `);
 
       // Override links should be preserved
       expect(result.links).toEqual([
@@ -221,12 +299,81 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await headFn({});
 
       // Should have both generated and override metadata
-      expect(result.meta).toEqual(
-        expect.arrayContaining([
-          { name: "custom", content: "Override Meta" },
-          { name: "title", content: "Test Page Title" },
-        ]),
-      );
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Test Page Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Page Title",
+          },
+          {
+            "content": "Test page description",
+            "name": "description",
+          },
+          {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
+            "content": "OG Test Description",
+            "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
+          },
+          {
+            "content": "https://example.com/og-image.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image Alt Text",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "https://example.com/og-image-1.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image 1 Alt",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "summary_large_image",
+            "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
+          },
+          {
+            "content": "Twitter Test Description",
+            "name": "twitter:description",
+          },
+          {
+            "content": "https://example.com/twitter-image.jpg",
+            "name": "twitter:image",
+          },
+          {
+            "content": "Twitter Image Alt",
+            "name": "twitter:image:alt",
+          },
+          {
+            "content": "Override Meta",
+            "name": "custom",
+          },
+        ]
+      `);
     });
 
     it("should return fallback head when API call fails", async () => {
@@ -282,14 +429,85 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await headFn({});
 
       // Should have override title, generated description, fallback-only meta
-      expect(result.meta).toEqual(
-        expect.arrayContaining([
-          { name: "override-only", content: "Override Only" },
-          { name: "title", content: "Override Title" },
-          { name: "fallback-only", content: "Fallback Only" },
-          { name: "description", content: "Test page description" },
-        ]),
-      );
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Fallback Only",
+            "name": "fallback-only",
+          },
+          {
+            "title": "Test Page Title",
+          },
+          {
+            "content": "Test page description",
+            "name": "description",
+          },
+          {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
+            "content": "OG Test Description",
+            "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
+          },
+          {
+            "content": "https://example.com/og-image.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image Alt Text",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "https://example.com/og-image-1.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "OG Image 1 Alt",
+            "property": "og:image:alt",
+          },
+          {
+            "content": "summary_large_image",
+            "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
+          },
+          {
+            "content": "Twitter Test Description",
+            "name": "twitter:description",
+          },
+          {
+            "content": "https://example.com/twitter-image.jpg",
+            "name": "twitter:image",
+          },
+          {
+            "content": "Twitter Image Alt",
+            "name": "twitter:image:alt",
+          },
+          {
+            "content": "Override Only",
+            "name": "override-only",
+          },
+          {
+            "content": "Override Title",
+            "name": "title",
+          },
+        ]
+      `);
     });
 
     it("should handle empty API response gracefully", async () => {
@@ -455,16 +673,29 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
-      expect(result.meta).toEqual([
-        { name: "title", content: "Test Title" },
-        {
-          name: "twitter:image",
-          content: "https://example.com/twitter-image.jpg",
-        },
-        { title: "Test Title" },
-        { property: "og:image", content: "https://example.com/og-image.jpg" },
-        { property: "og:image", content: "https://example.com/og-image-1.jpg" },
-      ]);
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Test Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Title",
+          },
+          {
+            "content": "https://example.com/og-image.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "https://example.com/og-image-1.jpg",
+            "property": "og:image",
+          },
+          {
+            "content": "https://example.com/twitter-image.jpg",
+            "name": "twitter:image",
+          },
+        ]
+      `);
     });
 
     it("should handle meta without name property", async () => {
@@ -570,11 +801,22 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await rootHeadFn({});
 
       // With deduplication, title should come from override, description from fallback
-      expect(result.meta).toEqual([
-        { name: "title", content: "Root Override Title" }, // Override wins over fallback
-        { name: "description", content: "Root Fallback Description" }, // From fallback
-        { name: "keywords", content: "root,override" }, // From override
-      ]);
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Root Fallback Description",
+            "name": "description",
+          },
+          {
+            "content": "Root Override Title",
+            "name": "title",
+          },
+          {
+            "content": "root,override",
+            "name": "keywords",
+          },
+        ]
+      `);
 
       expect(result.links).toEqual([
         { rel: "canonical", href: "https://example.com/root" },
@@ -668,13 +910,29 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // - author: Fallback only = "Fallback Author"
       // - keywords: Override only = "override,test"
       // The actual order based on deduplication logic
-      expect(result.meta).toEqual([
-        { name: "title", content: "Override Title" }, // Override wins over all
-        { name: "description", content: "Generated Description" }, // Generated wins over fallback
-        { name: "author", content: "Fallback Author" }, // Only in fallback
-        { name: "keywords", content: "override,test" }, // From override
-        { title: "Generated Title" }, // From generated (different key)
-      ]);
+      expect(result.meta).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "Fallback Author",
+            "name": "author",
+          },
+          {
+            "title": "Generated Title",
+          },
+          {
+            "content": "Generated Description",
+            "name": "description",
+          },
+          {
+            "content": "Override Title",
+            "name": "title",
+          },
+          {
+            "content": "override,test",
+            "name": "keywords",
+          },
+        ]
+      `);
     });
   });
 });

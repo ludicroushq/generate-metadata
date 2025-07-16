@@ -59,30 +59,49 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       overrideBase,
     );
 
-    // Merge meta arrays with deduplication
-    const allMeta = [
-      ...(fallback?.meta || []),
-      ...(generated.meta || []),
-      ...(override?.meta || []),
-    ];
+    // Helper function to get meta key for deduplication
+    const getMetaKey = (metaItem: any): string | null => {
+      if (metaItem.name) return `name:${metaItem.name}`;
+      if (metaItem.property) return `property:${metaItem.property}`;
+      if (metaItem.title) return "title";
+      return null;
+    };
 
-    const metaMap = new Map();
-    const nonIdentifiableMeta = [];
+    // Helper function to remove all occurrences of items with the given keys
+    const removeByKeys = (items: any[], keysToRemove: Set<string>): any[] => {
+      return items.filter((item) => {
+        const key = getMetaKey(item);
+        return !key || !keysToRemove.has(key);
+      });
+    };
 
-    for (const metaItem of allMeta) {
-      if (metaItem.name) {
-        metaMap.set(`name:${metaItem.name}`, metaItem);
-      } else if (metaItem.property) {
-        metaMap.set(`property:${metaItem.property}`, metaItem);
-      } else if (metaItem.title) {
-        metaMap.set("title", metaItem);
-      } else {
-        nonIdentifiableMeta.push(metaItem);
+    // Start with fallback meta
+    let finalMeta = [...(fallback?.meta || [])];
+
+    // Add generated meta, removing any duplicates from fallback first
+    if (generated.meta) {
+      const generatedKeys = new Set<string>();
+      for (const metaItem of generated.meta) {
+        const key = getMetaKey(metaItem);
+        if (key) generatedKeys.add(key);
       }
+      finalMeta = removeByKeys(finalMeta, generatedKeys);
+      finalMeta.push(...generated.meta);
     }
 
-    if (metaMap.size > 0 || nonIdentifiableMeta.length > 0) {
-      result.meta = [...Array.from(metaMap.values()), ...nonIdentifiableMeta];
+    // Add override meta, removing any duplicates from existing meta first
+    if (override?.meta) {
+      const overrideKeys = new Set<string>();
+      for (const metaItem of override.meta) {
+        const key = getMetaKey(metaItem);
+        if (key) overrideKeys.add(key);
+      }
+      finalMeta = removeByKeys(finalMeta, overrideKeys);
+      finalMeta.push(...override.meta);
+    }
+
+    if (finalMeta.length > 0) {
+      result.meta = finalMeta;
     }
 
     return result;
