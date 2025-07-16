@@ -5,6 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  base: "/docs",
   build: {
     rollupOptions: {
       // Shiki results in a huge bundle because Rollup tries to bundle every language/theme
