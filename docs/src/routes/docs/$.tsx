@@ -58,13 +58,13 @@ function Page() {
   return (
     <DocsLayout
       nav={{
-        title: "Tanstack Start",
+        title: "Generate Metadata",
       }}
       tree={tree as PageTree.Root}
     >
       <DocsPage toc={toc}>
         <DocsTitle>{data.title}</DocsTitle>
-        <DocsDescription>{data.title}</DocsDescription>
+        <DocsDescription>{data.description}</DocsDescription>
         <DocsBody>
           <MdxContent
             components={{

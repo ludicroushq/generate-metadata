@@ -4,45 +4,18 @@ description: |
   AI-powered SEO metadata generation for modern web frameworks
 ---
 
-# Generate Metadata
+Stop writing SEO metadata by hand. [Generate Metadata](https://generate-metadata.com) uses AI to automatically create optimized titles, descriptions, and social tags for every page of your website. Just add one line of code and watch your search rankings and social engagement improve.
 
-Generate Metadata is a TypeScript library that provides AI-powered, dynamic SEO metadata generation for web applications. It fetches optimized metadata from a remote API service and integrates seamlessly with popular frameworks like Next.js and TanStack Start.
+## SDK Features
 
-## Features
-
-- **AI-Powered**: Generates optimized titles, descriptions, and social tags
+- **AI-Powered**: Automatically generates optimized SEO metadata
 - **Framework Support**: Next.js and TanStack Start adapters
-- **Type Safe**: Full TypeScript support
-- **Smart Caching**: Built-in caching with graceful fallbacks
-- **Development Mode**: Works offline with fallback metadata
-- **Social Ready**: OpenGraph and Twitter Card support
+- **Type Safe**: Full TypeScript support with complete type safety
+- **Smart Caching**: Built-in caching with graceful fallback handling
+- **Social Ready**: OpenGraph and Twitter Card support out of the box
+- **Override Control**: Can override when you need more control
 
-## Quick Start
-
-<Cards>
-  <Card
-    title="Installation & Setup"
-    href="/docs/installation"
-    description="Get started with generate-metadata in minutes"
-  />
-  <Card
-    title="Next.js Integration"
-    href="/docs/nextjs"
-    description="Add dynamic metadata to your Next.js application"
-  />
-  <Card
-    title="TanStack Start Integration"
-    href="/docs/tanstack-start"
-    description="Integrate with TanStack Start for server-side metadata"
-  />
-</Cards>
-
-## How It Works
-
-1. **Initialize**: Create a client with your project's DSN (Data Source Name)
-2. **Generate**: Call metadata functions with your page path and configuration
-3. **Optimize**: The AI service analyzes your content and generates optimized metadata
-4. **Render**: Framework-specific adapters format the metadata for your application
+## Example
 
 ```ts
 import { GenerateMetadataClient } from "generate-metadata/next";
@@ -60,10 +33,17 @@ export const generateMetadata = client.getMetadata(() => ({
 }));
 ```
 
-## Benefits
+## Get Started
 
-- **Save Time**: AI handles SEO optimization automatically
-- **Better Rankings**: Optimized metadata improves search visibility
-- **Higher Engagement**: Better social media previews
-- **Great DX**: Simple, type-safe API
-- **Fast**: Built-in caching for optimal performance
+<Cards>
+  <Card
+    title="Next.js"
+    href="/docs/nextjs"
+    description="Complete Next.js integration guide"
+  />
+  <Card
+    title="TanStack Start"
+    href="/docs/tanstack-start"
+    description="Complete TanStack Start integration guide"
+  />
+</Cards>
