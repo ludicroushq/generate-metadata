@@ -67,18 +67,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     ];
 
     const metaMap = new Map();
-    const nonNameMeta = [];
+    const nonIdentifiableMeta = [];
 
     for (const metaItem of allMeta) {
       if (metaItem.name) {
-        metaMap.set(metaItem.name, metaItem);
+        metaMap.set(`name:${metaItem.name}`, metaItem);
+      } else if (metaItem.property) {
+        metaMap.set(`property:${metaItem.property}`, metaItem);
+      } else if (metaItem.title) {
+        metaMap.set("title", metaItem);
       } else {
-        nonNameMeta.push(metaItem);
+        nonIdentifiableMeta.push(metaItem);
       }
     }
 
-    if (metaMap.size > 0 || nonNameMeta.length > 0) {
-      result.meta = [...Array.from(metaMap.values()), ...nonNameMeta];
+    if (metaMap.size > 0 || nonIdentifiableMeta.length > 0) {
+      result.meta = [...Array.from(metaMap.values()), ...nonIdentifiableMeta];
     }
 
     return result;
@@ -143,50 +147,52 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             metadata.openGraph,
           ) as (keyof typeof metadata.openGraph)[];
 
+          const openGraph = metadata.openGraph;
+
           ogKeys.forEach((ogKey) => {
             match(ogKey)
               .with("title", () => {
-                if (metadata.openGraph!.title) {
+                if (openGraph.title) {
                   meta.push({
                     property: "og:title",
-                    content: metadata.openGraph!.title,
+                    content: openGraph.title,
                   });
                 }
               })
               .with("description", () => {
-                if (metadata.openGraph!.description) {
+                if (openGraph.description) {
                   meta.push({
                     property: "og:description",
-                    content: metadata.openGraph!.description,
+                    content: openGraph.description,
                   });
                 }
               })
               .with("locale", () => {
-                if (metadata.openGraph!.locale) {
+                if (openGraph.locale) {
                   meta.push({
                     property: "og:locale",
-                    content: metadata.openGraph!.locale,
+                    content: openGraph.locale,
                   });
                 }
               })
               .with("siteName", () => {
-                if (metadata.openGraph!.siteName) {
+                if (openGraph.siteName) {
                   meta.push({
                     property: "og:site_name",
-                    content: metadata.openGraph!.siteName,
+                    content: openGraph.siteName,
                   });
                 }
               })
               .with("type", () => {
-                if (metadata.openGraph!.type) {
+                if (openGraph.type) {
                   meta.push({
                     property: "og:type",
-                    content: metadata.openGraph!.type,
+                    content: openGraph.type,
                   });
                 }
               })
               .with("image", () => {
-                const ogImage = metadata.openGraph!.image;
+                const ogImage = openGraph.image;
                 if (ogImage) {
                   meta.push({
                     property: "og:image",
@@ -201,8 +207,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                 }
               })
               .with("images", () => {
-                if (metadata.openGraph!.images) {
-                  metadata.openGraph!.images.forEach((img) => {
+                if (openGraph.images) {
+                  openGraph.images.forEach((img) => {
                     meta.push({ property: "og:image", content: img.url });
                     if (img.alt) {
                       meta.push({ property: "og:image:alt", content: img.alt });
@@ -222,34 +228,36 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             metadata.twitter,
           ) as (keyof typeof metadata.twitter)[];
 
+          const twitter = metadata.twitter;
+
           twitterKeys.forEach((twitterKey) => {
             match(twitterKey)
               .with("title", () => {
-                if (metadata.twitter!.title) {
+                if (twitter.title) {
                   meta.push({
                     name: "twitter:title",
-                    content: metadata.twitter!.title,
+                    content: twitter.title,
                   });
                 }
               })
               .with("description", () => {
-                if (metadata.twitter!.description) {
+                if (twitter.description) {
                   meta.push({
                     name: "twitter:description",
-                    content: metadata.twitter!.description,
+                    content: twitter.description,
                   });
                 }
               })
               .with("card", () => {
-                if (metadata.twitter!.card) {
+                if (twitter.card) {
                   meta.push({
                     name: "twitter:card",
-                    content: metadata.twitter!.card,
+                    content: twitter.card,
                   });
                 }
               })
               .with("image", () => {
-                const twitterImage = metadata.twitter!.image;
+                const twitterImage = twitter.image;
                 if (twitterImage) {
                   meta.push({
                     name: "twitter:image",
