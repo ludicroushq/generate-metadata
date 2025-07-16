@@ -48,6 +48,7 @@
     "generate:local": "wireit",
     "generate:production": "wireit",
     "prepare": "husky",
+    "release": "wireit",
     "test": "wireit",
     "test:ci": "wireit"
   },
@@ -152,6 +153,12 @@
     },
     "prettier:write": {
       "command": "prettier --write ."
+    },
+    "release": {
+      "command": "changeset publish",
+      "dependencies": [
+        "pkg:build"
+      ]
     },
     "test": {
       "dependencies": [
