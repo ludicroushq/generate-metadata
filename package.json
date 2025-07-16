@@ -49,9 +49,7 @@
     "generate:production": "wireit",
     "prepare": "husky",
     "test": "wireit",
-    "test:ci": "wireit",
-    "test:vitest": "vitest",
-    "test:vitest:ui": "vitest --ui"
+    "test:ci": "wireit"
   },
   "lint-staged": {
     "*": [
@@ -159,18 +157,23 @@
       "dependencies": [
         "eslint:fix",
         "prettier:write",
-        "typescript:check"
+        "typescript:check",
+        "vitest:run"
       ]
     },
     "test:ci": {
       "dependencies": [
         "eslint:check",
         "prettier:check",
-        "typescript:check"
+        "typescript:check",
+        "vitest:run"
       ]
     },
     "typescript:check": {
       "command": "tsc --noEmit"
+    },
+    "vitest:run": {
+      "command": "vitest"
     }
   }
 }
