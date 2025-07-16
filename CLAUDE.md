@@ -46,17 +46,19 @@ src/
 
 #### Next.js (`src/next.ts`)
 
-- **Methods**: `getMetadata(factory)`, `getRootMetadata(factory)`
+- **Methods**: `getMetadata(factory)`, `getRootMetadata(factory?)`
 - **Output**: Next.js `Metadata` object
 - **Features**: Icons support, deep merging with lodash.merge
 - **Usage**: Export from page/layout files
+- **Root metadata**: Factory parameter is optional, no path required
 
 #### TanStack Start (`src/tanstack-start.ts`)
 
-- **Methods**: `getHead(factory)`, `getRootHead(factory)`
+- **Methods**: `getHead(factory)`, `getRootHead(factory?)`
 - **Output**: HTML meta tags and link elements
 - **Features**: Meta arrays with deduplication, link elements (favicon, etc.)
 - **Usage**: Export as `head` function from routes
+- **Root metadata**: Factory parameter is optional, no path required
 
 ## API Schema
 
@@ -221,9 +223,8 @@ export const getMetadata = metadataClient.getMetadata(() => ({
   },
 }));
 
-// For root layout metadata
+// For root layout metadata (factory is optional)
 export const getRootMetadata = metadataClient.getRootMetadata(() => ({
-  path: "/",
   fallback: {
     title: "My App",
     description: "Default app description",
@@ -232,6 +233,9 @@ export const getRootMetadata = metadataClient.getRootMetadata(() => ({
     viewport: "width=device-width, initial-scale=1",
   },
 }));
+
+// Or use without factory for empty root metadata
+export const getRootMetadata = metadataClient.getRootMetadata();
 ```
 
 ### TanStack Start Integration
@@ -254,9 +258,8 @@ export const head = metadataClient.getHead(() => ({
   },
 }));
 
-// For root layout head metadata
+// For root layout head metadata (factory is optional)
 export const rootHead = metadataClient.getRootHead(() => ({
-  path: "/",
   fallback: {
     meta: [
       { name: "title", content: "My App" },
@@ -269,6 +272,9 @@ export const rootHead = metadataClient.getRootHead(() => ({
     ],
   },
 }));
+
+// Or use without factory for empty root head metadata
+export const rootHead = metadataClient.getRootHead();
 ```
 
 ## Key Dependencies
@@ -424,4 +430,4 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-14 - Updated function names from `generateMetadata` to `getMetadata` and `generateRootMetadata` to `getRootMetadata`. Added documentation for TanStack Start meta array deduplication behavior. Added examples for root metadata functions. Updated merge behavior documentation to reflect framework-specific implementations.
+**Last Updated**: 2025-01-16 - Updated `getRootMetadata` and `getRootHead` functions to have optional factory parameters and removed path requirement. Root metadata functions now work without needing path parameter since they don't make API calls. Added comprehensive tests for the new optional factory behavior. Updated documentation and usage examples to reflect the changes.

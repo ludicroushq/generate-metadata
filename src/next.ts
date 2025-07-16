@@ -216,22 +216,20 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  public getRootMetadata<Props>(
-    factory: (
+  public getRootMetadata<Props = {}>(
+    factory?: (
       props: Props,
       parent: ResolvingMetadata,
     ) =>
-      | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
-      | Promise<
-          GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
-        >,
+      | { override?: Metadata; fallback?: Metadata }
+      | Promise<{ override?: Metadata; fallback?: Metadata }>,
   ) {
     return async (
       props: Props,
       parent: ResolvingMetadata,
     ): Promise<Metadata> => {
-      const opts = await factory(props, parent);
-      // For now, return empty metadata merged with fallback and override
+      const opts = factory ? await factory(props, parent) : {};
+      // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, {}, opts.override);
     };
   }

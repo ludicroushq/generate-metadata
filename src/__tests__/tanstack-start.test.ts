@@ -517,10 +517,15 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
   });
 
   describe("getRootHead", () => {
-    it("should return empty head metadata", async () => {
-      const rootHeadFn = client.getRootHead(() => ({
-        path: "/root",
-      }));
+    it("should return empty head metadata when no factory provided", async () => {
+      const rootHeadFn = client.getRootHead();
+      const result = await rootHeadFn({});
+
+      expect(result).toEqual({});
+    });
+
+    it("should return empty head metadata when factory returns empty object", async () => {
+      const rootHeadFn = client.getRootHead(() => ({}));
       const result = await rootHeadFn({});
 
       expect(result).toEqual({});
@@ -535,7 +540,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const rootHeadFn = client.getRootHead(() => ({
-        path: "/root",
         fallback: fallbackHead,
       }));
       const result = await rootHeadFn({});
@@ -560,7 +564,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const rootHeadFn = client.getRootHead(() => ({
-        path: "/root",
         fallback: fallbackHead,
         override: overrideHead,
       }));
@@ -576,6 +579,42 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(result.links).toEqual([
         { rel: "canonical", href: "https://example.com/root" },
       ]);
+    });
+
+    it("should handle async factory functions", async () => {
+      const asyncFactory = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        return {
+          fallback: {
+            meta: [
+              { name: "title", content: "Async Root Title" },
+              { name: "description", content: "Async Root Description" },
+            ],
+          },
+        };
+      };
+
+      const rootHeadFn = client.getRootHead(asyncFactory);
+      const result = await rootHeadFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Async Root Title" },
+          { name: "description", content: "Async Root Description" },
+        ],
+      });
+    });
+
+    it("should pass context to factory function", async () => {
+      const mockFactory = vi.fn().mockReturnValue({
+        fallback: { meta: [{ name: "title", content: "Test Title" }] },
+      });
+      const mockContext = { test: "context" };
+
+      const rootHeadFn = client.getRootHead(mockFactory);
+      await rootHeadFn(mockContext);
+
+      expect(mockFactory).toHaveBeenCalledWith(mockContext);
     });
 
     it("should handle meta deduplication with priority: override > generated > fallback", async () => {

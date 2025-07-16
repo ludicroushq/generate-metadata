@@ -306,22 +306,20 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  public getRootHead<Ctx = any>(
-    factory: (ctx: Ctx) =>
-      | (GenerateMetadataOptions & {
+  public getRootHead<Ctx = {}>(
+    factory?: (ctx: Ctx) =>
+      | {
           override?: TanstackHead;
           fallback?: TanstackHead;
-        })
-      | Promise<
-          GenerateMetadataOptions & {
-            override?: TanstackHead;
-            fallback?: TanstackHead;
-          }
-        >,
+        }
+      | Promise<{
+          override?: TanstackHead;
+          fallback?: TanstackHead;
+        }>,
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
-      const opts = await factory(ctx);
-      // For now, return empty metadata merged with fallback and override
+      const opts = factory ? await factory(ctx) : {};
+      // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }

@@ -539,10 +539,15 @@ describe("GenerateMetadataClient (Next.js)", () => {
   });
 
   describe("getRootMetadata", () => {
-    it("should return empty metadata", async () => {
-      const rootMetadataFn = client.getRootMetadata(() => ({
-        path: "/root",
-      }));
+    it("should return empty metadata when no factory provided", async () => {
+      const rootMetadataFn = client.getRootMetadata();
+      const result = await rootMetadataFn({}, {} as any);
+
+      expect(result).toEqual({});
+    });
+
+    it("should return empty metadata when factory returns empty object", async () => {
+      const rootMetadataFn = client.getRootMetadata(() => ({}));
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({});
@@ -555,7 +560,6 @@ describe("GenerateMetadataClient (Next.js)", () => {
       };
 
       const rootMetadataFn = client.getRootMetadata(() => ({
-        path: "/root",
         fallback: fallbackMetadata,
       }));
       const result = await rootMetadataFn({}, {} as any);
@@ -575,7 +579,6 @@ describe("GenerateMetadataClient (Next.js)", () => {
       };
 
       const rootMetadataFn = client.getRootMetadata(() => ({
-        path: "/root",
         fallback: fallbackMetadata,
         override: overrideMetadata,
       }));
@@ -586,6 +589,39 @@ describe("GenerateMetadataClient (Next.js)", () => {
         description: "Root Fallback Description", // Fallback preserved
         keywords: ["root", "override"], // Override added
       });
+    });
+
+    it("should handle async factory functions", async () => {
+      const asyncFactory = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        return {
+          fallback: {
+            title: "Async Root Title",
+            description: "Async Root Description",
+          },
+        };
+      };
+
+      const rootMetadataFn = client.getRootMetadata(asyncFactory);
+      const result = await rootMetadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Async Root Title",
+        description: "Async Root Description",
+      });
+    });
+
+    it("should pass props and parent to factory function", async () => {
+      const mockFactory = vi.fn().mockReturnValue({
+        fallback: { title: "Test Title" },
+      });
+      const mockProps = { test: "prop" };
+      const mockParent = { test: "parent" } as any;
+
+      const rootMetadataFn = client.getRootMetadata(mockFactory);
+      await rootMetadataFn(mockProps, mockParent);
+
+      expect(mockFactory).toHaveBeenCalledWith(mockProps, mockParent);
     });
   });
 });

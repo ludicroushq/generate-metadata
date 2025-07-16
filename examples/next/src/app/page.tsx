@@ -2,7 +2,7 @@ import Image from "next/image";
 import styles from "./page.module.css";
 import { metadataClient } from "@/generate-metadata";
 
-export const generateMetadata = metadataClient.generateMetadata(() => {
+export const generateMetadata = metadataClient.getMetadata(() => {
   return {
     path: "/",
   };
