@@ -15,20 +15,34 @@ const mockApiResponse: MetadataApiResponse = {
   metadata: {
     title: "Test Page Title",
     description: "Test page description",
-    favicon: {
-      url: "https://example.com/favicon.ico",
-      alt: "Site Favicon",
-      width: 32,
-      height: 32,
-    },
+    icon: [
+      {
+        url: "https://example.com/icon.png",
+        mimeType: "image/png",
+        width: 32,
+        height: 32,
+      },
+    ],
+    appleTouchIcon: [
+      {
+        url: "https://example.com/apple-touch-icon.png",
+        mimeType: "image/png",
+        width: 180,
+        height: 180,
+      },
+    ],
     openGraph: {
       title: "OG Test Title",
       description: "OG Test Description",
+      locale: "en_US",
+      siteName: "Test Site",
+      type: "website",
       image: {
         url: "https://example.com/og-image.jpg",
         alt: "OG Image Alt Text",
         width: 1200,
         height: 630,
+        mimeType: "image/jpeg",
       },
       images: [
         {
@@ -36,6 +50,7 @@ const mockApiResponse: MetadataApiResponse = {
           alt: "OG Image 1 Alt",
           width: 800,
           height: 600,
+          mimeType: "image/jpeg",
         },
       ],
     },
@@ -48,6 +63,7 @@ const mockApiResponse: MetadataApiResponse = {
         alt: "Twitter Image Alt",
         width: 1200,
         height: 630,
+        mimeType: "image/jpeg",
       },
     },
   },
@@ -75,14 +91,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       expect(result.meta).toEqual([
         { name: "title", content: "Test Page Title" },
-        { title: "Test Page Title" },
         { name: "description", content: "Test page description" },
-        { property: "og:title", content: "OG Test Title" },
-        { property: "og:description", content: "OG Test Description" },
-        { property: "og:image", content: "https://example.com/og-image.jpg" },
-        { property: "og:image:alt", content: "OG Image Alt Text" },
-        { property: "og:image", content: "https://example.com/og-image-1.jpg" },
-        { property: "og:image:alt", content: "OG Image 1 Alt" },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: "Twitter Test Title" },
         { name: "twitter:description", content: "Twitter Test Description" },
@@ -94,20 +103,56 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
           name: "twitter:image:alt",
           content: "Twitter Image Alt",
         },
+        { title: "Test Page Title" },
+        { property: "og:title", content: "OG Test Title" },
+        { property: "og:description", content: "OG Test Description" },
+        { property: "og:locale", content: "en_US" },
+        { property: "og:site_name", content: "Test Site" },
+        { property: "og:type", content: "website" },
+        { property: "og:image", content: "https://example.com/og-image.jpg" },
+        { property: "og:image:alt", content: "OG Image Alt Text" },
+        { property: "og:image", content: "https://example.com/og-image-1.jpg" },
+        { property: "og:image:alt", content: "OG Image 1 Alt" },
       ]);
 
       expect(result.links).toEqual([
         {
           rel: "icon",
-          href: "https://example.com/favicon.ico",
+          href: "https://example.com/icon.png",
+          type: "image/png",
           sizes: "32x32",
+        },
+        {
+          rel: "apple-touch-icon",
+          href: "https://example.com/apple-touch-icon.png",
+          type: "image/png",
+          sizes: "180x180",
         },
       ]);
     });
 
     it("should merge override head with generated metadata (override takes priority)", async () => {
+      const mockApiResponseNoIcons: MetadataApiResponse = {
+        metadata: {
+          title: "Test Page Title",
+          description: "Test page description",
+          openGraph: {
+            title: "OG Test Title",
+            description: "OG Test Description",
+            image: undefined,
+            images: [],
+          },
+          twitter: {
+            card: "summary_large_image",
+            title: "Twitter Test Title",
+            description: "Twitter Test Description",
+            image: undefined,
+          },
+        },
+      };
+
       vi.mocked(api.GET).mockResolvedValue({
-        data: mockApiResponse,
+        data: mockApiResponseNoIcons,
         error: undefined,
       });
 
@@ -206,7 +251,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
-      expect(result).toEqual({ meta: [] });
+      expect(result).toEqual({});
     });
 
     it("should use fallback, generated, and override in correct priority order", async () => {
@@ -292,24 +337,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(api.GET).toHaveBeenCalledTimes(2);
     });
 
-    it("should handle favicon metadata correctly", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
-        data: mockApiResponse,
-        error: undefined,
-      });
-
-      const headFn = client.getHead(() => ({ path: "/test" }));
-      const result = await headFn({});
-
-      expect(result.links).toEqual([
-        {
-          rel: "icon",
-          href: "https://example.com/favicon.ico",
-          sizes: "32x32",
-        },
-      ]);
-    });
-
     it("should return empty metadata when DSN is undefined (development mode)", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
@@ -318,7 +345,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = devClient.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
 
-      expect(result).toEqual({ meta: [] });
+      expect(result).toEqual({});
       expect(api.GET).not.toHaveBeenCalled();
     });
 
@@ -343,6 +370,150 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(result).toEqual(fallbackHead);
       expect(api.GET).not.toHaveBeenCalled();
     });
+
+    it("should handle null values gracefully", async () => {
+      const responseWithNulls: MetadataApiResponse = {
+        metadata: {
+          title: undefined,
+          description: undefined,
+          icon: undefined,
+          appleTouchIcon: undefined,
+          openGraph: {
+            title: undefined,
+            description: undefined,
+            locale: undefined,
+            siteName: undefined,
+            type: undefined,
+            image: undefined,
+            images: [],
+          },
+          twitter: {
+            title: undefined,
+            description: undefined,
+            card: undefined,
+            image: undefined,
+          },
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: responseWithNulls,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({});
+    });
+
+    it("should handle twitter and openGraph images without alt text", async () => {
+      const responseWithoutAlt: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          description: undefined,
+          openGraph: {
+            title: undefined,
+            description: undefined,
+            image: {
+              url: "https://example.com/og-image.jpg",
+              alt: undefined,
+              width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
+            },
+            images: [
+              {
+                url: "https://example.com/og-image-1.jpg",
+                alt: undefined,
+                width: 800,
+                height: 600,
+                mimeType: "image/jpeg",
+              },
+            ],
+          },
+          twitter: {
+            title: undefined,
+            description: undefined,
+            card: undefined,
+            image: {
+              url: "https://example.com/twitter-image.jpg",
+              alt: undefined,
+              width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
+            },
+          },
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: responseWithoutAlt,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result.meta).toEqual([
+        { name: "title", content: "Test Title" },
+        {
+          name: "twitter:image",
+          content: "https://example.com/twitter-image.jpg",
+        },
+        { title: "Test Title" },
+        { property: "og:image", content: "https://example.com/og-image.jpg" },
+        { property: "og:image", content: "https://example.com/og-image-1.jpg" },
+      ]);
+    });
+
+    it("should handle meta without name property", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: { metadata: null },
+        error: undefined,
+      });
+
+      const fallbackHead = {
+        meta: [
+          { property: "og:title", content: "Property Title" },
+          { title: "Title Tag" },
+          { "data-custom": "custom-value" },
+        ],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+      }));
+      const result = await headFn({});
+
+      // Non-name meta should be preserved as is
+      expect(result.meta).toEqual([
+        { property: "og:title", content: "Property Title" },
+        { title: "Title Tag" },
+        { "data-custom": "custom-value" },
+      ]);
+    });
+
+    it("should handle empty meta map and nonNameMeta", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: { metadata: null },
+        error: undefined,
+      });
+
+      const fallbackHead = {
+        meta: [],
+      };
+
+      const headFn = client.getHead(() => ({
+        path: "/test",
+        fallback: fallbackHead,
+      }));
+      const result = await headFn({});
+
+      // Result should not have meta property if no meta items
+      expect(result.meta).toBeUndefined();
+    });
   });
 
   describe("getRootHead", () => {
@@ -352,7 +523,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       }));
       const result = await rootHeadFn({});
 
-      expect(result).toEqual({ meta: [] });
+      expect(result).toEqual({});
     });
 
     it("should return fallback metadata when provided", async () => {
@@ -397,8 +568,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       // With deduplication, title should come from override, description from fallback
       expect(result.meta).toEqual([
-        { name: "description", content: "Root Fallback Description" }, // From fallback
         { name: "title", content: "Root Override Title" }, // Override wins over fallback
+        { name: "description", content: "Root Fallback Description" }, // From fallback
         { name: "keywords", content: "root,override" }, // From override
       ]);
 
@@ -413,18 +584,17 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
           metadata: {
             title: "Generated Title",
             description: "Generated Description",
-            favicon: null,
             openGraph: {
-              title: null,
-              description: null,
-              image: null,
+              title: undefined,
+              description: undefined,
+              image: undefined,
               images: [],
             },
             twitter: {
-              title: null,
-              description: null,
-              card: null,
-              image: null,
+              title: undefined,
+              description: undefined,
+              card: undefined,
+              image: undefined,
             },
           },
         },
@@ -463,8 +633,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         { name: "title", content: "Override Title" }, // Override wins over all
         { name: "description", content: "Generated Description" }, // Generated wins over fallback
         { name: "author", content: "Fallback Author" }, // Only in fallback
-        { title: "Generated Title" }, // From generated (different key)
         { name: "keywords", content: "override,test" }, // From override
+        { title: "Generated Title" }, // From generated (different key)
       ]);
     });
   });

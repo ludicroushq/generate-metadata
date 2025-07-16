@@ -15,20 +15,34 @@ const mockApiResponse: MetadataApiResponse = {
   metadata: {
     title: "Test Page Title",
     description: "Test page description",
-    favicon: {
-      url: "https://example.com/favicon.ico",
-      alt: "Site Favicon",
-      width: 32,
-      height: 32,
-    },
+    icon: [
+      {
+        url: "https://example.com/icon.png",
+        mimeType: "image/png",
+        width: 32,
+        height: 32,
+      },
+    ],
+    appleTouchIcon: [
+      {
+        url: "https://example.com/apple-touch-icon.png",
+        mimeType: "image/png",
+        width: 180,
+        height: 180,
+      },
+    ],
     openGraph: {
       title: "OG Test Title",
       description: "OG Test Description",
+      locale: "en_US",
+      siteName: "Test Site",
+      type: "website",
       image: {
         url: "https://example.com/og-image.jpg",
         alt: "OG Image Alt Text",
         width: 1200,
         height: 630,
+        mimeType: "image/jpeg",
       },
       images: [
         {
@@ -36,6 +50,7 @@ const mockApiResponse: MetadataApiResponse = {
           alt: "OG Image 1 Alt",
           width: 800,
           height: 600,
+          mimeType: "image/jpeg",
         },
       ],
     },
@@ -48,6 +63,7 @@ const mockApiResponse: MetadataApiResponse = {
         alt: "Twitter Image Alt",
         width: 1200,
         height: 630,
+        mimeType: "image/jpeg",
       },
     },
   },
@@ -76,16 +92,26 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(result).toEqual({
         title: "Test Page Title",
         description: "Test page description",
-        icons: {
-          icon: {
-            url: "https://example.com/favicon.ico",
-            width: 32,
-            height: 32,
+        icons: [
+          {
+            rel: "icon",
+            url: "https://example.com/icon.png",
+            type: "image/png",
+            sizes: "32x32",
           },
-        },
+          {
+            rel: "apple-touch-icon",
+            url: "https://example.com/apple-touch-icon.png",
+            type: "image/png",
+            sizes: "180x180",
+          },
+        ],
         openGraph: {
           title: "OG Test Title",
           description: "OG Test Description",
+          locale: "en_US",
+          siteName: "Test Site",
+          type: "website",
           images: [
             {
               url: "https://example.com/og-image-1.jpg",
@@ -168,19 +194,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const partialApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Only Title",
-          description: null,
-          favicon: null,
+          description: undefined,
           openGraph: {
             title: "OG Title Only",
-            description: null,
-            image: null,
+            description: undefined,
+            image: undefined,
             images: [],
           },
           twitter: {
-            card: null,
-            title: null,
-            description: null,
-            image: null,
+            card: undefined,
+            title: undefined,
+            description: undefined,
+            image: undefined,
           },
         },
       };
@@ -195,11 +220,16 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       expect(result).toEqual({
         title: "Only Title",
+        description: undefined,
         openGraph: {
           title: "OG Title Only",
+          description: undefined,
           images: [],
         },
-        twitter: {},
+        twitter: {
+          title: undefined,
+          description: undefined,
+        },
       });
     });
 
@@ -328,24 +358,6 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(result.robots).toBe("noindex");
     });
 
-    it("should handle favicon metadata correctly", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
-        data: mockApiResponse,
-        error: undefined,
-      });
-
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
-      const result = await metadataFn({}, {} as any);
-
-      expect(result.icons).toEqual({
-        icon: {
-          url: "https://example.com/favicon.ico",
-          width: 32,
-          height: 32,
-        },
-      });
-    });
-
     it("should return empty metadata when DSN is undefined (development mode)", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
@@ -376,6 +388,153 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       expect(result).toEqual(fallbackMetadata);
       expect(api.GET).not.toHaveBeenCalled();
+    });
+
+    it("should handle icons that are not arrays", async () => {
+      const responseWithBadIcons: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          description: undefined,
+          icon: undefined,
+          appleTouchIcon: undefined,
+          openGraph: {
+            title: undefined,
+            description: undefined,
+            image: undefined,
+            images: [],
+          },
+          twitter: {
+            title: undefined,
+            description: undefined,
+            card: undefined,
+            image: undefined,
+          },
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: responseWithBadIcons,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        description: undefined,
+        icons: [],
+        openGraph: {
+          title: undefined,
+          description: undefined,
+          images: [],
+        },
+        twitter: {
+          title: undefined,
+          description: undefined,
+        },
+      });
+    });
+
+    it("should handle twitter card without value", async () => {
+      const responseWithoutCard: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          description: undefined,
+          openGraph: {
+            title: undefined,
+            description: undefined,
+            image: undefined,
+            images: [],
+          },
+          twitter: {
+            title: "Twitter Title",
+            description: "Twitter Description",
+            card: undefined,
+            image: undefined,
+          },
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: responseWithoutCard,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result.twitter).toEqual({
+        title: "Twitter Title",
+        description: "Twitter Description",
+      });
+    });
+
+    it("should handle openGraph images without alt text", async () => {
+      const responseWithoutAlt: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          description: undefined,
+          openGraph: {
+            title: undefined,
+            description: undefined,
+            image: {
+              url: "https://example.com/og-image.jpg",
+              alt: undefined,
+              width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
+            },
+            images: [
+              {
+                url: "https://example.com/og-image-1.jpg",
+                alt: undefined,
+                width: 800,
+                height: 600,
+                mimeType: "image/jpeg",
+              },
+            ],
+          },
+          twitter: {
+            title: undefined,
+            description: undefined,
+            card: undefined,
+            image: {
+              url: "https://example.com/twitter-image.jpg",
+              alt: undefined,
+              width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
+            },
+          },
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: responseWithoutAlt,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result.openGraph?.images).toEqual([
+        {
+          url: "https://example.com/og-image-1.jpg",
+          alt: undefined,
+          width: 800,
+          height: 600,
+        },
+      ]);
+
+      expect(result.twitter?.images).toEqual([
+        {
+          url: "https://example.com/twitter-image.jpg",
+          alt: undefined,
+          width: 1200,
+          height: 630,
+        },
+      ]);
     });
   });
 
