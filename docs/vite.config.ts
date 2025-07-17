@@ -5,7 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  base: "/docs",
+  base: process.env.NODE_ENV === "development" ? "/" : "/docs",
   build: {
     rollupOptions: {
       // Shiki results in a huge bundle because Rollup tries to bundle every language/theme
@@ -24,10 +24,6 @@ export default defineConfig({
       customViteReactPlugin: true,
       tsr: {
         srcDirectory: "./src",
-      },
-      prerender: {
-        enabled: true,
-        crawlLinks: true,
       },
     }),
     react(),
