@@ -10,10 +10,17 @@ import { RootProvider } from "fumadocs-ui/provider/base";
 import appCss from "../app.css?url";
 import { TanstackProvider } from "fumadocs-core/framework/tanstack";
 import { getHeader } from "@tanstack/react-start/server";
+import { createServerFn } from "@tanstack/react-start";
+
+const getHost = createServerFn().handler(() => {
+  return {
+    host: getHeader("host"),
+  };
+});
 
 export const Route = createRootRoute({
-  beforeLoad(ctx) {
-    const host = getHeader("host");
+  async beforeLoad(ctx) {
+    const { host } = await getHost();
 
     if (process.env.NODE_ENV === "development") {
       return;
@@ -25,8 +32,8 @@ export const Route = createRootRoute({
       });
     }
   },
-  head: () => {
-    const host = getHeader("host");
+  head: async () => {
+    const { host } = await getHost();
 
     return {
       meta: [
