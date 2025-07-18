@@ -13,6 +13,7 @@
 - **Type Safety**: Complete OpenAPI-generated types for all interactions
 - **Performance**: Built-in caching and graceful fallback handling
 - **Developer Experience**: Clean, predictable API with comprehensive testing
+- **Authentication**: Next.js adapter requires apiKey, TanStack Start adapter has optional apiKey
 
 ## Architecture
 
@@ -34,11 +35,11 @@ src/
 
 ### Data Flow
 
-1. **Client Init**: Developer creates client with DSN (identifies site/project) or `undefined` for development mode
+1. **Client Init**: Developer creates client with DSN (identifies site/project) or `undefined` for development mode, optionally with apiKey for authentication
 2. **Metadata Request**: Call `getMetadata()` or `getHead()` with factory function
 3. **Development Mode Check**: If DSN is undefined, skip to step 6 with empty metadata
 4. **Caching Check**: Check in-memory cache for existing metadata
-5. **API Call**: Fetch from `/v1/{dsn}/metadata/get-latest` if not cached
+5. **API Call**: Fetch from `/v1/{dsn}/metadata/get-latest` if not cached (includes Bearer token if apiKey provided)
 6. **Format Conversion**: Transform API response to framework-specific format
 7. **Metadata Merging**: Apply priority: Override > Generated > Fallback
 
@@ -68,6 +69,7 @@ The library consumes a REST API with the following structure:
 
 ```
 GET /v1/{dsn}/metadata/get-latest?path={path}
+Authorization: Bearer {apiKey} (optional)
 ```
 
 ### Response Schema
@@ -207,6 +209,8 @@ export const metadataClient = new GenerateMetadataClient({
   dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
   // In development, you can pass undefined to disable API calls
   // dsn: undefined, // This will skip API calls and use only fallback metadata
+  // Required: API key for authentication (Next.js adapter requires this)
+  apiKey: process.env.GENERATE_METADATA_API_KEY!,
 });
 
 // app/page.tsx
@@ -249,6 +253,8 @@ const metadataClient = new GenerateMetadataClient({
   dsn: process.env.GENERATE_METADATA_DSN,
   // In development, you can pass undefined to disable API calls
   // dsn: undefined, // This will skip API calls and use only fallback metadata
+  // Optional: API key for authentication
+  apiKey: process.env.GENERATE_METADATA_API_KEY,
 });
 
 export const head = metadataClient.getHead(() => ({
@@ -430,4 +436,4 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-16 - Updated `getRootMetadata` and `getRootHead` functions to have optional factory parameters and removed path requirement. Root metadata functions now work without needing path parameter since they don't make API calls. Added comprehensive tests for the new optional factory behavior. Updated documentation and usage examples to reflect the changes.
+**Last Updated**: 2025-01-18 - Made `apiKey` required for Next.js adapter while keeping it optional for TanStack Start adapter. The apiKey is included as a Bearer token in the Authorization header for all API requests. Updated tests and documentation to reflect this requirement.

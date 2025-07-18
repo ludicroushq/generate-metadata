@@ -10,6 +10,7 @@ Complete setup guide for integrating generate-metadata with your Next.js applica
 - Next.js 13+ with App Router
 - generate-metadata installed (`npm install generate-metadata`)
 - DSN from [generate-metadata.com](https://generate-metadata.com)
+- API key for authentication (required for Next.js adapter)
 
 ## Environment Configuration
 
@@ -19,10 +20,17 @@ Create or update your `.env.local` file:
 
 ```bash title=".env.local"
 NEXT_PUBLIC_GENERATE_METADATA_DSN=your_dsn_here
+GENERATE_METADATA_API_KEY=your_api_key_here
 ```
 
 <Callout type="info">
-  Use `NEXT_PUBLIC_` prefix for client-side access in Next.js applications.
+  Use `NEXT_PUBLIC_` prefix for client-side access in Next.js applications. The
+  API key should not use this prefix as it should remain server-side only.
+</Callout>
+
+<Callout type="warning">
+  The `apiKey` parameter is required for the Next.js adapter. Without it,
+  TypeScript will throw a compilation error.
 </Callout>
 
 ### 2. Create Metadata Client
@@ -34,6 +42,7 @@ import { GenerateMetadataClient } from "generate-metadata/next";
 
 export const metadataClient = new GenerateMetadataClient({
   dsn: process.env.NEXT_PUBLIC_GENERATE_METADATA_DSN,
+  apiKey: process.env.GENERATE_METADATA_API_KEY!, // Required for Next.js
 });
 ```
 

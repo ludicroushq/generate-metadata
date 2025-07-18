@@ -8,9 +8,17 @@ import {
   type MetadataApiResponse,
 } from ".";
 
-export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
+export type GenerateMetadataClientOptions =
+  GenerateMetadataClientBaseOptions & {
+    apiKey: string;
+  };
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor(props: GenerateMetadataClientOptions) {
+    super(props);
+  }
+
   protected getFrameworkName(): "next" {
     return "next";
   }

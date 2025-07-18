@@ -11,18 +11,21 @@ export type GenerateMetadataOptions = {
 
 export type GenerateMetadataClientBaseOptions = {
   dsn: string | undefined;
+  apiKey?: string;
 };
 
 export abstract class GenerateMetadataClientBase {
   protected dsn: string | undefined;
+  protected apiKey: string | undefined;
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
 
   constructor(props: GenerateMetadataClientBaseOptions) {
-    const { dsn } = props;
+    const { dsn, apiKey } = props;
 
     this.dsn = dsn;
+    this.apiKey = apiKey;
     this.cache = {
       latestMetadata: new Map(),
     };
@@ -55,6 +58,11 @@ export abstract class GenerateMetadataClientBase {
             path: opts.path,
           },
         },
+        ...(this.apiKey && {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        }),
       });
 
       if (!res.data) {

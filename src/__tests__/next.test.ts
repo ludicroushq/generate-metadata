@@ -76,6 +76,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     vi.clearAllMocks();
     client = new GenerateMetadataClient({
       dsn: "test-dsn",
+      apiKey: "test-api-key",
     });
   });
 
@@ -153,6 +154,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
         params: {
           path: { dsn: "test-dsn" },
           query: { path: "/dynamic-test" },
+        },
+        headers: {
+          Authorization: "Bearer test-api-key",
         },
       });
     });
@@ -286,6 +290,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
           path: { dsn: "test-dsn" },
           query: { path: "/async-test" },
         },
+        headers: {
+          Authorization: "Bearer test-api-key",
+        },
       });
     });
 
@@ -361,6 +368,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     it("should return empty metadata when DSN is undefined (development mode)", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
+        apiKey: "test-api-key",
       });
 
       const metadataFn = devClient.getMetadata(() => ({ path: "/test" }));
@@ -373,6 +381,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     it("should use fallback metadata when DSN is undefined", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
+        apiKey: "test-api-key",
       });
 
       const fallbackMetadata = {
@@ -535,6 +544,31 @@ describe("GenerateMetadataClient (Next.js)", () => {
           height: 630,
         },
       ]);
+    });
+
+    it("should include apiKey as bearer token when provided", async () => {
+      const client = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+      });
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      await metadataFn({}, {} as any);
+
+      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer test-api-key",
+        },
+      });
     });
   });
 

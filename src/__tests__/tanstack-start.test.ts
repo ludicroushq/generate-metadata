@@ -745,6 +745,52 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Result should not have meta property if no meta items
       expect(result.meta).toBeUndefined();
     });
+
+    it("should include apiKey as bearer token when provided", async () => {
+      const client = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+      });
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      await headFn({});
+
+      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer test-api-key",
+        },
+      });
+    });
+
+    it("should not include authorization header when apiKey is not provided", async () => {
+      const client = new GenerateMetadataClient({
+        dsn: "test-dsn",
+      });
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      await headFn({});
+
+      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+      });
+    });
   });
 
   describe("getRootHead", () => {
