@@ -10,7 +10,7 @@ import {
 
 export type GenerateMetadataClientOptions =
   GenerateMetadataClientBaseOptions & {
-    apiKey: string;
+    apiKey: string | undefined;
   };
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
