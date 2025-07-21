@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { HomeIcon, GithubIcon } from "lucide-react";
 
 /**
  * Shared layout configurations
@@ -16,9 +17,21 @@ export const baseOptions: BaseLayoutProps = {
   },
   links: [
     {
-      text: "Back to Home",
+      text: "Home",
       url: "https://www.generate-metadata.com",
+      icon: <HomeIcon />,
+    },
+    {
+      text: "GitHub",
+      url: "https://github.com/ludicroushq/generate-metadata",
+      icon: <GithubIcon />,
+      external: true,
+    },
+    {
+      text: "npm",
+      url: "https://www.npmjs.com/package/generate-metadata",
       external: true,
     },
   ],
+  githubUrl: "https://github.com/ludicroushq/generate-metadata",
 };
