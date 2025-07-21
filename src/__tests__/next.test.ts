@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GenerateMetadataClient } from "../next";
 import type { MetadataApiResponse } from "../index";
+import { revalidatePath } from "next/cache";
 
 import { api } from "../utils/api";
 
@@ -9,6 +10,22 @@ vi.mock("../utils/api", () => ({
   api: {
     GET: vi.fn(),
   },
+}));
+
+// Mock Next.js cache module
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
+// Mock hono/vercel
+vi.mock("hono/vercel", () => ({
+  handle: vi.fn((app) => {
+    // Return a mock handler that simulates the Hono app behavior
+    return async (req: any) => {
+      // Simulate calling the Hono app
+      return app.fetch(req);
+    };
+  }),
 }));
 
 const mockApiResponse: MetadataApiResponse = {
@@ -656,6 +673,79 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await rootMetadataFn(mockProps, mockParent);
 
       expect(mockFactory).toHaveBeenCalledWith(mockProps, mockParent);
+    });
+  });
+
+  describe("revalidate", () => {
+    it("should clear cache and call revalidatePath for specific path", async () => {
+      // First, populate the cache
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      await metadataFn({}, {} as any);
+
+      // Clear mocks to verify cache behavior
+      vi.clearAllMocks();
+
+      // Call revalidate
+      (client as any).revalidate("/test");
+
+      // Verify revalidatePath was called
+      expect(revalidatePath).toHaveBeenCalledWith("/test");
+
+      // Verify cache was cleared by fetching again
+      await metadataFn({}, {} as any);
+      expect(api.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
+    });
+
+    it("should clear entire cache and revalidate all paths when path is null", () => {
+      // Call revalidate with null
+      (client as any).revalidate(null);
+
+      // Verify revalidatePath was called with layout revalidation
+      expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+    });
+  });
+
+  describe("revalidateHandler", () => {
+    it("should return route handlers for all HTTP methods", () => {
+      const handlers = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      expect(handlers).toHaveProperty("GET");
+      expect(handlers).toHaveProperty("POST");
+      expect(handlers).toHaveProperty("PUT");
+      expect(handlers).toHaveProperty("PATCH");
+      expect(handlers).toHaveProperty("DELETE");
+      expect(handlers).toHaveProperty("OPTIONS");
+      expect(handlers).toHaveProperty("HEAD");
+
+      // All handlers should be the same function
+      expect(handlers.GET).toBe(handlers.POST);
+      expect(handlers.POST).toBe(handlers.PUT);
+    });
+
+    it("should create handler with custom basePath", () => {
+      const handlers = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        basePath: "/custom/api/path",
+      });
+
+      expect(handlers).toHaveProperty("POST");
+    });
+
+    it("should have handlers that are functions", async () => {
+      const handlers = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      // Verify all handlers are functions
+      expect(typeof handlers.POST).toBe("function");
+      expect(typeof handlers.GET).toBe("function");
     });
   });
 });

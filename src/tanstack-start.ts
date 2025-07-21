@@ -350,4 +350,24 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
+
+  protected revalidate(path: string | null): void {
+    // Clear the internal cache
+    this.clearCache(path);
+
+    // TanStack Start doesn't have a built-in revalidation mechanism like Next.js
+    // The cache clearing is sufficient for this adapter
+  }
+
+  public revalidateHandler(options: {
+    revalidateSecret: string;
+    basePath?: string;
+  }) {
+    // Get the Hono app from base class
+    const app = this.createRevalidateApp(options);
+
+    // Return the Hono app directly for TanStack Start
+    // TanStack Start can use Hono directly or users can wrap it as needed
+    return app;
+  }
 }

@@ -1,5 +1,7 @@
+import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
+import { revalidatePath } from "next/cache";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -239,6 +241,40 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const opts = factory ? await factory(props, parent) : {};
       // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, {}, opts.override);
+    };
+  }
+
+  protected revalidate(path: string | null): void {
+    // Clear the internal cache
+    this.clearCache(path);
+
+    // Also revalidate Next.js cache
+    if (path !== null) {
+      revalidatePath(path);
+    } else {
+      // Revalidate all paths
+      revalidatePath("/", "layout");
+    }
+  }
+
+  public revalidateHandler(options: {
+    revalidateSecret: string;
+    basePath?: string;
+  }) {
+    // Get the Hono app from base class
+    const app = this.createRevalidateApp(options);
+
+    // Return Next.js compatible handlers using Hono's Vercel adapter
+    const handler = handle(app);
+
+    return {
+      GET: handler,
+      POST: handler,
+      PUT: handler,
+      PATCH: handler,
+      DELETE: handler,
+      OPTIONS: handler,
+      HEAD: handler,
     };
   }
 }

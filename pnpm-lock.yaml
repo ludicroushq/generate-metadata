@@ -10,6 +10,9 @@ importers:
       "@tanstack/react-start":
         specifier: ">=1.0.0"
         version: 1.125.4(@tanstack/react-router@1.125.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@vitejs/plugin-react@4.6.0(vite@7.0.2(@types/node@24.0.10)(jiti@2.4.2)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vite@7.0.2(@types/node@24.0.10)(jiti@2.4.2)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0))
+      hono:
+        specifier: ^4.8.5
+        version: 4.8.5
       immer:
         specifier: ^10.1.1
         version: 10.1.1
@@ -4472,6 +4475,13 @@ packages:
         integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==,
       }
     engines: { node: ">= 0.4" }
+
+  hono@4.8.5:
+    resolution:
+      {
+        integrity: sha512-Up2cQbtNz1s111qpnnECdTGqSIUIhZJMLikdKkshebQSEBcoUKq6XJayLGqSZWidiH0zfHRCJqFu062Mz5UuRA==,
+      }
+    engines: { node: ">=16.9.0" }
 
   hookable@5.5.3:
     resolution:
@@ -11323,6 +11333,8 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  hono@4.8.5: {}
 
   hookable@5.5.3: {}
 

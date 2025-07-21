@@ -240,6 +240,13 @@ export const getRootMetadata = metadataClient.getRootMetadata(() => ({
 
 // Or use without factory for empty root metadata
 export const getRootMetadata = metadataClient.getRootMetadata();
+
+// app/api/generate-metadata/[[...path]]/route.ts
+// Set up revalidation handler for cache management
+export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
+  metadataClient.revalidateHandler({
+    revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+  });
 ```
 
 ### TanStack Start Integration
@@ -308,6 +315,20 @@ export const rootHead = metadataClient.getRootHead();
 - **Cache key**: Based on the `path` parameter
 - **Cache duration**: Lasts for the lifetime of the client instance
 - **Cache behavior**: Same path = cached response, different paths = separate cache entries
+
+### Cache Revalidation (Next.js Only)
+
+The Next.js adapter includes a `revalidateHandler()` method that creates API route handlers for cache management:
+
+- **Purpose**: Programmatically clear cached metadata when content changes
+- **Authentication**: Uses Bearer token authentication via `Authorization` header
+- **Endpoint**: POST `/api/generate-metadata/revalidate`
+- **Request body**: `{ path: string | null }` - validated with Zod
+- **Behavior**:
+  - If `path` is provided: Clears cache for that specific path
+  - If `path` is null: Clears entire metadata cache
+  - Also calls Next.js `revalidatePath()` to refresh the Next.js cache
+- **Implementation**: Built with Hono for clean routing and middleware support
 
 ### Metadata Priority System
 

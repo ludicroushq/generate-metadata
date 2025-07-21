@@ -21,6 +21,7 @@ Create or update your `.env.local` file:
 ```bash title=".env.local"
 NEXT_PUBLIC_GENERATE_METADATA_DSN=your_dsn_here
 GENERATE_METADATA_API_KEY=your_api_key_here
+GENERATE_METADATA_REVALIDATE_SECRET=your_revalidate_secret_here
 ```
 
 <Callout type="info">
@@ -112,6 +113,26 @@ export default function RootLayout({
   );
 }
 ```
+
+## Cache Revalidation Setup
+
+The revalidation handler allows you to programmatically clear the metadata cache when your content changes.
+
+Create the revalidation API route handler:
+
+```ts title="app/api/generate-metadata/[[...path]]/route.ts"
+import { metadataClient } from "@/lib/metadata";
+
+export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
+  metadataClient.revalidateHandler({
+    revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+  });
+```
+
+<Callout type="warning">
+  Keep your revalidate secret secure. Never expose it in client-side code or
+  public repositories.
+</Callout>
 
 ## Verification
 
