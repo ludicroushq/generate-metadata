@@ -77,4 +77,13 @@ export abstract class GenerateMetadataClientBase {
       return null;
     }
   }
+
+  protected revalidate(path: string | null): void {
+    if (path !== null) {
+      this.cache.latestMetadata.delete(path);
+    } else {
+      // If path is null, clear entire cache
+      this.cache.latestMetadata.clear();
+    }
+  }
 }

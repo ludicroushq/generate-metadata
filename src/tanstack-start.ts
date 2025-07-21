@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 import merge from "lodash.merge";
 import { match } from "ts-pattern";
 import {
@@ -349,5 +350,21 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
+  }
+
+  public revalidateHandler(options: {
+    revalidateSecret: string;
+    basePath?: string;
+  }) {
+    const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
+
+    // Normalize basePath using URL constructor
+    const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
+
+    // Create and return new Hono instance with basePath
+    const app = new Hono().basePath(normalizedBasePath);
+    console.log(revalidateSecret);
+
+    return app;
   }
 }
