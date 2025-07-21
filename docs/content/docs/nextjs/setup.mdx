@@ -114,7 +114,7 @@ export default function RootLayout({
 }
 ```
 
-## Cache Revalidation Setup (Optional)
+## Cache Revalidation Setup
 
 The revalidation handler allows you to programmatically clear the metadata cache when your content changes.
 
@@ -135,38 +135,6 @@ export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   Keep your revalidate secret secure. Never expose it in client-side code or
   public repositories.
 </Callout>
-
-### 2. Using the Revalidation Endpoint
-
-To revalidate metadata for a specific path:
-
-```bash
-curl -X POST http://localhost:3000/api/generate-metadata/revalidate \
-  -H "Authorization: Bearer your_revalidate_secret_here" \
-  -H "Content-Type: application/json" \
-  -d '{"path": "/blog/my-post"}'
-```
-
-To clear all cached metadata:
-
-```bash
-curl -X POST http://localhost:3000/api/generate-metadata/revalidate \
-  -H "Authorization: Bearer your_revalidate_secret_here" \
-  -H "Content-Type: application/json" \
-  -d '{"path": null}'
-```
-
-### 3. Response Format
-
-Successful revalidation returns:
-
-```json
-{
-  "success": true,
-  "revalidated": true,
-  "path": "/blog/my-post"
-}
-```
 
 ## Verification
 

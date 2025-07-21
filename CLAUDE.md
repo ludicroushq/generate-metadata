@@ -242,7 +242,7 @@ export const getRootMetadata = metadataClient.getRootMetadata(() => ({
 export const getRootMetadata = metadataClient.getRootMetadata();
 
 // app/api/generate-metadata/[[...path]]/route.ts
-// Optional: Set up revalidation handler for cache management
+// Set up revalidation handler for cache management
 export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   metadataClient.revalidateHandler({
     revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
