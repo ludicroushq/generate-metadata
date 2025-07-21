@@ -21,6 +21,7 @@ Create or update your `.env.local` file:
 ```bash title=".env.local"
 NEXT_PUBLIC_GENERATE_METADATA_DSN=your_dsn_here
 GENERATE_METADATA_API_KEY=your_api_key_here
+GENERATE_METADATA_REVALIDATE_SECRET=your_revalidate_secret_here
 ```
 
 <Callout type="info">
@@ -110,6 +111,60 @@ export default function RootLayout({
       <body>{children}</body>
     </html>
   );
+}
+```
+
+## Cache Revalidation Setup (Optional)
+
+The revalidation handler allows you to programmatically clear the metadata cache when your content changes.
+
+### 1. Create API Route
+
+Create the revalidation API route handler:
+
+```ts title="app/api/generate-metadata/[[...path]]/route.ts"
+import { metadataClient } from "@/lib/metadata";
+
+export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
+  metadataClient.revalidateHandler({
+    revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+  });
+```
+
+<Callout type="warning">
+  Keep your revalidate secret secure. Never expose it in client-side code or
+  public repositories.
+</Callout>
+
+### 2. Using the Revalidation Endpoint
+
+To revalidate metadata for a specific path:
+
+```bash
+curl -X POST http://localhost:3000/api/generate-metadata/revalidate \
+  -H "Authorization: Bearer your_revalidate_secret_here" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/blog/my-post"}'
+```
+
+To clear all cached metadata:
+
+```bash
+curl -X POST http://localhost:3000/api/generate-metadata/revalidate \
+  -H "Authorization: Bearer your_revalidate_secret_here" \
+  -H "Content-Type: application/json" \
+  -d '{"path": null}'
+```
+
+### 3. Response Format
+
+Successful revalidation returns:
+
+```json
+{
+  "success": true,
+  "revalidated": true,
+  "path": "/blog/my-post"
 }
 ```
 

@@ -981,4 +981,198 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       `);
     });
   });
+
+  describe("revalidate", () => {
+    it("should clear cache for specific path", async () => {
+      // First, populate the cache
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      await headFn({});
+
+      // Clear mocks to verify cache behavior
+      vi.clearAllMocks();
+
+      // Call revalidate
+      (client as any).revalidate("/test");
+
+      // Verify cache was cleared by fetching again
+      await headFn({});
+      expect(api.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
+    });
+
+    it("should clear entire cache when path is null", async () => {
+      // Populate cache with multiple paths
+      vi.mocked(api.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn1 = client.getHead(() => ({ path: "/test1" }));
+      const headFn2 = client.getHead(() => ({ path: "/test2" }));
+
+      await headFn1({});
+      await headFn2({});
+
+      // Clear mocks
+      vi.clearAllMocks();
+
+      // Call revalidate with null
+      (client as any).revalidate(null);
+
+      // Both paths should fetch again
+      await headFn1({});
+      await headFn2({});
+
+      expect(api.GET).toHaveBeenCalledTimes(2); // Both should fetch again
+    });
+  });
+
+  describe("revalidateHandler", () => {
+    it("should return a Hono app instance", () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      // Check that it returns a Hono instance
+      expect(app).toBeDefined();
+      expect(app.fetch).toBeDefined(); // Hono apps have a fetch method
+    });
+
+    it("should create app with custom basePath", () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        basePath: "/custom/api/path",
+      });
+
+      expect(app).toBeDefined();
+      expect(app.fetch).toBeDefined();
+    });
+
+    it("should handle POST /revalidate request", async () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      // Mock request for Hono
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: "/test-path" }),
+        },
+      );
+
+      // Spy on the revalidate method
+      const revalidateSpy = vi
+        .spyOn(client as any, "revalidate")
+        .mockImplementation(() => {});
+
+      const response = await app.fetch(mockRequest);
+      const responseBody = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(responseBody).toEqual({
+        success: true,
+        revalidated: true,
+        path: "/test-path",
+      });
+      expect(revalidateSpy).toHaveBeenCalledWith("/test-path");
+
+      revalidateSpy.mockRestore();
+    });
+
+    it("should reject request with invalid auth", async () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer wrong-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: "/test-path" }),
+        },
+      );
+
+      const response = await app.fetch(mockRequest);
+
+      expect(response.status).toBe(401);
+      // The bearerAuth middleware from Hono returns text, not JSON for unauthorized
+      const responseText = await response.text();
+      expect(responseText).toBe("Unauthorized");
+    });
+
+    it("should handle invalid request body", async () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ invalidField: "test" }), // Missing 'path' field
+        },
+      );
+
+      const response = await app.fetch(mockRequest);
+      const responseBody = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(responseBody).toHaveProperty("error", "Invalid request body");
+      expect(responseBody).toHaveProperty("details");
+    });
+
+    it("should handle request with null path", async () => {
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: null }),
+        },
+      );
+
+      // Spy on the revalidate method
+      const revalidateSpy = vi
+        .spyOn(client as any, "revalidate")
+        .mockImplementation(() => {});
+
+      const response = await app.fetch(mockRequest);
+      const responseBody = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(responseBody).toEqual({
+        success: true,
+        revalidated: true,
+        path: null,
+      });
+      expect(revalidateSpy).toHaveBeenCalledWith(null);
+
+      revalidateSpy.mockRestore();
+    });
+  });
 });

@@ -1,7 +1,7 @@
+import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
 import { revalidatePath } from "next/cache";
-import { NextRequest, NextResponse } from "next/server";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -244,9 +244,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected override revalidate(path: string | null): void {
-    // Call base class revalidate to clear cache
-    super.revalidate(path);
+  protected revalidate(path: string | null): void {
+    // Clear the internal cache
+    this.clearCache(path);
 
     // Also revalidate Next.js cache
     if (path !== null) {
@@ -261,74 +261,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     revalidateSecret: string;
     basePath?: string;
   }) {
-    const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
+    // Get the Hono app from base class
+    const app = this.createRevalidateApp(options);
 
-    // Normalize basePath using URL constructor
-    const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
-
-    const handler = async (request: NextRequest): Promise<NextResponse> => {
-      // Validate revalidate secret
-      const authHeader = request.headers.get("authorization");
-      const bearerToken = authHeader?.startsWith("Bearer ")
-        ? authHeader.slice(7)
-        : null;
-
-      if (bearerToken !== revalidateSecret) {
-        return NextResponse.json(
-          { error: "Unauthorized: Invalid or missing bearer token" },
-          { status: 401 },
-        );
-      }
-
-      const { pathname } = new URL(request.url);
-      const method = request.method;
-
-      // Extract route by removing basePath
-      let route = pathname;
-      if (pathname.startsWith(normalizedBasePath)) {
-        route = pathname.slice(normalizedBasePath.length);
-        // Ensure route starts with / or is empty
-        if (route && !route.startsWith("/")) {
-          route = "/" + route;
-        }
-      }
-
-      console.log(
-        `[revalidateHandler] ${method} ${pathname} -> route: ${route}`,
-      );
-
-      // Match routes using ts-pattern
-      const response = await match({ method, route })
-        .with({ method: "POST", route: "/revalidate" }, async () => {
-          try {
-            const body = (await request.json()) as { path: string | null };
-            const { path } = body;
-
-            // Call the revalidate function
-            this.revalidate(path);
-
-            return NextResponse.json(
-              { success: true, revalidated: true, path },
-              { status: 200 },
-            );
-          } catch (error) {
-            console.error("[revalidateHandler] Error revalidating:", error);
-            return NextResponse.json(
-              {
-                error: "Failed to revalidate",
-                details:
-                  error instanceof Error ? error.message : "Unknown error",
-              },
-              { status: 500 },
-            );
-          }
-        })
-        .otherwise(() => {
-          return NextResponse.json({ error: "Not found" }, { status: 404 });
-        });
-
-      return response;
-    };
+    // Return Next.js compatible handlers using Hono's Vercel adapter
+    const handler = handle(app);
 
     return {
       GET: handler,

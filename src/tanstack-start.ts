@@ -1,4 +1,3 @@
-import { Hono } from "hono";
 import merge from "lodash.merge";
 import { match } from "ts-pattern";
 import {
@@ -352,19 +351,23 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
+  protected revalidate(path: string | null): void {
+    // Clear the internal cache
+    this.clearCache(path);
+
+    // TanStack Start doesn't have a built-in revalidation mechanism like Next.js
+    // The cache clearing is sufficient for this adapter
+  }
+
   public revalidateHandler(options: {
     revalidateSecret: string;
     basePath?: string;
   }) {
-    const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
+    // Get the Hono app from base class
+    const app = this.createRevalidateApp(options);
 
-    // Normalize basePath using URL constructor
-    const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
-
-    // Create and return new Hono instance with basePath
-    const app = new Hono().basePath(normalizedBasePath);
-    console.log(revalidateSecret);
-
+    // Return the Hono app directly for TanStack Start
+    // TanStack Start can use Hono directly or users can wrap it as needed
     return app;
   }
 }

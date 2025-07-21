@@ -1,3 +1,6 @@
+import { Hono } from "hono";
+import { bearerAuth } from "hono/bearer-auth";
+import { z } from "zod";
 import { api } from "./utils/api";
 import type { operations } from "./__generated__/api";
 
@@ -78,12 +81,74 @@ export abstract class GenerateMetadataClientBase {
     }
   }
 
-  protected revalidate(path: string | null): void {
+  protected clearCache(path: string | null): void {
     if (path !== null) {
       this.cache.latestMetadata.delete(path);
     } else {
       // If path is null, clear entire cache
       this.cache.latestMetadata.clear();
     }
+  }
+
+  // Abstract method to be implemented by framework adapters
+  protected abstract revalidate(path: string | null): void;
+
+  protected createRevalidateApp(options: {
+    revalidateSecret: string;
+    basePath?: string;
+  }): Hono {
+    const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
+
+    // Normalize basePath using URL constructor
+    const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
+
+    // Create Hono app with basePath
+    const app = new Hono().basePath(normalizedBasePath);
+
+    // Add bearer auth middleware
+    app.use("*", bearerAuth({ token: revalidateSecret }));
+
+    // Define the request body schema
+    const revalidateSchema = z.object({
+      path: z.string().nullable(),
+    });
+
+    // Add POST /revalidate route
+    app.post("/revalidate", async (c) => {
+      try {
+        const body = await c.req.json();
+
+        // Validate the request body
+        const validatedBody = revalidateSchema.parse(body);
+        const { path } = validatedBody;
+
+        // Call the revalidate function
+        this.revalidate(path);
+
+        return c.json({ success: true, revalidated: true, path }, 200);
+      } catch (error) {
+        console.error("[revalidateHandler] Error revalidating:", error);
+
+        if (error instanceof z.ZodError) {
+          return c.json(
+            {
+              error: "Invalid request body",
+              details: error.errors,
+            },
+            400,
+          );
+        }
+
+        return c.json(
+          {
+            error: "Failed to revalidate",
+            details: error instanceof Error ? error.message : "Unknown error",
+          },
+          500,
+        );
+      }
+    });
+
+    return app;
   }
 }
