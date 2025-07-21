@@ -11,6 +11,23 @@ import { getMDXComponents } from "@/mdx-components";
 import { Edit3 } from "lucide-react";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 import { Cards, Card } from "fumadocs-ui/components/card";
+import { metadataClient } from "@/generate-metadata";
+
+export const generateMetadata = metadataClient.getMetadata(
+  async (props: { params: Promise<{ slug?: string[] }> }) => {
+    const params = await props.params;
+    const page = source.getPage(params.slug);
+    if (!page) notFound();
+
+    return {
+      path: `/docs${page.url}`,
+      fallback: {
+        title: page.data.title,
+        description: page.data.description,
+      },
+    };
+  },
+);
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -55,17 +72,4 @@ export default async function Page(props: {
 
 export async function generateStaticParams() {
   return source.generateParams();
-}
-
-export async function generateMetadata(props: {
-  params: Promise<{ slug?: string[] }>;
-}) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  if (!page) notFound();
-
-  return {
-    title: page.data.title,
-    description: page.data.description,
-  };
 }
