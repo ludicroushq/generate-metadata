@@ -747,5 +747,68 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(typeof handlers.POST).toBe("function");
       expect(typeof handlers.GET).toBe("function");
     });
+
+    it("should return error handlers when revalidateSecret is undefined", async () => {
+      const handlers = client.revalidateHandler({
+        revalidateSecret: undefined,
+      });
+
+      // Verify all handlers are functions
+      expect(typeof handlers.POST).toBe("function");
+      expect(typeof handlers.GET).toBe("function");
+
+      // Create a mock request
+      const mockRequest = new Request(
+        "http://localhost/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ path: "/test" }),
+        },
+      );
+
+      // Call the handler
+      const response = await handlers.POST(mockRequest);
+
+      // Verify the response
+      expect(response.status).toBe(500);
+      const body = await response.json();
+      expect(body).toEqual({ error: "Revalidate secret is not configured" });
+    });
+
+    it("should return the same error handler for all HTTP methods when revalidateSecret is undefined", async () => {
+      const handlers = client.revalidateHandler({
+        revalidateSecret: undefined,
+      });
+
+      // Create a mock request
+      const mockRequest = new Request(
+        "http://localhost/api/generate-metadata/revalidate",
+        {
+          method: "GET",
+        },
+      );
+
+      // Test all handlers return the same error
+      const getResponse = await handlers.GET(mockRequest);
+      const postResponse = await handlers.POST(mockRequest);
+      const putResponse = await handlers.PUT(mockRequest);
+
+      expect(getResponse.status).toBe(500);
+      expect(postResponse.status).toBe(500);
+      expect(putResponse.status).toBe(500);
+
+      const getBody = await getResponse.json();
+      const postBody = await postResponse.json();
+      const putBody = await putResponse.json();
+
+      expect(getBody).toEqual({ error: "Revalidate secret is not configured" });
+      expect(postBody).toEqual({
+        error: "Revalidate secret is not configured",
+      });
+      expect(putBody).toEqual({ error: "Revalidate secret is not configured" });
+    });
   });
 });

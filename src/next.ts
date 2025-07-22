@@ -258,7 +258,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   public revalidateHandler(options: {
-    revalidateSecret: string;
+    revalidateSecret: string | undefined;
     basePath?: string;
   }) {
     // Get the Hono app from base class

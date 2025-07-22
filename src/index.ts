@@ -120,7 +120,7 @@ export abstract class GenerateMetadataClientBase {
   }
 
   protected createRevalidateApp(options: {
-    revalidateSecret: string;
+    revalidateSecret: string | undefined;
     basePath?: string;
   }): Hono<any> {
     const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
@@ -134,6 +134,14 @@ export abstract class GenerateMetadataClientBase {
         parsedBody: unknown;
       };
     }>().basePath(normalizedBasePath);
+
+    // If revalidateSecret is undefined, return error for all routes
+    if (revalidateSecret === undefined) {
+      app.use("*", async (c) => {
+        return c.json({ error: "Revalidate secret is not configured" }, 500);
+      });
+      return app;
+    }
 
     // Add authentication middleware for all routes
     app.use("*", async (c, next) => {

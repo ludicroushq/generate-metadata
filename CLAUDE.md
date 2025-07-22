@@ -245,7 +245,8 @@ export const getRootMetadata = metadataClient.getRootMetadata();
 // Set up revalidation handler for cache management
 export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   metadataClient.revalidateHandler({
-    revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+    revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET,
+    // revalidateSecret can be undefined in development
   });
 ```
 
@@ -321,14 +322,16 @@ export const rootHead = metadataClient.getRootHead();
 The Next.js adapter includes a `revalidateHandler()` method that creates API route handlers for cache management:
 
 - **Purpose**: Programmatically clear cached metadata when content changes
-- **Authentication**: Uses Bearer token authentication via `Authorization` header
+- **Authentication**: Uses Bearer token authentication via `Authorization` header or HMAC signature
 - **Endpoint**: POST `/api/generate-metadata/revalidate`
 - **Request body**: `{ path: string | null }` - validated with Zod
 - **Behavior**:
+  - If `revalidateSecret` is undefined: Returns 500 error "Revalidate secret is not configured"
   - If `path` is provided: Clears cache for that specific path
   - If `path` is null: Clears entire metadata cache
   - Also calls Next.js `revalidatePath()` to refresh the Next.js cache
 - **Implementation**: Built with Hono for clean routing and middleware support
+- **Development mode**: When `revalidateSecret` is undefined, the handler will return an error response, allowing developers to skip configuration during local development
 
 ### Metadata Priority System
 
@@ -457,4 +460,4 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-18 - Made `apiKey` required for Next.js adapter while keeping it optional for TanStack Start adapter. The apiKey is included as a Bearer token in the Authorization header for all API requests. Updated tests and documentation to reflect this requirement.
+**Last Updated**: 2025-01-22 - Updated `revalidateHandler` to allow `revalidateSecret` to be undefined. When undefined, the handler returns a 500 error indicating the revalidate secret is not configured. This allows developers to skip configuration during local development without causing build errors.
