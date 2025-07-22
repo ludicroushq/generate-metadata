@@ -1109,9 +1109,9 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const response = await app.fetch(mockRequest);
 
       expect(response.status).toBe(401);
-      // The bearerAuth middleware from Hono returns text, not JSON for unauthorized
-      const responseText = await response.text();
-      expect(responseText).toBe("Unauthorized");
+      // Our custom auth middleware returns JSON for unauthorized
+      const responseData = await response.json();
+      expect(responseData).toEqual({ error: "Unauthorized" });
     });
 
     it("should handle invalid request body", async () => {

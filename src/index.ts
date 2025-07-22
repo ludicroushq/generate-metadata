@@ -1,5 +1,5 @@
+import { createHmac } from "crypto";
 import { Hono } from "hono";
-import { bearerAuth } from "hono/bearer-auth";
 import { z } from "zod";
 import { api } from "./utils/api";
 import type { operations } from "./__generated__/api";
@@ -93,20 +93,108 @@ export abstract class GenerateMetadataClientBase {
   // Abstract method to be implemented by framework adapters
   protected abstract revalidate(path: string | null): void;
 
+  // HMAC signature verification
+  private verifyHmacSignature(
+    secret: string,
+    signature: string,
+    timestamp: string,
+    payload: unknown,
+  ): boolean {
+    // Extract the actual signature from the sha256={signature} format
+    const signatureMatch = signature.match(/^sha256=(.+)$/);
+    if (!signatureMatch) {
+      return false;
+    }
+    const providedSignature = signatureMatch[1];
+
+    // Create the message to sign: timestamp + "." + JSON.stringify(payload)
+    const message = `${timestamp}.${JSON.stringify(payload)}`;
+
+    // Generate the expected signature
+    const expectedSignature = createHmac("sha256", secret)
+      .update(message)
+      .digest("hex");
+
+    // Compare signatures using timing-safe comparison
+    return providedSignature === expectedSignature;
+  }
+
   protected createRevalidateApp(options: {
     revalidateSecret: string;
     basePath?: string;
-  }): Hono {
+  }): Hono<any> {
     const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
 
     // Normalize basePath using URL constructor
     const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
 
-    // Create Hono app with basePath
-    const app = new Hono().basePath(normalizedBasePath);
+    // Create Hono app with basePath and typed context
+    const app = new Hono<{
+      Variables: {
+        parsedBody: unknown;
+      };
+    }>().basePath(normalizedBasePath);
 
-    // Add bearer auth middleware
-    app.use("*", bearerAuth({ token: revalidateSecret }));
+    // Add authentication middleware for all routes
+    app.use("*", async (c, next) => {
+      // Check for HMAC signature verification
+      const hmacSignature = c.req.header("X-Webhook-Signature");
+      const hmacTimestamp = c.req.header("X-Webhook-Timestamp");
+      const bearerToken = c.req.header("Authorization");
+
+      // Get the raw body for HMAC verification
+      // Store the raw body text for HMAC verification
+      const rawBody = await c.req.text();
+      let body: unknown;
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        return c.json({ error: "Invalid JSON body" }, 400);
+      }
+
+      // Store parsed body in context for route handlers
+      c.set("parsedBody", body);
+
+      let isAuthenticated = false;
+
+      // Always try HMAC verification first if headers are present
+      if (hmacSignature && hmacTimestamp) {
+        isAuthenticated = this.verifyHmacSignature(
+          revalidateSecret,
+          hmacSignature,
+          hmacTimestamp,
+          body,
+        );
+
+        // If HMAC headers are present and valid, we're done
+        if (isAuthenticated) {
+          // Authentication successful via HMAC
+        } else {
+          // HMAC headers present but invalid - still check bearer token as fallback
+          if (bearerToken) {
+            const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
+            if (tokenMatch && tokenMatch[1] === revalidateSecret) {
+              isAuthenticated = true;
+            }
+          }
+        }
+      } else {
+        // No HMAC headers, fall back to bearer auth only
+        if (bearerToken) {
+          const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
+          if (tokenMatch && tokenMatch[1] === revalidateSecret) {
+            isAuthenticated = true;
+          }
+        }
+      }
+
+      // If neither authentication method succeeds, return 401
+      if (!isAuthenticated) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      await next();
+    });
 
     // Define the request body schema
     const revalidateSchema = z.object({
@@ -116,7 +204,8 @@ export abstract class GenerateMetadataClientBase {
     // Add POST /revalidate route
     app.post("/revalidate", async (c) => {
       try {
-        const body = await c.req.json();
+        // Get the parsed body from context
+        const body = c.get("parsedBody");
 
         // Validate the request body
         const validatedBody = revalidateSchema.parse(body);
