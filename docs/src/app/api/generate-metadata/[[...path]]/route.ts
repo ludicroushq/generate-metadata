@@ -4,4 +4,5 @@ import { metadataClient } from "@/generate-metadata";
 export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   metadataClient.revalidateHandler({
     revalidateSecret: env.GENERATE_METADATA_REVALIDATE_SECRET,
+    basePath: "/docs/api/generate-metadata",
   });
