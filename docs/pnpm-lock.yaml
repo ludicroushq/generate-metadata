@@ -20,8 +20,8 @@ importers:
         specifier: 15.2.10
         version: 15.2.10(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11)
       generate-metadata:
-        specifier: ^0.0.5
-        version: 0.0.5(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+        specifier: https://pkg.pr.new/ludicroushq/generate-metadata@5ef2857
+        version: https://pkg.pr.new/ludicroushq/generate-metadata@5ef2857(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.1.0)
@@ -1917,11 +1917,10 @@ packages:
       tailwindcss:
         optional: true
 
-  generate-metadata@0.0.5:
+  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@5ef2857:
     resolution:
-      {
-        integrity: sha512-mkCxq9laecR2U4RyGmX6d4ZJUyLZvcWW10gCDH23/R6DByUbwa+2n7u/gWfcK0VCbEi00X174TsZcj1W/ktCHA==,
-      }
+      { tarball: https://pkg.pr.new/ludicroushq/generate-metadata@5ef2857 }
+    version: 0.0.5
     peerDependencies:
       "@tanstack/react-start": ">=1.0.0"
       next: ">=13.0.0"
@@ -4429,7 +4428,7 @@ snapshots:
       - algoliasearch
       - supports-color
 
-  generate-metadata@0.0.5(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
+  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@5ef2857(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
     dependencies:
       hono: 4.8.5
       immer: 10.1.1
