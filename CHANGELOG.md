@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.4
+
+### Patch Changes
+
+- 2ff63df: switch to hmac validation
+
 ## 0.0.3
 
 ### Patch Changes
