@@ -98,7 +98,7 @@ export abstract class GenerateMetadataClientBase {
     secret: string,
     signature: string,
     timestamp: string,
-    payload: unknown,
+    rawBody: string,
   ): boolean {
     // Extract the actual signature from the sha256={signature} format
     const signatureMatch = signature.match(/^sha256=(.+)$/);
@@ -107,8 +107,8 @@ export abstract class GenerateMetadataClientBase {
     }
     const providedSignature = signatureMatch[1];
 
-    // Create the message to sign: timestamp + "." + JSON.stringify(payload)
-    const message = `${timestamp}.${JSON.stringify(payload)}`;
+    // Create the message to sign: timestamp + "." + rawBody
+    const message = `${timestamp}.${rawBody}`;
 
     // Generate the expected signature
     const expectedSignature = createHmac("sha256", secret)
@@ -150,14 +150,40 @@ export abstract class GenerateMetadataClientBase {
       const hmacTimestamp = c.req.header("X-Webhook-Timestamp");
       const bearerToken = c.req.header("Authorization");
 
-      // Get the raw body for HMAC verification
-      // Store the raw body text for HMAC verification
-      const rawBody = await c.req.text();
+      // Get the body for HMAC verification
       let body: unknown;
+      let rawBodyText: string;
+
+      // Try to get the raw body text first
       try {
-        body = JSON.parse(rawBody);
-      } catch {
-        return c.json({ error: "Invalid JSON body" }, 400);
+        // Clone the request to preserve the body stream
+        const clonedRequest = c.req.raw.clone();
+        rawBodyText = await clonedRequest.text();
+
+        // If the body is empty, try to get it from the request's json() method
+        if (!rawBodyText || rawBodyText.trim() === "") {
+          try {
+            body = await c.req.json();
+            rawBodyText = JSON.stringify(body);
+          } catch {
+            return c.json({ error: "Invalid or missing request body" }, 400);
+          }
+        } else {
+          // Parse the raw body text
+          try {
+            body = JSON.parse(rawBodyText);
+          } catch {
+            return c.json({ error: "Invalid JSON body" }, 400);
+          }
+        }
+      } catch (error) {
+        // If cloning fails, try the regular json() method
+        try {
+          body = await c.req.json();
+          rawBodyText = JSON.stringify(body);
+        } catch {
+          return c.json({ error: "Invalid or missing request body" }, 400);
+        }
       }
 
       // Store parsed body in context for route handlers
@@ -167,11 +193,12 @@ export abstract class GenerateMetadataClientBase {
 
       // Always try HMAC verification first if headers are present
       if (hmacSignature && hmacTimestamp) {
+        // Use the raw body text for HMAC verification
         isAuthenticated = this.verifyHmacSignature(
           revalidateSecret,
           hmacSignature,
           hmacTimestamp,
-          body,
+          rawBodyText,
         );
 
         // If HMAC headers are present and valid, we're done

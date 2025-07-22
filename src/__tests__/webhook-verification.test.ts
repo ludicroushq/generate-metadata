@@ -21,7 +21,8 @@ describe("Webhook Verification", () => {
     timestamp: string,
     payload: unknown,
   ): string => {
-    const message = `${timestamp}.${JSON.stringify(payload)}`;
+    const rawBody = JSON.stringify(payload);
+    const message = `${timestamp}.${rawBody}`;
     const signature = createHmac("sha256", secret)
       .update(message)
       .digest("hex");
