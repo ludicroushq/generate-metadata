@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.5
+
+### Patch Changes
+
+- 16da870: allow revalidate secret to be undefined
+
 ## 0.0.4
 
 ### Patch Changes
