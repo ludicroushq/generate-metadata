@@ -24,6 +24,7 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
+  protected revalidatePathFn?: (path: string) => void | Promise<void>;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey } = props;
@@ -92,7 +93,7 @@ export abstract class GenerateMetadataClientBase {
   }
 
   // Abstract method to be implemented by framework adapters
-  protected abstract revalidate(path: string | null): void;
+  protected abstract revalidate(path: string | null): void | Promise<void>;
 
   // HMAC signature verification
   private verifyHmacSignature(
@@ -123,8 +124,18 @@ export abstract class GenerateMetadataClientBase {
   protected createRevalidateApp(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
+    revalidatePath?: (path: string) => void | Promise<void>;
   }): Hono<any> {
-    const { revalidateSecret, basePath = "/api/generate-metadata" } = options;
+    const {
+      revalidateSecret,
+      basePath = "/api/generate-metadata",
+      revalidatePath,
+    } = options;
+
+    // Store the custom revalidatePath function if provided
+    if (revalidatePath) {
+      this.revalidatePathFn = revalidatePath;
+    }
 
     // Normalize basePath using URL constructor
     const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
@@ -224,7 +235,7 @@ export abstract class GenerateMetadataClientBase {
           const { path } = validatedBody;
 
           // Call the revalidate function
-          this.revalidate(path);
+          await this.revalidate(path);
 
           return c.json({ success: true, revalidated: true, path }, 200);
         } catch (error) {

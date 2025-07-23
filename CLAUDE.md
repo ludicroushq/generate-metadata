@@ -247,6 +247,12 @@ export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   metadataClient.revalidateHandler({
     revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET,
     // revalidateSecret can be undefined in development
+
+    // Optional: provide a custom revalidatePath function
+    // revalidatePath: async (path) => {
+    //   // Custom revalidation logic, e.g., clear CDN cache
+    //   await myCDN.purge(path);
+    // },
   });
 ```
 
@@ -329,7 +335,8 @@ The Next.js adapter includes a `revalidateHandler()` method that creates API rou
   - If `revalidateSecret` is undefined: Returns 500 error "Revalidate secret is not configured"
   - If `path` is provided: Clears cache for that specific path
   - If `path` is null: Clears entire metadata cache
-  - Also calls Next.js `revalidatePath()` to refresh the Next.js cache
+  - Also calls Next.js `revalidatePath()` to refresh the Next.js cache (or custom function if provided)
+- **Custom revalidation**: You can provide a custom `revalidatePath` function to override the default Next.js behavior
 - **Implementation**: Built with Hono for clean routing and middleware support
 - **Development mode**: When `revalidateSecret` is undefined, the handler will return an error response, allowing developers to skip configuration during local development
 
@@ -460,4 +467,7 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-22 - Updated `revalidateHandler` to allow `revalidateSecret` to be undefined. When undefined, the handler returns a 500 error indicating the revalidate secret is not configured. This allows developers to skip configuration during local development without causing build errors.
+**Last Updated**: 2025-01-22 - Updated `revalidateHandler` to:
+
+1. Allow `revalidateSecret` to be undefined. When undefined, the handler returns a 500 error indicating the revalidate secret is not configured. This allows developers to skip configuration during local development without causing build errors.
+2. Accept an optional `revalidatePath` function parameter in the Next.js adapter, allowing users to provide custom revalidation logic instead of using the default Next.js `revalidatePath` function.

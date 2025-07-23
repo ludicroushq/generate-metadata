@@ -244,22 +244,42 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected revalidate(path: string | null): void {
+  // Override to provide framework-specific revalidation
+  protected async revalidatePath(
+    path: string,
+    type?: "page" | "layout",
+  ): Promise<void> {
+    // Use custom function if provided, otherwise use Next.js default
+    if (this.revalidatePathFn) {
+      await this.revalidatePathFn(path);
+      return;
+    }
+
+    // Use Next.js revalidatePath with optional type parameter
+    if (type) {
+      revalidatePath(path, type);
+    } else {
+      revalidatePath(path);
+    }
+  }
+
+  protected async revalidate(path: string | null): Promise<void> {
     // Clear the internal cache
     this.clearCache(path);
 
     // Also revalidate Next.js cache
     if (path !== null) {
-      revalidatePath(path);
+      await this.revalidatePath(path);
     } else {
-      // Revalidate all paths
-      revalidatePath("/", "layout");
+      // Revalidate all paths by revalidating the root layout
+      await this.revalidatePath("/", "layout");
     }
   }
 
   public revalidateHandler(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
+    revalidatePath?: (path: string) => void | Promise<void>;
   }) {
     // Get the Hono app from base class
     const app = this.createRevalidateApp(options);
