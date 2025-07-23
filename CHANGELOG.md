@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.6
+
+### Patch Changes
+
+- ca3d00d: allow overriding revalidatePath
+
 ## 0.0.5
 
 ### Patch Changes
