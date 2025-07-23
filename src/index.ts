@@ -25,7 +25,7 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
-  protected revalidatePathFn?: (path: string) => void | Promise<void>;
+  protected revalidatePathFn?: (path: string | null) => void | Promise<void>;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey } = props;
@@ -125,7 +125,7 @@ export abstract class GenerateMetadataClientBase {
   protected createRevalidateApp(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
-    revalidatePath?: (path: string) => void | Promise<void>;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
   }): Hono<any> {
     const {
       revalidateSecret,

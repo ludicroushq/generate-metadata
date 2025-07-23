@@ -352,10 +352,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   // Override to provide framework-specific revalidation
-  protected revalidatePath(path: string): void | Promise<void> {
+  protected async revalidatePath(path: string | null): Promise<void> {
     // Use custom function if provided
     if (this.revalidatePathFn) {
-      return this.revalidatePathFn(path);
+      await this.revalidatePathFn(path);
     }
 
     // TanStack Start doesn't have a built-in revalidation mechanism
@@ -366,24 +366,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     // Clear the internal cache
     this.clearCache(path);
 
-    // If a custom revalidation function is provided, use it
-    if (this.revalidatePathFn) {
-      if (path !== null) {
-        await this.revalidatePath(path);
-      } else {
-        // Revalidate all paths
-        await this.revalidatePath("/");
-      }
-    }
-
-    // TanStack Start doesn't have a built-in revalidation mechanism like Next.js
-    // The cache clearing is sufficient for this adapter
+    await this.revalidatePath(path);
   }
 
   public revalidateHandler(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
-    revalidatePath?: (path: string) => void | Promise<void>;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
   }) {
     // Get the Hono app from base class
     const app = this.createRevalidateApp(options);

@@ -1174,5 +1174,57 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       revalidateSpy.mockRestore();
     });
+
+    it("should use custom revalidatePath function when provided", async () => {
+      const customRevalidatePath = vi.fn();
+
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        revalidatePath: customRevalidatePath,
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: "/test-path" }),
+        },
+      );
+
+      const response = await app.fetch(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
+    });
+
+    it("should use custom revalidatePath function with null path", async () => {
+      const customRevalidatePath = vi.fn();
+
+      const app = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        revalidatePath: customRevalidatePath,
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: null }),
+        },
+      );
+
+      const response = await app.fetch(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(customRevalidatePath).toHaveBeenCalledWith(null);
+    });
   });
 });

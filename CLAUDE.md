@@ -323,22 +323,35 @@ export const rootHead = metadataClient.getRootHead();
 - **Cache duration**: Lasts for the lifetime of the client instance
 - **Cache behavior**: Same path = cached response, different paths = separate cache entries
 
-### Cache Revalidation (Next.js Only)
+### Cache Revalidation
 
-The Next.js adapter includes a `revalidateHandler()` method that creates API route handlers for cache management:
+Both adapters include a `revalidateHandler()` method that creates handlers for cache management:
 
-- **Purpose**: Programmatically clear cached metadata when content changes
-- **Authentication**: Uses Bearer token authentication via `Authorization` header or HMAC signature
+#### Next.js Adapter
+
+- **Returns**: Next.js-compatible route handlers (GET, POST, PUT, etc.)
 - **Endpoint**: POST `/api/generate-metadata/revalidate`
-- **Request body**: `{ path: string | null }` - validated with Zod
 - **Behavior**:
-  - If `revalidateSecret` is undefined: Returns 500 error "Revalidate secret is not configured"
-  - If `path` is provided: Clears cache for that specific path
-  - If `path` is null: Clears entire metadata cache
-  - Also calls Next.js `revalidatePath()` to refresh the Next.js cache (or custom function if provided)
-- **Custom revalidation**: You can provide a custom `revalidatePath` function to override the default Next.js behavior
+  - Clears internal cache
+  - Calls Next.js `revalidatePath()` or custom function
+  - When `path` is null, revalidates all paths via `revalidatePath("/", "layout")`
+
+#### TanStack Start Adapter
+
+- **Returns**: Hono app instance
+- **Endpoint**: POST `/revalidate`
+- **Behavior**:
+  - Clears internal cache
+  - Calls custom `revalidatePath` function if provided
+  - When `path` is null, passes null to custom function
+
+#### Common Features
+
+- **Authentication**: Bearer token or HMAC signature
+- **Request body**: `{ path: string | null }` - validated with Zod
+- **Custom revalidation**: Both adapters accept `revalidatePath?: (path: string | null) => void | Promise<void>`
+- **Error handling**: Returns 500 if `revalidateSecret` is undefined
 - **Implementation**: Built with Hono for clean routing and middleware support
-- **Development mode**: When `revalidateSecret` is undefined, the handler will return an error response, allowing developers to skip configuration during local development
 
 ### Metadata Priority System
 
@@ -467,7 +480,8 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-22 - Updated `revalidateHandler` to:
+**Last Updated**: 2025-01-23 - Updated `revalidateHandler` to:
 
 1. Allow `revalidateSecret` to be undefined. When undefined, the handler returns a 500 error indicating the revalidate secret is not configured. This allows developers to skip configuration during local development without causing build errors.
-2. Accept an optional `revalidatePath` function parameter in the Next.js adapter, allowing users to provide custom revalidation logic instead of using the default Next.js `revalidatePath` function.
+2. Accept an optional `revalidatePath` function parameter in both Next.js and TanStack Start adapters, allowing users to provide custom revalidation logic.
+3. Updated the `revalidatePath` function signature to accept `path: string | null` to handle both specific path and all paths revalidation.

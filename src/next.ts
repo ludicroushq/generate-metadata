@@ -245,21 +245,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   // Override to provide framework-specific revalidation
-  protected async revalidatePath(
-    path: string,
-    type?: "page" | "layout",
-  ): Promise<void> {
+  protected async revalidatePath(path: string | null): Promise<void> {
     // Use custom function if provided, otherwise use Next.js default
     if (this.revalidatePathFn) {
       await this.revalidatePathFn(path);
       return;
     }
 
-    // Use Next.js revalidatePath with optional type parameter
-    if (type) {
-      revalidatePath(path, type);
+    if (path !== null) {
+      await revalidatePath(path);
     } else {
-      revalidatePath(path);
+      // Revalidate all paths by revalidating the root layout
+      await revalidatePath("/", "layout");
     }
   }
 
@@ -267,19 +264,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     // Clear the internal cache
     this.clearCache(path);
 
-    // Also revalidate Next.js cache
-    if (path !== null) {
-      await this.revalidatePath(path);
-    } else {
-      // Revalidate all paths by revalidating the root layout
-      await this.revalidatePath("/", "layout");
-    }
+    await this.revalidatePath(path);
   }
 
   public revalidateHandler(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
-    revalidatePath?: (path: string) => void | Promise<void>;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
   }) {
     // Get the Hono app from base class
     const app = this.createRevalidateApp(options);
