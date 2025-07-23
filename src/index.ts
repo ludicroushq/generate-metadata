@@ -4,6 +4,7 @@ import { validator } from "hono/validator";
 import { z } from "zod";
 import { api } from "./utils/api";
 import type { operations } from "./__generated__/api";
+import { logger } from "hono/logger";
 
 // Extract the metadata response type from the generated API types
 export type MetadataApiResponse =
@@ -142,6 +143,7 @@ export abstract class GenerateMetadataClientBase {
 
     // Create Hono app with basePath
     const app = new Hono().basePath(normalizedBasePath);
+    app.use(logger());
 
     // If revalidateSecret is undefined, return error for all routes
     if (revalidateSecret === undefined) {
