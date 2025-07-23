@@ -249,4 +249,75 @@ export const head = metadataClient.getHead(() => {
 });
 ```
 
+## revalidateHandler()
+
+Creates a Hono app instance for handling cache revalidation requests. This method allows you to programmatically clear cached metadata when your content changes.
+
+**Note**: Unlike the Next.js adapter which returns Next.js-compatible route handlers, this method returns a Hono app instance that you can integrate with your TanStack Start application.
+
+### Basic Usage
+
+```typescript title="app/api/generate-metadata/revalidate.ts"
+import { metadataClient } from "@/lib/metadata";
+
+export const app = metadataClient.revalidateHandler({
+  revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+});
+
+// You can then mount this Hono app in your TanStack Start application
+```
+
+### Custom Revalidation Logic
+
+You can provide a custom `revalidatePath` function to handle revalidation according to your needs:
+
+```typescript title="app/api/generate-metadata/revalidate.ts"
+import { metadataClient } from "@/lib/metadata";
+
+export const app = metadataClient.revalidateHandler({
+  revalidateSecret: process.env.GENERATE_METADATA_REVALIDATE_SECRET!,
+  revalidatePath: async (path: string | null) => {
+    if (path !== null) {
+      // Clear specific path in your custom cache
+      await myCustomCache.invalidate(path);
+      // Trigger CDN purge
+      await myCDN.purge(path);
+    } else {
+      // Clear all paths
+      await myCustomCache.clear();
+      await myCDN.purgeAll();
+    }
+  },
+});
+```
+
+### API Endpoint
+
+The handler creates a `POST /revalidate` endpoint that accepts:
+
+```json
+{
+  "path": "/some-path" // or null to clear all paths
+}
+```
+
+### Authentication
+
+The endpoint supports two authentication methods:
+
+1. **Bearer Token**: Include `Authorization: Bearer <secret>` header
+2. **HMAC Signature**: For webhook integrations (see webhook verification docs)
+
+### Response
+
+On success:
+
+```json
+{
+  "success": true,
+  "revalidated": true,
+  "path": "/some-path"
+}
+```
+
 That's it! Your TanStack Start app now has AI-powered metadata generation.
