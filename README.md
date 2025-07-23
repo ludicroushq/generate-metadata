@@ -3,7 +3,10 @@
 # generate-metadata
 
 [![npm version](https://badge.fury.io/js/generate-metadata.svg)](https://badge.fury.io/js/generate-metadata)
+[![npm downloads](https://img.shields.io/npm/dm/generate-metadata)](https://www.npmjs.com/package/generate-metadata)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/generate-metadata)](https://bundlephobia.com/package/generate-metadata)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](https://www.typescriptlang.org/)
+[![Tree Shaking](https://badgen.net/bundlephobia/tree-shaking/generate-metadata)](https://bundlephobia.com/package/generate-metadata)
 
 </div>
 
