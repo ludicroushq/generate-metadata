@@ -6,8 +6,11 @@ export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
   metadataClient.revalidateHandler({
     revalidateSecret: env.GENERATE_METADATA_REVALIDATE_SECRET,
     revalidatePath: (path) => {
-      const newPath = path.replace("/docs", "");
-      console.log(path, newPath);
+      if (path === null) {
+        revalidatePath("/", "layout");
+        return;
+      }
+      const newPath = path.replace("/docs", "") || "/";
       revalidatePath(newPath);
     },
   });
