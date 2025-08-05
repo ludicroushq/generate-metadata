@@ -74,16 +74,20 @@ export default function HomePage() {
 import { metadataClient } from "@/lib/metadata";
 
 interface PageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export const generateMetadata = metadataClient.getMetadata(
-  async (props: PageProps) => ({
-    path: `/blog/${props.params.slug}`,
-  }),
+  async (props: PageProps) => {
+    const params = await props.params;
+    return {
+      path: `/blog/${params.slug}`,
+    };
+  },
 );
 
-export default function BlogPost({ params }: PageProps) {
+export default async function BlogPost(props: PageProps) {
+  const params = await props.params;
   return (
     <article>
       <h1>Blog Post: {params.slug}</h1>
