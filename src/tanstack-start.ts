@@ -363,9 +363,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   protected async revalidate(path: string | null): Promise<void> {
-    // Clear the internal cache
-    this.clearCache(path);
-
     await this.revalidatePath(path);
   }
 
