@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.7
+
+### Patch Changes
+
+- c20f3e8: fix bug with extra keys
+
 ## 0.0.6
 
 ### Patch Changes
