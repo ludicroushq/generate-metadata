@@ -235,7 +235,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   });
                 }
               })
-              .exhaustive();
+              .with("url", () => {})
+              .with("determiner", () => {})
+              .with("localeAlternate", () => {})
+              .exhaustive(() => {});
           });
         })
         .with("twitter", () => {
@@ -290,10 +293,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   }
                 }
               })
-              .exhaustive();
+              .exhaustive(() => {});
           });
         })
-        .exhaustive();
+        .with("noindex", () => {})
+        .with("customTags", () => {})
+        .exhaustive(() => {});
     });
 
     return {

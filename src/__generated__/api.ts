@@ -151,6 +151,7 @@ export interface operations {
             metadata: {
               title?: string;
               description?: string;
+              noindex?: boolean;
               icon?: {
                 url: string;
                 alt?: string;
@@ -169,8 +170,25 @@ export interface operations {
                 title?: string;
                 description?: string;
                 locale?: string;
+                localeAlternate?: string[];
                 siteName?: string;
-                type?: string;
+                /** @enum {unknown} */
+                type?:
+                  | "website"
+                  | "article"
+                  | "book"
+                  | "profile"
+                  | "music.song"
+                  | "music.album"
+                  | "music.playlist"
+                  | "music.radio_station"
+                  | "video.movie"
+                  | "video.episode"
+                  | "video.tv_show"
+                  | "video.other";
+                url?: string;
+                /** @enum {unknown} */
+                determiner?: "" | "a" | "an" | "the" | "auto";
                 image?: {
                   url: string;
                   alt?: string;
@@ -199,7 +217,116 @@ export interface operations {
                   mimeType: string;
                 };
               };
+              customTags?: (
+                | {
+                    /** @constant */
+                    type: "meta";
+                    attributes:
+                      | {
+                          /** @constant */
+                          format: "name";
+                          name: string;
+                          content: string;
+                        }
+                      | {
+                          /** @constant */
+                          format: "property";
+                          property: string;
+                          content: string;
+                        }
+                      | {
+                          /** @constant */
+                          format: "http-equiv";
+                          /** @enum {unknown} */
+                          httpEquiv:
+                            | "content-type"
+                            | "default-style"
+                            | "refresh"
+                            | "x-ua-compatible"
+                            | "content-security-policy";
+                          content: string;
+                        }
+                      | {
+                          /** @constant */
+                          format: "charset";
+                          charset: string;
+                        }
+                      | {
+                          /** @constant */
+                          format: "itemprop";
+                          itemprop: string;
+                          content: string;
+                        };
+                  }
+                | {
+                    /** @constant */
+                    type: "link";
+                    attributes: {
+                      /** @enum {unknown} */
+                      rel:
+                        | "canonical"
+                        | "alternate"
+                        | "author"
+                        | "dns-prefetch"
+                        | "help"
+                        | "icon"
+                        | "license"
+                        | "manifest"
+                        | "me"
+                        | "modulepreload"
+                        | "next"
+                        | "pingback"
+                        | "preconnect"
+                        | "prefetch"
+                        | "preload"
+                        | "prerender"
+                        | "prev"
+                        | "search"
+                        | "shortlink"
+                        | "apple-touch-icon"
+                        | "apple-touch-startup-image"
+                        | "mask-icon";
+                      href: string;
+                      hreflang?: string;
+                      media?: string;
+                      title?: string;
+                      type?: string;
+                      sizes?: string;
+                      color?: string;
+                      /** @enum {unknown} */
+                      crossorigin?: "anonymous" | "use-credentials";
+                      integrity?: string;
+                      /** @enum {unknown} */
+                      as?:
+                        | "audio"
+                        | "document"
+                        | "embed"
+                        | "fetch"
+                        | "font"
+                        | "image"
+                        | "object"
+                        | "script"
+                        | "style"
+                        | "track"
+                        | "video"
+                        | "worker";
+                      imagesrcset?: string;
+                      imagesizes?: string;
+                    };
+                  }
+                | {
+                    /** @constant */
+                    type: "base";
+                    attributes: {
+                      /** Format: uri */
+                      href?: string;
+                      /** @enum {unknown} */
+                      target?: "_self" | "_blank" | "_parent" | "_top";
+                    };
+                  }
+              )[];
             };
+            metadataRevisionId?: string;
           };
         };
       };

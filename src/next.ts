@@ -2,7 +2,7 @@ import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
 import { revalidatePath } from "next/cache";
-import { match, P } from "ts-pattern";
+import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -91,27 +91,27 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           }
         })
         .with("openGraph", () => {
-          if (!metadata.openGraph) {
+          const { openGraph } = metadata;
+          if (!openGraph) {
             return;
           }
+          const ogKeys: (keyof typeof openGraph)[] = Object.keys(
+            openGraph,
+          ) as (keyof typeof openGraph)[];
 
-          const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
-            metadata.openGraph,
-          ) as (keyof typeof metadata.openGraph)[];
-
-          const openGraph: any = {};
+          const result: Metadata["openGraph"] & { type?: string } = {};
 
           ogKeys.forEach((ogKey) => {
             match(ogKey)
               .with("title", () => {
-                openGraph.title = metadata.openGraph!.title;
+                result.title = openGraph.title;
               })
               .with("description", () => {
-                openGraph.description = metadata.openGraph!.description;
+                result.description = openGraph!.description;
               })
               .with("images", () => {
-                if (metadata.openGraph!.images) {
-                  openGraph.images = metadata.openGraph!.images.map((img) => ({
+                if (openGraph.images) {
+                  result.images = openGraph.images.map((img) => ({
                     url: img.url,
                     alt: img.alt || undefined,
                     width: img.width || undefined,
@@ -120,21 +120,21 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                 }
               })
               .with("locale", () => {
-                openGraph.locale = metadata.openGraph!.locale;
+                result.locale = openGraph.locale;
               })
               .with("siteName", () => {
-                openGraph.siteName = metadata.openGraph!.siteName;
+                result.siteName = openGraph.siteName;
               })
               .with("type", () => {
-                openGraph.type = metadata.openGraph!.type;
+                result.type = openGraph.type;
               })
               .with("image", () => {
-                const ogImage = metadata.openGraph!.image;
+                const ogImage = openGraph.image;
                 if (ogImage) {
-                  if (!openGraph.images) {
-                    openGraph.images = [];
+                  if (!result.images || !Array.isArray(result.images)) {
+                    result.images = [];
                   }
-                  openGraph.images.push({
+                  result.images.push({
                     url: ogImage.url,
                     alt: ogImage.alt || undefined,
                     width: ogImage.width || undefined,
@@ -142,11 +142,19 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   });
                 }
               })
-              .with(P._, () => {})
-              .exhaustive();
+              .with("url", () => {
+                result.url = openGraph.url;
+              })
+              .with("determiner", () => {
+                result.determiner = openGraph.determiner;
+              })
+              .with("localeAlternate", () => {
+                result.alternateLocale = openGraph.localeAlternate;
+              })
+              .exhaustive(() => {});
           });
 
-          nextMetadata.openGraph = openGraph;
+          nextMetadata.openGraph = result;
         })
         .with("twitter", () => {
           if (!metadata.twitter) {
@@ -185,14 +193,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   ];
                 }
               })
-              .with(P._, () => {})
-              .exhaustive();
+              .exhaustive(() => {});
           });
 
           nextMetadata.twitter = twitter;
         })
-        .with(P._, () => {})
-        .exhaustive();
+        .with("noindex", () => {
+          nextMetadata.robots = "noindex,nofollow";
+        })
+        .with("customTags", () => {
+          // TODO: Handle custom tags
+        })
+        .exhaustive(() => {});
     });
 
     return nextMetadata;
