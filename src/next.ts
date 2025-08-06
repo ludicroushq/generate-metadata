@@ -2,7 +2,7 @@ import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
 import { revalidatePath } from "next/cache";
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -142,6 +142,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   });
                 }
               })
+              .with(P._, () => {})
               .exhaustive();
           });
 
@@ -184,11 +185,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
                   ];
                 }
               })
+              .with(P._, () => {})
               .exhaustive();
           });
 
           nextMetadata.twitter = twitter;
         })
+        .with(P._, () => {})
         .exhaustive();
     });
 

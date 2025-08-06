@@ -155,6 +155,72 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
+    it("should work with extra keys", async () => {
+      vi.mocked(api.GET).mockResolvedValue({
+        data: {
+          ...mockApiResponse,
+          metadata: {
+            ...mockApiResponse.metadata,
+            openGraph: {
+              ...mockApiResponse.metadata.openGraph,
+              extraKey: "extraValue",
+            },
+          },
+        },
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Page Title",
+        description: "Test page description",
+        icons: [
+          {
+            rel: "icon",
+            url: "https://example.com/icon.png",
+            type: "image/png",
+            sizes: "32x32",
+          },
+          {
+            rel: "apple-touch-icon",
+            url: "https://example.com/apple-touch-icon.png",
+            type: "image/png",
+            sizes: "180x180",
+          },
+        ],
+        openGraph: {
+          title: "OG Test Title",
+          description: "OG Test Description",
+          locale: "en_US",
+          siteName: "Test Site",
+          type: "website",
+          images: [
+            {
+              url: "https://example.com/og-image-1.jpg",
+              alt: "OG Image 1 Alt",
+              width: 800,
+              height: 600,
+            },
+          ],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Twitter Test Title",
+          description: "Twitter Test Description",
+          images: [
+            {
+              url: "https://example.com/twitter-image.jpg",
+              alt: "Twitter Image Alt",
+              width: 1200,
+              height: 630,
+            },
+          ],
+        },
+      });
+    });
+
     it("should handle function-based options", async () => {
       vi.mocked(api.GET).mockResolvedValue({
         data: mockApiResponse,
