@@ -16,6 +16,9 @@ importers:
       fumadocs-mdx:
         specifier: 11.6.1
         version: 11.6.1(acorn@8.15.0)(fumadocs-core@15.2.10(@types/react@19.1.8)(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+      fumadocs-typescript:
+        specifier: ^4.0.6
+        version: 4.0.6(@types/react@19.1.8)(typescript@5.8.3)
       fumadocs-ui:
         specifier: 15.2.10
         version: 15.2.10(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11)
@@ -538,6 +541,20 @@ packages:
     engines: { node: ^18.17.0 || ^20.3.0 || >=21.0.0 }
     cpu: [x64]
     os: [win32]
+
+  "@isaacs/balanced-match@4.0.1":
+    resolution:
+      {
+        integrity: sha512-yzMTt9lEb8Gv7zRioUilSglI0c0smZ9k5D65677DLWLtWJaXIS3CqcGyUFByYKlnUj6TkjLVs54fBl6+TiGQDQ==,
+      }
+    engines: { node: 20 || >=22 }
+
+  "@isaacs/brace-expansion@5.0.0":
+    resolution:
+      {
+        integrity: sha512-ZT55BDLV0yv0RBm2czMiZ+SqCGO7AvmOM3G/w2xhVPH+te0aKgFjmBvGlL1dH+ql2tgGO3MVrbb3jCKyvpgnxA==,
+      }
+    engines: { node: 20 || >=22 }
 
   "@isaacs/fs-minipass@4.0.1":
     resolution:
@@ -1386,6 +1403,12 @@ packages:
         integrity: sha512-q/EAIIpF6WpLhKEuQSEVMZNMIY8KhWoAemZ9eylNAih9jxMGAYPPWBn3I9QL/2jZ+e7OEz/tZkX5HwbBR4HohA==,
       }
 
+  "@ts-morph/common@0.27.0":
+    resolution:
+      {
+        integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==,
+      }
+
   "@types/debug@4.1.12":
     resolution:
       {
@@ -1626,6 +1649,12 @@ packages:
       }
     engines: { node: ">=6" }
 
+  code-block-writer@13.0.3:
+    resolution:
+      {
+        integrity: sha512-Oofo0pq3IKnsFtuHqSF7TqBfr71aeyZDVJ0HpmqB7FBM2qEigL0iPONSCZSO9pE9dZTAxANe5XHG9Uy0YMv8cg==,
+      }
+
   collapse-white-space@2.1.0:
     resolution:
       {
@@ -1851,6 +1880,17 @@ packages:
         integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==,
       }
 
+  fdir@6.4.6:
+    resolution:
+      {
+        integrity: sha512-hiFoqpyZcfNm1yc4u8oWCf9A2c4D3QjCrks3zmoVKVxpQRzmPNar1hUJcBG2RQHvEVGDN+Jm81ZheVLAQMK6+w==,
+      }
+    peerDependencies:
+      picomatch: ^3 || ^4
+    peerDependenciesMeta:
+      picomatch:
+        optional: true
+
   fill-range@7.1.1:
     resolution:
       {
@@ -1901,6 +1941,18 @@ packages:
       next: ^15.3.0
     peerDependenciesMeta:
       "@fumadocs/mdx-remote":
+        optional: true
+
+  fumadocs-typescript@4.0.6:
+    resolution:
+      {
+        integrity: sha512-cr2GPMH1TSHQJXRBDbxWGMXpOd7F5uLU8Y2xMOXMc6kQqEpvM2KYlq+QJ/lHTfXmhNgJBr/iKZJtQ2xHSWxaaQ==,
+      }
+    peerDependencies:
+      "@types/react": "*"
+      typescript: "*"
+    peerDependenciesMeta:
+      "@types/react":
         optional: true
 
   fumadocs-ui@15.2.10:
@@ -2603,6 +2655,13 @@ packages:
       }
     engines: { node: ">=8.6" }
 
+  minimatch@10.0.3:
+    resolution:
+      {
+        integrity: sha512-IPZ167aShDZZUMdRk66cyQAW3qr0WzbHkPdMYa8bzZhlHhO3jALbKdxcaak7W9FfT2rZNpQuUu4Od7ILEpXSaw==,
+      }
+    engines: { node: 20 || >=22 }
+
   minipass@7.1.2:
     resolution:
       {
@@ -2716,6 +2775,12 @@ packages:
         integrity: sha512-GG2AQYWoLgL877gQIKeRPGO1xF9+eG1ujIb5soS5gPvLQ1y2o8FL90w2QWNdf9I361Mpp7726c+lj3U0qK1uGw==,
       }
 
+  path-browserify@1.0.1:
+    resolution:
+      {
+        integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==,
+      }
+
   path-key@3.1.1:
     resolution:
       {
@@ -2735,6 +2800,13 @@ packages:
         integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==,
       }
     engines: { node: ">=8.6" }
+
+  picomatch@4.0.3:
+    resolution:
+      {
+        integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==,
+      }
+    engines: { node: ">=12" }
 
   postcss-selector-parser@7.1.0:
     resolution:
@@ -3122,6 +3194,13 @@ packages:
       }
     engines: { node: ">=18" }
 
+  tinyglobby@0.2.14:
+    resolution:
+      {
+        integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==,
+      }
+    engines: { node: ">=12.0.0" }
+
   to-regex-range@5.0.1:
     resolution:
       {
@@ -3139,6 +3218,12 @@ packages:
     resolution:
       {
         integrity: sha512-tmMpK00BjZiUyVyvrBK7knerNgmgvcV/KLVyuma/SC+TQN167GrMRciANTz09+k3zW8L8t60jWO1GpfkZdjTaw==,
+      }
+
+  ts-morph@26.0.0:
+    resolution:
+      {
+        integrity: sha512-ztMO++owQnz8c/gIENcM9XfCEzgoGphTv+nKpYNM1bgsdOVC/jRZuEBf6N+mLLDNg68Kl+GgUZfOySaRiG1/Ug==,
       }
 
   ts-pattern@5.7.1:
@@ -3491,6 +3576,12 @@ snapshots:
 
   "@img/sharp-win32-x64@0.34.3":
     optional: true
+
+  "@isaacs/balanced-match@4.0.1": {}
+
+  "@isaacs/brace-expansion@5.0.0":
+    dependencies:
+      "@isaacs/balanced-match": 4.0.1
 
   "@isaacs/fs-minipass@4.0.1":
     dependencies:
@@ -4068,6 +4159,12 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.11
 
+  "@ts-morph/common@0.27.0":
+    dependencies:
+      fast-glob: 3.3.3
+      minimatch: 10.0.3
+      path-browserify: 1.0.1
+
   "@types/debug@4.1.12":
     dependencies:
       "@types/ms": 2.1.0
@@ -4184,6 +4281,8 @@ snapshots:
   client-only@0.0.1: {}
 
   clsx@2.1.1: {}
+
+  code-block-writer@13.0.3: {}
 
   collapse-white-space@2.1.0: {}
 
@@ -4346,6 +4445,10 @@ snapshots:
     dependencies:
       reusify: 1.1.0
 
+  fdir@6.4.6(picomatch@4.0.3):
+    optionalDependencies:
+      picomatch: 4.0.3
+
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
@@ -4396,6 +4499,23 @@ snapshots:
       zod: 3.25.76
     transitivePeerDependencies:
       - acorn
+      - supports-color
+
+  fumadocs-typescript@4.0.6(@types/react@19.1.8)(typescript@5.8.3):
+    dependencies:
+      estree-util-value-to-estree: 3.4.0
+      hast-util-to-estree: 3.1.3
+      hast-util-to-jsx-runtime: 2.3.6
+      remark: 15.0.1
+      remark-rehype: 11.1.2
+      shiki: 3.8.1
+      tinyglobby: 0.2.14
+      ts-morph: 26.0.0
+      typescript: 5.8.3
+      unist-util-visit: 5.0.0
+    optionalDependencies:
+      "@types/react": 19.1.8
+    transitivePeerDependencies:
       - supports-color
 
   fumadocs-ui@15.2.10(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11):
@@ -5075,6 +5195,10 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.1
 
+  minimatch@10.0.3:
+    dependencies:
+      "@isaacs/brace-expansion": 5.0.0
+
   minipass@7.1.2: {}
 
   minizlib@3.0.2:
@@ -5145,11 +5269,15 @@ snapshots:
       is-decimal: 2.0.1
       is-hexadecimal: 2.0.1
 
+  path-browserify@1.0.1: {}
+
   path-key@3.1.1: {}
 
   picocolors@1.1.1: {}
 
   picomatch@2.3.1: {}
+
+  picomatch@4.0.3: {}
 
   postcss-selector-parser@7.1.0:
     dependencies:
@@ -5442,6 +5570,11 @@ snapshots:
       mkdirp: 3.0.1
       yallist: 5.0.0
 
+  tinyglobby@0.2.14:
+    dependencies:
+      fdir: 6.4.6(picomatch@4.0.3)
+      picomatch: 4.0.3
+
   to-regex-range@5.0.1:
     dependencies:
       is-number: 7.0.0
@@ -5449,6 +5582,11 @@ snapshots:
   trim-lines@3.0.1: {}
 
   trough@2.2.0: {}
+
+  ts-morph@26.0.0:
+    dependencies:
+      "@ts-morph/common": 0.27.0
+      code-block-writer: 13.0.3
 
   ts-pattern@5.7.1: {}
 
