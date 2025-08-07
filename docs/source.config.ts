@@ -1,4 +1,6 @@
 import { defineDocs, defineConfig } from "fumadocs-mdx/config";
+import { remarkImage } from "fumadocs-core/mdx-plugins";
+import path from "path";
 
 // Options: https://fumadocs.vercel.app/docs/mdx/collections#define-docs
 export const docs = defineDocs({
@@ -7,7 +9,9 @@ export const docs = defineDocs({
 
 export default defineConfig({
   mdxOptions: {
-    baseUrl: "/",
+    remarkPlugins: [
+      [remarkImage, { publicDir: path.join(process.cwd(), "content") }],
+    ],
     // MDX options
   },
 });

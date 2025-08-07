@@ -1031,10 +1031,10 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  describe("revalidateHandler", () => {
+  describe("webhookHandler", () => {
     it("should return a Hono app instance", () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
       });
 
       // Check that it returns a Hono instance
@@ -1043,8 +1043,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should create app with custom basePath", () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
         basePath: "/custom/api/path",
       });
 
@@ -1052,14 +1052,14 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(app.fetch).toBeDefined();
     });
 
-    it("should handle POST /revalidate request", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+    it("should handle POST request", async () => {
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
       });
 
       // Mock request for Hono
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        "http://localhost:3000/api/generate-metadata",
         {
           method: "POST",
           headers: {
@@ -1072,7 +1072,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       // Spy on the revalidate method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "clearCache")
         .mockImplementation(() => {});
 
       const response = await app.fetch(mockRequest);
@@ -1090,12 +1090,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should reject request with invalid auth", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        "http://localhost:3000/api/generate-metadata",
         {
           method: "POST",
           headers: {
@@ -1115,12 +1115,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle invalid request body", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        "http://localhost:3000/api/generate-metadata",
         {
           method: "POST",
           headers: {
@@ -1140,12 +1140,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle request with null path", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.webhookHandler({
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        "http://localhost:3000/api/generate-metadata",
         {
           method: "POST",
           headers: {
@@ -1158,7 +1158,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       // Spy on the revalidate method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "clearCache")
         .mockImplementation(() => {});
 
       const response = await app.fetch(mockRequest);
@@ -1173,58 +1173,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(revalidateSpy).toHaveBeenCalledWith(null);
 
       revalidateSpy.mockRestore();
-    });
-
-    it("should use custom revalidatePath function when provided", async () => {
-      const customRevalidatePath = vi.fn();
-
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        revalidatePath: customRevalidatePath,
-      });
-
-      const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
-        {
-          method: "POST",
-          headers: {
-            authorization: "Bearer test-secret",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ path: "/test-path" }),
-        },
-      );
-
-      const response = await app.fetch(mockRequest);
-
-      expect(response.status).toBe(200);
-      expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
-    });
-
-    it("should use custom revalidatePath function with null path", async () => {
-      const customRevalidatePath = vi.fn();
-
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        revalidatePath: customRevalidatePath,
-      });
-
-      const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
-        {
-          method: "POST",
-          headers: {
-            authorization: "Bearer test-secret",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ path: null }),
-        },
-      );
-
-      const response = await app.fetch(mockRequest);
-
-      expect(response.status).toBe(200);
-      expect(customRevalidatePath).toHaveBeenCalledWith(null);
     });
   });
 });

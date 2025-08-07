@@ -13,7 +13,7 @@ describe("Webhook Verification", () => {
     apiKey: "test-api-key",
   });
 
-  const revalidateSecret = "test-webhook-secret";
+  const webhookSecret = "test-webhook-secret";
 
   // Helper function to generate HMAC signature
   const generateHmacSignature = (
@@ -43,7 +43,7 @@ describe("Webhook Verification", () => {
     }
     headers.set("content-type", "application/json");
 
-    return new Request("http://localhost/api/generate-metadata/revalidate", {
+    return new Request("http://localhost/api/generate-metadata", {
       method: options.method || "POST",
       headers,
       body: JSON.stringify(options.body),
@@ -52,7 +52,10 @@ describe("Webhook Verification", () => {
 
   // Get the Hono app directly instead of using the handlers
   const getApp = () => {
-    const app = (client as any).createRevalidateApp({ revalidateSecret });
+    const app = (client as any).createWebhookApp(
+      { webhookSecret },
+      { isOldRevalidateWebhook: false },
+    );
     return app;
   };
 
@@ -62,7 +65,7 @@ describe("Webhook Verification", () => {
       const payload = { path: "/test-path" };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         payload,
       );
@@ -135,7 +138,7 @@ describe("Webhook Verification", () => {
       const timestamp = Date.now().toString();
       // Generate signature with original payload
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         originalPayload,
       );
@@ -163,7 +166,7 @@ describe("Webhook Verification", () => {
       const wrongTimestamp = (Date.now() + 1000).toString();
       // Generate signature with original timestamp
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         originalTimestamp,
         payload,
       );
@@ -193,7 +196,7 @@ describe("Webhook Verification", () => {
       const request = createMockRequest({
         body: payload,
         headers: {
-          authorization: `Bearer ${revalidateSecret}`,
+          authorization: `Bearer ${webhookSecret}`,
         },
       });
 
@@ -233,7 +236,7 @@ describe("Webhook Verification", () => {
       const request = createMockRequest({
         body: payload,
         headers: {
-          authorization: revalidateSecret, // Missing "Bearer " prefix
+          authorization: webhookSecret, // Missing "Bearer " prefix
         },
       });
 
@@ -251,7 +254,7 @@ describe("Webhook Verification", () => {
       const payload = { path: "/test-path" };
       const timestamp = Date.now().toString();
       const validSignature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         payload,
       );
@@ -287,7 +290,7 @@ describe("Webhook Verification", () => {
         headers: {
           "x-webhook-signature": "sha256=invalid-signature",
           "x-webhook-timestamp": timestamp,
-          authorization: `Bearer ${revalidateSecret}`, // Valid bearer token
+          authorization: `Bearer ${webhookSecret}`, // Valid bearer token
         },
       });
 
@@ -347,7 +350,7 @@ describe("Webhook Verification", () => {
       const payload = { path: null };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         payload,
       );
@@ -376,7 +379,7 @@ describe("Webhook Verification", () => {
       const payload = { invalidField: "test" }; // Missing required 'path' field
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         payload,
       );
@@ -402,7 +405,7 @@ describe("Webhook Verification", () => {
       const payload = { path: "" };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
-        revalidateSecret,
+        webhookSecret,
         timestamp,
         payload,
       );
@@ -429,7 +432,7 @@ describe("Webhook Verification", () => {
 
   describe("Webhook Handler Integration", () => {
     it("should work with Next.js revalidateHandler", async () => {
-      const handlers = client.revalidateHandler({ revalidateSecret });
+      const handlers = client.webhookHandler({ webhookSecret });
 
       // handlers.POST is the Vercel adapter wrapper
       // We've already tested the Hono app directly above
