@@ -260,85 +260,35 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   // Override to provide framework-specific revalidation
-  protected async revalidatePath(
-    path: string | null,
-    revalidate?: {
-      pathRewrite?: (path: string | null) => string;
-    },
-  ): Promise<void> {
-    const newPath = revalidate?.pathRewrite
-      ? await revalidate.pathRewrite(path)
-      : path;
-    if (newPath !== null) {
-      await revalidatePath(newPath);
+  protected async revalidatePath(path: string | null): Promise<void> {
+    // Use custom function if provided, otherwise use Next.js default
+    if (this.revalidatePathFn) {
+      await this.revalidatePathFn(path);
+      return;
+    }
+
+    if (path !== null) {
+      await revalidatePath(path);
     } else {
       // Revalidate all paths by revalidating the root layout
       await revalidatePath("/", "layout");
     }
   }
 
-  protected async revalidate(
-    path: string | null,
-    options: {
-      pathRewrite?: (path: string | null) => string;
-    },
-  ): Promise<void> {
+  protected async revalidate(path: string | null): Promise<void> {
     // Clear the internal cache
     this.clearCache(path);
 
-    await this.revalidatePath(path, options);
+    await this.revalidatePath(path);
   }
 
-  /**
-   * @deprecated Use `webhookHandler`. To migrate, move the route handler to `app/api/generate-metadata/route.ts` and remove `/revalidate` from the end of your webhook URL in the dashboard
-   */
   public revalidateHandler(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
   }) {
     // Get the Hono app from base class
-    const app = this.createWebhookApp(
-      {
-        ...options,
-        webhookSecret: options.revalidateSecret,
-        revalidate: {},
-      },
-      {
-        isOldRevalidateWebhook: true,
-      },
-    );
-
-    // Return Next.js compatible handlers using Hono's Vercel adapter
-    const handler = handle(app);
-
-    return {
-      GET: handler,
-      POST: handler,
-      PUT: handler,
-      PATCH: handler,
-      DELETE: handler,
-      OPTIONS: handler,
-      HEAD: handler,
-    };
-  }
-
-  public webhookHandler(options: {
-    webhookSecret: string | undefined;
-    basePath?: string;
-    revalidate?: {
-      pathRewrite?: (path: string | null) => string;
-    };
-  }) {
-    // Get the Hono app from base class
-    const app = this.createWebhookApp(
-      {
-        ...options,
-        revalidate: options.revalidate || {},
-      },
-      {
-        isOldRevalidateWebhook: false,
-      },
-    );
+    const app = this.createRevalidateApp(options);
 
     // Return Next.js compatible handlers using Hono's Vercel adapter
     const handler = handle(app);

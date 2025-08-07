@@ -25,6 +25,8 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
+  protected revalidatePathFn?: (path: string | null) => void | Promise<void>;
+
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey } = props;
 
@@ -92,12 +94,7 @@ export abstract class GenerateMetadataClientBase {
   }
 
   // Abstract method to be implemented by framework adapters
-  protected abstract revalidate(
-    path: string | null,
-    options: {
-      pathRewrite?: (path: string | null) => string;
-    },
-  ): void | Promise<void>;
+  protected abstract revalidate(path: string | null): void | Promise<void>;
 
   // HMAC signature verification
   private verifyHmacSignature(
@@ -125,21 +122,21 @@ export abstract class GenerateMetadataClientBase {
     return providedSignature === expectedSignature;
   }
 
-  protected createWebhookApp(
-    options: {
-      webhookSecret: string | undefined;
-      basePath?: string;
-      revalidate: {
-        pathRewrite?: (path: string | null) => string;
-      };
-    },
-    backwardsCompat: { isOldRevalidateWebhook: boolean },
-  ): Hono<any> {
+  protected createRevalidateApp(options: {
+    revalidateSecret: string | undefined;
+    basePath?: string;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
+  }): Hono<any> {
     const {
-      webhookSecret,
+      revalidateSecret,
       basePath = "/api/generate-metadata",
-      revalidate,
+      revalidatePath,
     } = options;
+
+    // Store the custom revalidatePath function if provided
+    if (revalidatePath) {
+      this.revalidatePathFn = revalidatePath;
+    }
 
     // Normalize basePath using URL constructor
     const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
@@ -149,7 +146,7 @@ export abstract class GenerateMetadataClientBase {
     app.use(logger());
 
     // If revalidateSecret is undefined, return error for all routes
-    if (webhookSecret === undefined) {
+    if (revalidateSecret === undefined) {
       app.use("*", async (c) => {
         return c.json({ error: "Revalidate secret is not configured" }, 500);
       });
@@ -173,7 +170,7 @@ export abstract class GenerateMetadataClientBase {
 
           // Use the raw body text for HMAC verification
           isAuthenticated = this.verifyHmacSignature(
-            webhookSecret,
+            revalidateSecret,
             hmacSignature,
             hmacTimestamp,
             rawBodyText,
@@ -184,7 +181,7 @@ export abstract class GenerateMetadataClientBase {
             // HMAC headers present but invalid - still check bearer token as fallback
             if (bearerToken) {
               const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-              if (tokenMatch && tokenMatch[1] === webhookSecret) {
+              if (tokenMatch && tokenMatch[1] === revalidateSecret) {
                 isAuthenticated = true;
               }
             }
@@ -194,7 +191,7 @@ export abstract class GenerateMetadataClientBase {
           // Fall back to bearer token if HMAC verification fails
           if (bearerToken) {
             const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-            if (tokenMatch && tokenMatch[1] === webhookSecret) {
+            if (tokenMatch && tokenMatch[1] === revalidateSecret) {
               isAuthenticated = true;
             }
           }
@@ -203,7 +200,7 @@ export abstract class GenerateMetadataClientBase {
         // No HMAC headers, fall back to bearer auth only
         if (bearerToken) {
           const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-          if (tokenMatch && tokenMatch[1] === webhookSecret) {
+          if (tokenMatch && tokenMatch[1] === revalidateSecret) {
             isAuthenticated = true;
           }
         }
@@ -224,7 +221,7 @@ export abstract class GenerateMetadataClientBase {
 
     // Add POST /revalidate route with validator
     app.post(
-      backwardsCompat.isOldRevalidateWebhook ? "/revalidate" : "/",
+      "/revalidate",
       validator("json", (value) => {
         // Pass-through validator that just returns the value
         // This allows us to access both c.req.text() and the parsed JSON
@@ -240,7 +237,7 @@ export abstract class GenerateMetadataClientBase {
           const { path } = validatedBody;
 
           // Call the revalidate function
-          await this.revalidate(path, revalidate);
+          await this.revalidate(path);
 
           return c.json({ success: true, revalidated: true, path }, 200);
         } catch (error) {

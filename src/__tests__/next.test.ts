@@ -876,5 +876,59 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
       expect(putBody).toEqual({ error: "Revalidate secret is not configured" });
     });
+
+    it("should use custom revalidatePath function when provided", async () => {
+      const customRevalidatePath = vi.fn();
+
+      const handlers = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        revalidatePath: customRevalidatePath,
+      });
+
+      // Create a mock request
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: "/test-path" }),
+        },
+      );
+
+      const response = await handlers.POST(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
+    });
+
+    it("should use custom revalidatePath function with null path", async () => {
+      const customRevalidatePath = vi.fn();
+
+      const handlers = client.revalidateHandler({
+        revalidateSecret: "test-secret",
+        revalidatePath: customRevalidatePath,
+      });
+
+      // Create a mock request
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/revalidate",
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ path: null }),
+        },
+      );
+
+      const response = await handlers.POST(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(customRevalidatePath).toHaveBeenCalledWith(null);
+    });
   });
 });
