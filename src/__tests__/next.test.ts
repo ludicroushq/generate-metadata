@@ -756,8 +756,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
-      // Call revalidate
-      (client as any).revalidate("/test");
+      // Call clearCache and revalidate (which is what the webhook handler does)
+      (client as any).clearCache("/test");
+      await (client as any).revalidate("/test");
 
       // Verify revalidatePath was called
       expect(revalidatePath).toHaveBeenCalledWith("/test");
@@ -767,9 +768,10 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(api.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
-    it("should clear entire cache and revalidate all paths when path is null", () => {
-      // Call revalidate with null
-      (client as any).revalidate(null);
+    it("should clear entire cache and revalidate all paths when path is null", async () => {
+      // Call clearCache and revalidate with null
+      (client as any).clearCache(null);
+      await (client as any).revalidate(null);
 
       // Verify revalidatePath was called with layout revalidation
       expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
@@ -841,7 +843,10 @@ describe("GenerateMetadataClient (Next.js)", () => {
       // Verify the response
       expect(response.status).toBe(500);
       const body = await response.json();
-      expect(body).toEqual({ error: "Revalidate secret is not configured" });
+      expect(body).toEqual({
+        ok: false,
+        error: "Webhook secret is not configured",
+      });
     });
 
     it("should return the same error handler for all HTTP methods when revalidateSecret is undefined", async () => {
@@ -870,22 +875,32 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const postBody = await postResponse.json();
       const putBody = await putResponse.json();
 
-      expect(getBody).toEqual({ error: "Revalidate secret is not configured" });
-      expect(postBody).toEqual({
-        error: "Revalidate secret is not configured",
+      expect(getBody).toEqual({
+        ok: false,
+        error: "Webhook secret is not configured",
       });
-      expect(putBody).toEqual({ error: "Revalidate secret is not configured" });
+      expect(postBody).toEqual({
+        ok: false,
+        error: "Webhook secret is not configured",
+      });
+      expect(putBody).toEqual({
+        ok: false,
+        error: "Webhook secret is not configured",
+      });
     });
 
     it("should use custom revalidatePath function when provided", async () => {
       const customRevalidatePath = vi.fn();
+
+      // Spy on clearCache
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
 
       const handlers = client.revalidateHandler({
         revalidateSecret: "test-secret",
         revalidatePath: customRevalidatePath,
       });
 
-      // Create a mock request
+      // Create a mock request with webhook payload
       const mockRequest = new Request(
         "http://localhost:3000/api/generate-metadata/revalidate",
         {
@@ -894,19 +909,26 @@ describe("GenerateMetadataClient (Next.js)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: "/test-path" }),
+          body: JSON.stringify({
+            _type: "metadata_update",
+            path: "/test-path",
+          }),
         },
       );
 
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test-path");
       expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
     });
 
     it("should use custom revalidatePath function with null path", async () => {
       const customRevalidatePath = vi.fn();
 
+      // Spy on clearCache
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+
       const handlers = client.revalidateHandler({
         revalidateSecret: "test-secret",
         revalidatePath: customRevalidatePath,
@@ -921,14 +943,125 @@ describe("GenerateMetadataClient (Next.js)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: null }),
+          body: JSON.stringify({
+            _type: "metadata_update",
+            path: null,
+          }),
         },
       );
 
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
+      expect(clearCacheSpy).toHaveBeenCalledWith(null);
       expect(customRevalidatePath).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe("revalidateWebhookHandler", () => {
+    it("should return route handlers for all HTTP methods", () => {
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      expect(handlers).toHaveProperty("GET");
+      expect(handlers).toHaveProperty("POST");
+      expect(handlers).toHaveProperty("PUT");
+      expect(handlers).toHaveProperty("PATCH");
+      expect(handlers).toHaveProperty("DELETE");
+      expect(handlers).toHaveProperty("OPTIONS");
+      expect(handlers).toHaveProperty("HEAD");
+
+      // All handlers should be the same function
+      expect(handlers.GET).toBe(handlers.POST);
+      expect(handlers.POST).toBe(handlers.PUT);
+    });
+
+    it("should clear cache and call revalidatePath when webhook is received", async () => {
+      // Spy on clearCache
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      // Create a mock webhook request
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test-path",
+        }),
+      });
+
+      const response = await handlers.POST(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test-path");
+      expect(revalidatePath).toHaveBeenCalledWith("/test-path");
+    });
+
+    it("should apply pathRewrite when provided", async () => {
+      // Spy on clearCache
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: (path) => (path === "/old" ? "/new" : path!),
+        },
+      });
+
+      // Create a mock webhook request
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/old",
+        }),
+      });
+
+      const response = await handlers.POST(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(revalidatePath).toHaveBeenCalledWith("/new");
+    });
+
+    it("should ignore non-metadata_update webhook types", async () => {
+      // Spy on clearCache
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      // Create a mock webhook request with different type
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "other_event",
+          path: "/test-path",
+        }),
+      });
+
+      const response = await handlers.POST(mockRequest);
+
+      expect(response.status).toBe(200);
+      expect(clearCacheSpy).not.toHaveBeenCalled();
+      expect(revalidatePath).not.toHaveBeenCalled();
     });
   });
 });

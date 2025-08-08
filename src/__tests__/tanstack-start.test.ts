@@ -1007,8 +1007,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
-      // Call revalidate
-      (client as any).revalidate("/test");
+      // Call clearCache (which is what revalidateWebhookHandler calls)
+      (client as any).clearCache("/test");
 
       // Verify cache was cleared by fetching again
       await headFn({});
@@ -1031,8 +1031,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Clear mocks
       vi.clearAllMocks();
 
-      // Call revalidate with null
-      (client as any).revalidate(null);
+      // Call clearCache with null (which is what revalidateWebhookHandler calls)
+      (client as any).clearCache(null);
 
       // Both paths should fetch again
       await headFn1({});
