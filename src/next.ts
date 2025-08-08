@@ -259,14 +259,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  // Override to provide framework-specific revalidation
-  protected async revalidatePath(path: string | null): Promise<void> {
-    // Use custom function if provided, otherwise use Next.js default
-    if (this.revalidatePathFn) {
-      await this.revalidatePathFn(path);
-      return;
-    }
-
+  protected async revalidate(path: string | null): Promise<void> {
     if (path !== null) {
       await revalidatePath(path);
     } else {
@@ -275,13 +268,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
   }
 
-  protected async revalidate(path: string | null): Promise<void> {
-    // Clear the internal cache
-    this.clearCache(path);
-
-    await this.revalidatePath(path);
-  }
-
+  /**
+   * @deprecated Please use `revalidateWebhookHandler` instead.
+   */
   public revalidateHandler(options: {
     revalidateSecret: string | undefined;
     basePath?: string;
@@ -289,6 +278,47 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }) {
     // Get the Hono app from base class
     const app = this.createRevalidateApp(options);
+
+    // Return Next.js compatible handlers using Hono's Vercel adapter
+    const handler = handle(app);
+
+    return {
+      GET: handler,
+      POST: handler,
+      PUT: handler,
+      PATCH: handler,
+      DELETE: handler,
+      OPTIONS: handler,
+      HEAD: handler,
+    };
+  }
+
+  public revalidateWebhookHandler(options: {
+    webhookSecret: string | undefined;
+    revalidate?: {
+      pathRewrite?: (path: string | null) => string;
+    };
+  }) {
+    // Get the Hono app from base class
+    const app = this.createWebhookApp({
+      webhookSecret: options.webhookSecret,
+      webhookHandler: async (data) => {
+        if (data._type !== "metadata_update") {
+          // Ignore other webhook types
+          return;
+        }
+
+        const { path: originalPath } = data;
+
+        const path =
+          options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+
+        this.clearCache(path);
+        await this.revalidate(path);
+
+        return { revalidated: true, path };
+      },
+    });
 
     // Return Next.js compatible handlers using Hono's Vercel adapter
     const handler = handle(app);

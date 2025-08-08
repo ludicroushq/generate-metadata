@@ -1,10 +1,9 @@
 import { createHmac } from "crypto";
-import { Hono } from "hono";
-import { validator } from "hono/validator";
-import { z } from "zod";
-import { api } from "./utils/api";
-import type { operations } from "./__generated__/api";
+import { Hono, type Context } from "hono";
 import { logger } from "hono/logger";
+import { validator } from "hono/validator";
+import type { operations, webhooks } from "./__generated__/api";
+import { api } from "./utils/api";
 
 // Extract the metadata response type from the generated API types
 export type MetadataApiResponse =
@@ -12,6 +11,12 @@ export type MetadataApiResponse =
 
 export type GenerateMetadataOptions = {
   path: string;
+};
+
+type WebhookResponse = {
+  200: webhooks["webhook"]["post"]["responses"]["200"]["content"]["application/json"];
+  401: webhooks["webhook"]["post"]["responses"]["401"]["content"]["application/json"];
+  500: webhooks["webhook"]["post"]["responses"]["500"]["content"]["application/json"];
 };
 
 export type GenerateMetadataClientBaseOptions = {
@@ -25,7 +30,6 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
-  protected revalidatePathFn?: (path: string | null) => void | Promise<void>;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey } = props;
@@ -122,43 +126,47 @@ export abstract class GenerateMetadataClientBase {
     return providedSignature === expectedSignature;
   }
 
-  protected createRevalidateApp(options: {
-    revalidateSecret: string | undefined;
-    basePath?: string;
-    revalidatePath?: (path: string | null) => void | Promise<void>;
+  protected createWebhookApp(options: {
+    webhookHandler: (
+      data: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"],
+    ) => Promise<void | Record<string, any>>;
+    webhookSecret: string | undefined;
   }): Hono<any> {
-    const {
-      revalidateSecret,
-      basePath = "/api/generate-metadata",
-      revalidatePath,
-    } = options;
+    const { webhookSecret, webhookHandler } = options;
 
-    // Store the custom revalidatePath function if provided
-    if (revalidatePath) {
-      this.revalidatePathFn = revalidatePath;
+    function respond<StatusCode extends 200 | 401 | 500>(
+      c: Context,
+      statusCode: StatusCode,
+      body: WebhookResponse[StatusCode],
+    ) {
+      return c.json(body, statusCode);
     }
 
-    // Normalize basePath using URL constructor
-    const normalizedBasePath = new URL(basePath, "http://example.com").pathname;
-
-    // Create Hono app with basePath
-    const app = new Hono().basePath(normalizedBasePath);
+    const app = new Hono();
     app.use(logger());
 
-    // If revalidateSecret is undefined, return error for all routes
-    if (revalidateSecret === undefined) {
+    // If webhookSecret is undefined, return error for all routes
+    if (webhookSecret === undefined) {
       app.use("*", async (c) => {
-        return c.json({ error: "Revalidate secret is not configured" }, 500);
+        return respond(c, 500, {
+          ok: false,
+          error: "Webhook secret is not configured",
+        });
       });
       return app;
     }
 
-    // Add authentication middleware for all requests
     app.use("*", async (c, next) => {
       // Check for HMAC signature verification
-      const hmacSignature = c.req.header("X-Webhook-Signature");
-      const hmacTimestamp = c.req.header("X-Webhook-Timestamp");
-      const bearerToken = c.req.header("Authorization");
+      const hmacSignature = c.req.header(
+        "X-Webhook-Signature",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["X-Webhook-Signature"];
+      const hmacTimestamp = c.req.header(
+        "X-Webhook-Timestamp",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["X-Webhook-Timestamp"];
+      const bearerToken = c.req.header(
+        "Authorization",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["Authorization"];
 
       let isAuthenticated = false;
 
@@ -170,7 +178,7 @@ export abstract class GenerateMetadataClientBase {
 
           // Use the raw body text for HMAC verification
           isAuthenticated = this.verifyHmacSignature(
-            revalidateSecret,
+            webhookSecret,
             hmacSignature,
             hmacTimestamp,
             rawBodyText,
@@ -181,7 +189,7 @@ export abstract class GenerateMetadataClientBase {
             // HMAC headers present but invalid - still check bearer token as fallback
             if (bearerToken) {
               const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-              if (tokenMatch && tokenMatch[1] === revalidateSecret) {
+              if (tokenMatch && tokenMatch[1] === webhookSecret) {
                 isAuthenticated = true;
               }
             }
@@ -191,7 +199,7 @@ export abstract class GenerateMetadataClientBase {
           // Fall back to bearer token if HMAC verification fails
           if (bearerToken) {
             const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-            if (tokenMatch && tokenMatch[1] === revalidateSecret) {
+            if (tokenMatch && tokenMatch[1] === webhookSecret) {
               isAuthenticated = true;
             }
           }
@@ -200,7 +208,7 @@ export abstract class GenerateMetadataClientBase {
         // No HMAC headers, fall back to bearer auth only
         if (bearerToken) {
           const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
-          if (tokenMatch && tokenMatch[1] === revalidateSecret) {
+          if (tokenMatch && tokenMatch[1] === webhookSecret) {
             isAuthenticated = true;
           }
         }
@@ -208,20 +216,15 @@ export abstract class GenerateMetadataClientBase {
 
       // If neither authentication method succeeds, return 401
       if (!isAuthenticated) {
-        return c.json({ error: "Unauthorized" }, 401);
+        return respond(c, 401, { ok: false, error: "Unauthorized" });
       }
 
       await next();
     });
 
-    // Define the request body schema
-    const revalidateSchema = z.object({
-      path: z.string().nullable(),
-    });
-
-    // Add POST /revalidate route with validator
+    // Add POST route with validator
     app.post(
-      "/revalidate",
+      "*",
       validator("json", (value) => {
         // Pass-through validator that just returns the value
         // This allows us to access both c.req.text() and the parsed JSON
@@ -230,40 +233,59 @@ export abstract class GenerateMetadataClientBase {
       async (c) => {
         try {
           // Get the validated JSON body
-          const body = c.req.valid("json");
+          const body: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
+            c.req.valid("json");
 
-          // Validate the request body with Zod
-          const validatedBody = revalidateSchema.parse(body);
-          const { path } = validatedBody;
+          const metadata = await webhookHandler(body);
 
-          // Call the revalidate function
-          await this.revalidate(path);
-
-          return c.json({ success: true, revalidated: true, path }, 200);
+          return respond(c, 200, {
+            ok: true,
+            metadata: metadata ?? {},
+          });
         } catch (error) {
-          console.error("[revalidateHandler] Error revalidating:", error);
+          console.error("[webhook handler] Error handling webhook:", error);
 
-          if (error instanceof z.ZodError) {
-            return c.json(
-              {
-                error: "Invalid request body",
-                details: error.errors,
-              },
-              400,
-            );
-          }
-
-          return c.json(
-            {
-              error: "Failed to revalidate",
-              details: error instanceof Error ? error.message : "Unknown error",
+          return respond(c, 500, {
+            ok: false,
+            error: "Failed to run webhook handler",
+            metadata: {
+              message: error instanceof Error ? error.message : "Unknown error",
             },
-            500,
-          );
+          });
         }
       },
     );
 
     return app;
+  }
+
+  /**
+   * @deprecated use createWebhookApp instead
+   */
+  protected createRevalidateApp(options: {
+    revalidateSecret: string | undefined;
+    basePath?: string;
+    revalidatePath?: (path: string | null) => void | Promise<void>;
+  }): Hono<any> {
+    return this.createWebhookApp({
+      webhookSecret: options.revalidateSecret,
+      webhookHandler: async (data) => {
+        if (data._type !== "metadata_update") {
+          // Ignore other webhook types
+          return;
+        }
+
+        const { path } = data;
+
+        this.clearCache(path);
+        if (options.revalidatePath) {
+          await options.revalidatePath(path);
+        } else {
+          await this.revalidate(path);
+        }
+
+        return { revalidated: true, path };
+      },
+    });
   }
 }

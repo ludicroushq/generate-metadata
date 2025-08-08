@@ -53,7 +53,309 @@ export interface paths {
     trace?: never;
   };
 }
-export type webhooks = Record<string, never>;
+export interface webhooks {
+  webhook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Webhook
+     * @description Webhook triggered by Generate Metadata.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description HMAC SHA256 signature in format: sha256=<hex>. Generated from timestamp.payload using the webhook secret. */
+          "X-Webhook-Signature": string;
+          /** @description Unix timestamp (milliseconds) when the webhook was sent */
+          "X-Webhook-Timestamp": string;
+          /**
+           * @deprecated
+           * @description Bearer token with the webhook secret (deprecated, use signature verification instead)
+           */
+          Authorization: string;
+          /** @description Always set to application/json */
+          "Content-Type": "application/json";
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json":
+            | {
+                /** @enum {string} */
+                _type: "placeholder";
+              }
+            | {
+                /**
+                 * @description Type of webhook event
+                 * @enum {string}
+                 */
+                _type: "metadata_update";
+                /** @description Page path (null for site default) */
+                path: string | null;
+                /** @description ID of the metadata revision */
+                metadataRevisionId: string;
+                /** @description The metadata content */
+                metadata: {
+                  title?: string;
+                  description?: string;
+                  noindex?: boolean;
+                  icon?: {
+                    url: string;
+                    alt?: string;
+                    width: number;
+                    height: number;
+                    mimeType: string;
+                  }[];
+                  appleTouchIcon?: {
+                    url: string;
+                    alt?: string;
+                    width: number;
+                    height: number;
+                    mimeType: string;
+                  }[];
+                  openGraph?: {
+                    title?: string;
+                    description?: string;
+                    locale?: string;
+                    localeAlternate?: string[];
+                    siteName?: string;
+                    /** @enum {string} */
+                    type?:
+                      | "website"
+                      | "article"
+                      | "book"
+                      | "profile"
+                      | "music.song"
+                      | "music.album"
+                      | "music.playlist"
+                      | "music.radio_station"
+                      | "video.movie"
+                      | "video.episode"
+                      | "video.tv_show"
+                      | "video.other";
+                    url?: string;
+                    /** @enum {string} */
+                    determiner?: "" | "a" | "an" | "the" | "auto";
+                    image?: {
+                      url: string;
+                      alt?: string;
+                      width: number;
+                      height: number;
+                      mimeType: string;
+                    };
+                    images?: {
+                      url: string;
+                      alt?: string;
+                      width: number;
+                      height: number;
+                      mimeType: string;
+                    }[];
+                  };
+                  twitter?: {
+                    title?: string;
+                    description?: string;
+                    /** @enum {string} */
+                    card?: "summary" | "summary_large_image";
+                    image?: {
+                      url: string;
+                      alt?: string;
+                      width: number;
+                      height: number;
+                      mimeType: string;
+                    };
+                  };
+                  customTags?: (
+                    | {
+                        /** @enum {string} */
+                        type: "meta";
+                        attributes:
+                          | {
+                              /** @enum {string} */
+                              format: "name";
+                              name: string;
+                              content: string;
+                            }
+                          | {
+                              /** @enum {string} */
+                              format: "property";
+                              property: string;
+                              content: string;
+                            }
+                          | {
+                              /** @enum {string} */
+                              format: "http-equiv";
+                              /** @enum {string} */
+                              httpEquiv:
+                                | "content-type"
+                                | "default-style"
+                                | "refresh"
+                                | "x-ua-compatible"
+                                | "content-security-policy";
+                              content: string;
+                            }
+                          | {
+                              /** @enum {string} */
+                              format: "charset";
+                              charset: string;
+                            }
+                          | {
+                              /** @enum {string} */
+                              format: "itemprop";
+                              itemprop: string;
+                              content: string;
+                            };
+                      }
+                    | {
+                        /** @enum {string} */
+                        type: "link";
+                        attributes: {
+                          /** @enum {string} */
+                          rel:
+                            | "canonical"
+                            | "alternate"
+                            | "author"
+                            | "dns-prefetch"
+                            | "help"
+                            | "icon"
+                            | "license"
+                            | "manifest"
+                            | "me"
+                            | "modulepreload"
+                            | "next"
+                            | "pingback"
+                            | "preconnect"
+                            | "prefetch"
+                            | "preload"
+                            | "prerender"
+                            | "prev"
+                            | "search"
+                            | "shortlink"
+                            | "apple-touch-icon"
+                            | "apple-touch-startup-image"
+                            | "mask-icon";
+                          href: string;
+                          hreflang?: string;
+                          media?: string;
+                          title?: string;
+                          type?: string;
+                          sizes?: string;
+                          color?: string;
+                          /** @enum {string} */
+                          crossorigin?: "anonymous" | "use-credentials";
+                          integrity?: string;
+                          /** @enum {string} */
+                          as?:
+                            | "audio"
+                            | "document"
+                            | "embed"
+                            | "fetch"
+                            | "font"
+                            | "image"
+                            | "object"
+                            | "script"
+                            | "style"
+                            | "track"
+                            | "video"
+                            | "worker";
+                          imagesrcset?: string;
+                          imagesizes?: string;
+                        };
+                      }
+                    | {
+                        /** @enum {string} */
+                        type: "base";
+                        attributes: {
+                          /** Format: uri */
+                          href?: string;
+                          /** @enum {string} */
+                          target?: "_self" | "_blank" | "_parent" | "_top";
+                        };
+                      }
+                  )[];
+                };
+                /** @description Site information */
+                site: {
+                  /** @description Site hostname */
+                  hostname: string;
+                  /** @description Site DSN identifier */
+                  dsn: string;
+                };
+                /** @description ISO 8601 timestamp of the event */
+                timestamp: string;
+              };
+        };
+      };
+      responses: {
+        /** @description Webhook processed successfully */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              /** @example true */
+              ok: boolean;
+              /** @description Optional metadata object with any additional information */
+              metadata?: {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+        /** @description Invalid signature or authorization */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              /** @example false */
+              ok: boolean;
+              /** @example Invalid webhook signature */
+              error: string;
+              /** @description Optional metadata object with any additional information */
+              metadata?: {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+        /** @description Internal server error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": {
+              /** @example false */
+              ok: boolean;
+              /** @example Internal server error */
+              error: string;
+              /** @description Optional metadata object with any additional information */
+              metadata?: {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+}
 export interface components {
   schemas: never;
   responses: never;
