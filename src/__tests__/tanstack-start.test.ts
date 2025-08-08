@@ -3,6 +3,17 @@ import { GenerateMetadataClient } from "../tanstack-start";
 import type { MetadataApiResponse } from "../index";
 
 import { api } from "../utils/api";
+import type { webhooks } from "../__generated__/api";
+
+const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
+  {
+    _type: "metadata_update",
+    path: "/test-path",
+    metadataRevisionId: "rev-123",
+    metadata: {},
+    site: { hostname: "example.com", dsn: "dsn-123" },
+    timestamp: new Date().toISOString(),
+  };
 
 // Mock the API module
 vi.mock("../utils/api", () => ({
@@ -1031,10 +1042,10 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  describe("revalidateHandler", () => {
+  describe("revalidateWebhookHandler", () => {
     it("should return a Hono app instance", () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
       });
 
       // Check that it returns a Hono instance
@@ -1042,19 +1053,9 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(app.fetch).toBeDefined(); // Hono apps have a fetch method
     });
 
-    it("should create app with custom basePath", () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        basePath: "/custom/api/path",
-      });
-
-      expect(app).toBeDefined();
-      expect(app.fetch).toBeDefined();
-    });
-
     it("should handle POST /revalidate request", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
       });
 
       // Mock request for Hono
@@ -1066,7 +1067,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: "/test-path" }),
+          body: JSON.stringify(validMetadataUpdateBody),
         },
       );
 
@@ -1080,9 +1081,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       expect(response.status).toBe(200);
       expect(responseBody).toEqual({
-        success: true,
-        revalidated: true,
-        path: "/test-path",
+        ok: true,
+        metadata: {
+          revalidated: true,
+          path: "/test-path",
+        },
       });
       expect(revalidateSpy).toHaveBeenCalledWith("/test-path");
 
@@ -1090,8 +1093,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should reject request with invalid auth", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
@@ -1111,37 +1114,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(response.status).toBe(401);
       // Our custom auth middleware returns JSON for unauthorized
       const responseData = await response.json();
-      expect(responseData).toEqual({ error: "Unauthorized" });
-    });
-
-    it("should handle invalid request body", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-      });
-
-      const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
-        {
-          method: "POST",
-          headers: {
-            authorization: "Bearer test-secret",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({ invalidField: "test" }), // Missing 'path' field
-        },
-      );
-
-      const response = await app.fetch(mockRequest);
-      const responseBody = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(responseBody).toHaveProperty("error", "Invalid request body");
-      expect(responseBody).toHaveProperty("details");
+      expect(responseData).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should handle request with null path", async () => {
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
@@ -1152,7 +1130,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: null }),
+          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
         },
       );
 
@@ -1166,9 +1144,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       expect(response.status).toBe(200);
       expect(responseBody).toEqual({
-        success: true,
-        revalidated: true,
-        path: null,
+        ok: true,
+        metadata: {
+          revalidated: true,
+          path: null,
+        },
       });
       expect(revalidateSpy).toHaveBeenCalledWith(null);
 
@@ -1178,9 +1158,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should use custom revalidatePath function when provided", async () => {
       const customRevalidatePath = vi.fn();
 
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        revalidatePath: customRevalidatePath,
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: customRevalidatePath,
+        },
       });
 
       const mockRequest = new Request(
@@ -1191,7 +1173,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: "/test-path" }),
+          body: JSON.stringify(validMetadataUpdateBody),
         },
       );
 
@@ -1204,9 +1186,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should use custom revalidatePath function with null path", async () => {
       const customRevalidatePath = vi.fn();
 
-      const app = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        revalidatePath: customRevalidatePath,
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: customRevalidatePath,
+        },
       });
 
       const mockRequest = new Request(
@@ -1217,7 +1201,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
             authorization: "Bearer test-secret",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ path: null }),
+          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
         },
       );
 
