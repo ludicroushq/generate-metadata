@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.8
+
+### Patch Changes
+
+- bf444a0: normalize data and add new webhooks support
+
 ## 0.0.7
 
 ### Patch Changes
