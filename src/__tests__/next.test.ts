@@ -1506,6 +1506,142 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
+  describe("pathRewrite normalization", () => {
+    it("should normalize the result of pathRewrite", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const pathRewriteSpy = vi.fn((path) => {
+        // Return unnormalized path
+        return path === "/old" ? "/new/path/" : path;
+      });
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/old",
+        }),
+      });
+
+      await handlers.POST(mockRequest);
+
+      // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new/path"); // Normalized
+      expect(revalidatePath).toHaveBeenCalledWith("/new/path"); // Normalized
+    });
+
+    it("should handle pathRewrite returning null (falls back to original path)", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const pathRewriteSpy = vi.fn((path) => {
+        // Return null for certain paths
+        return path === "/skip" ? null : path;
+      });
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/skip",
+        }),
+      });
+
+      await handlers.POST(mockRequest);
+
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/skip");
+      // When pathRewrite returns null, it falls back to the original normalized path
+      expect(clearCacheSpy).toHaveBeenCalledWith("/skip");
+      expect(revalidatePath).toHaveBeenCalledWith("/skip");
+    });
+
+    it("should normalize pathRewrite result with multiple trailing slashes", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const pathRewriteSpy = vi.fn((path) => {
+        // Return path with multiple trailing slashes
+        return path === "/test" ? "/rewritten///" : path;
+      });
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test",
+        }),
+      });
+
+      await handlers.POST(mockRequest);
+
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
+      expect(revalidatePath).toHaveBeenCalledWith("/rewritten");
+    });
+
+    it("should handle pathRewrite returning path without leading slash", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const pathRewriteSpy = vi.fn((path) => {
+        // Return path without leading slash
+        return path === "/test" ? "rewritten/path" : path;
+      });
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test",
+        }),
+      });
+
+      await handlers.POST(mockRequest);
+
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
+      expect(revalidatePath).toHaveBeenCalledWith("/rewritten/path");
+    });
+  });
+
   describe("revalidateWebhookHandler", () => {
     it("should return route handlers for all HTTP methods", () => {
       const handlers = client.revalidateWebhookHandler({

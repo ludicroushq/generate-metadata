@@ -336,7 +336,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public revalidateWebhookHandler(options: {
     webhookSecret: string | undefined;
     revalidate?: {
-      pathRewrite?: (path: string | null) => string;
+      pathRewrite?: (path: string | null) => string | null;
     };
   }) {
     debug("Creating revalidate webhook handler");
@@ -355,8 +355,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         const normalizedPath = normalizePathname(originalPath);
         debug("Processing metadata_update webhook for path: %s", originalPath);
 
-        const path =
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath;
+        const path = normalizePathname(
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
+        );
 
         if (path !== normalizedPath) {
           debug("Path rewritten from %s to %s", normalizedPath, path);
