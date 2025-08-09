@@ -15,6 +15,9 @@ export function getApi(framework: "next" | "tanstack-start") {
         fetch(input) {
           return fetch(input, {
             cache: "no-store",
+            next: {
+              revalidate: 0,
+            },
           });
         },
       }),
