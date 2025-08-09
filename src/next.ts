@@ -208,30 +208,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
           // Handle custom tags - convert to Next.js metadata format
           for (const tag of metadata.customTags) {
-            if (tag.type === "meta") {
-              if (!nextMetadata.other) {
-                nextMetadata.other = {};
-              }
-
-              // Convert meta tags based on their format
-              if (tag.attributes.format === "name") {
-                nextMetadata.other[tag.attributes.name] =
-                  tag.attributes.content;
-              } else if (tag.attributes.format === "property") {
-                nextMetadata.other[tag.attributes.property] =
-                  tag.attributes.content;
-              } else if (tag.attributes.format === "http-equiv") {
-                nextMetadata.other[tag.attributes.httpEquiv] =
-                  tag.attributes.content;
-              } else if (tag.attributes.format === "charset") {
-                nextMetadata.other.charset = tag.attributes.charset;
-              } else if (tag.attributes.format === "itemprop") {
-                nextMetadata.other[tag.attributes.itemprop] =
-                  tag.attributes.content;
-              }
+            if (!nextMetadata.other) {
+              nextMetadata.other = {};
             }
-            // Note: Next.js doesn't have direct support for custom link/base tags in metadata
-            // These would need to be handled at the component level, so we skip them here
+
+            // Convert meta tags based on their format
+            nextMetadata.other[tag.name] = tag.content;
           }
         })
         .exhaustive(() => {});

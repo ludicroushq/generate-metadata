@@ -803,26 +803,18 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
     });
 
-    it("should handle custom meta tags with name format", async () => {
+    it("should handle custom meta tags", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "author",
-                content: "John Doe",
-              },
+              name: "author",
+              content: "John Doe",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "keywords",
-                content: "test,metadata,seo",
-              },
+              name: "keywords",
+              content: "test,metadata,seo",
             },
           ],
         },
@@ -842,98 +834,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
           { title: "Test Title" },
           { name: "author", content: "John Doe" },
           { name: "keywords", content: "test,metadata,seo" },
-        ],
-      });
-    });
-
-    it("should handle custom link tags", async () => {
-      const customTagsApiResponse: MetadataApiResponse = {
-        metadata: {
-          title: "Test Title",
-          customTags: [
-            {
-              type: "link",
-              attributes: {
-                rel: "canonical",
-                href: "https://example.com/canonical",
-              },
-            },
-          ],
-        },
-      };
-
-      vi.mocked(api.GET).mockResolvedValue({
-        data: customTagsApiResponse,
-        error: undefined,
-      });
-
-      const headFn = client.getHead(() => ({ path: "/test" }));
-      const result = await headFn({});
-
-      expect(result).toEqual({
-        meta: [
-          { name: "title", content: "Test Title" },
-          { title: "Test Title" },
-        ],
-        links: [
-          {
-            rel: "canonical",
-            href: "https://example.com/canonical",
-          },
-        ],
-      });
-    });
-
-    it("should handle mixed custom tag types", async () => {
-      const customTagsApiResponse: MetadataApiResponse = {
-        metadata: {
-          title: "Test Title",
-          customTags: [
-            {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "author",
-                content: "John Doe",
-              },
-            },
-            {
-              type: "link",
-              attributes: {
-                rel: "canonical",
-                href: "https://example.com/canonical",
-              },
-            },
-            {
-              type: "base",
-              attributes: {
-                href: "https://example.com/",
-                target: "_blank",
-              },
-            },
-          ],
-        },
-      };
-
-      vi.mocked(api.GET).mockResolvedValue({
-        data: customTagsApiResponse,
-        error: undefined,
-      });
-
-      const headFn = client.getHead(() => ({ path: "/test" }));
-      const result = await headFn({});
-
-      expect(result).toEqual({
-        meta: [
-          { name: "title", content: "Test Title" },
-          { title: "Test Title" },
-          { name: "author", content: "John Doe" },
-        ],
-        links: [
-          {
-            rel: "canonical",
-            href: "https://example.com/canonical",
-          },
         ],
       });
     });

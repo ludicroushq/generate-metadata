@@ -654,26 +654,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle custom meta tags with name format", async () => {
+    it("should handle custom meta tags", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "author",
-                content: "John Doe",
-              },
+              name: "author",
+              content: "John Doe",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "keywords",
-                content: "test,metadata,seo",
-              },
+              name: "keywords",
+              content: "test,metadata,seo",
             },
           ],
         },
@@ -696,26 +688,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle custom meta tags with property format", async () => {
+    it("should handle custom meta tags with property-like names", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "property",
-                property: "fb:app_id",
-                content: "123456789",
-              },
+              name: "fb:app_id",
+              content: "123456789",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "property",
-                property: "article:author",
-                content: "Jane Smith",
-              },
+              name: "article:author",
+              content: "Jane Smith",
             },
           ],
         },
@@ -738,26 +722,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle custom meta tags with http-equiv format", async () => {
+    it("should handle custom meta tags with http-equiv-like names", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "http-equiv",
-                httpEquiv: "refresh",
-                content: "30",
-              },
+              name: "refresh",
+              content: "30",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "http-equiv",
-                httpEquiv: "content-security-policy",
-                content: "default-src 'self'",
-              },
+              name: "content-security-policy",
+              content: "default-src 'self'",
             },
           ],
         },
@@ -780,17 +756,14 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle custom meta tags with charset format", async () => {
+    it("should handle custom meta tags with charset name", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "charset",
-                charset: "utf-8",
-              },
+              name: "charset",
+              content: "utf-8",
             },
           ],
         },
@@ -812,26 +785,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle custom meta tags with itemprop format", async () => {
+    it("should handle custom meta tags with various names", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "itemprop",
-                itemprop: "name",
-                content: "Test Article",
-              },
+              name: "name",
+              content: "Test Article",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "itemprop",
-                itemprop: "description",
-                content: "A test article description",
-              },
+              name: "description",
+              content: "A test article description",
             },
           ],
         },
@@ -854,42 +819,26 @@ describe("GenerateMetadataClient (Next.js)", () => {
       });
     });
 
-    it("should handle mixed custom meta tag formats", async () => {
+    it("should handle mixed custom meta tags", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
           title: "Test Title",
           customTags: [
             {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "author",
-                content: "John Doe",
-              },
+              name: "author",
+              content: "John Doe",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "property",
-                property: "fb:app_id",
-                content: "123456789",
-              },
+              name: "fb:app_id",
+              content: "123456789",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "http-equiv",
-                httpEquiv: "refresh",
-                content: "30",
-              },
+              name: "refresh",
+              content: "30",
             },
             {
-              type: "meta",
-              attributes: {
-                format: "itemprop",
-                itemprop: "price",
-                content: "$29.99",
-              },
+              name: "price",
+              content: "$29.99",
             },
           ],
         },
@@ -910,53 +859,6 @@ describe("GenerateMetadataClient (Next.js)", () => {
           "fb:app_id": "123456789",
           refresh: "30",
           price: "$29.99",
-        },
-      });
-    });
-
-    it("should skip non-meta custom tags (link and base tags)", async () => {
-      const customTagsApiResponse: MetadataApiResponse = {
-        metadata: {
-          title: "Test Title",
-          customTags: [
-            {
-              type: "meta",
-              attributes: {
-                format: "name",
-                name: "author",
-                content: "John Doe",
-              },
-            },
-            {
-              type: "link",
-              attributes: {
-                rel: "canonical",
-                href: "https://example.com/canonical",
-              },
-            },
-            {
-              type: "base",
-              attributes: {
-                href: "https://example.com/",
-                target: "_blank",
-              },
-            },
-          ],
-        },
-      };
-
-      vi.mocked(api.GET).mockResolvedValue({
-        data: customTagsApiResponse,
-        error: undefined,
-      });
-
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
-      const result = await metadataFn({}, {} as any);
-
-      expect(result).toEqual({
-        title: "Test Title",
-        other: {
-          author: "John Doe",
         },
       });
     });
