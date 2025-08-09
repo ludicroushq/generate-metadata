@@ -7,6 +7,7 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+import { normalizePathname } from "./utils/normalize-pathname";
 
 const debug = createDebug("generate-metadata:tanstack-start");
 
@@ -358,7 +359,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return async (ctx: Ctx): Promise<TanstackHead> => {
       debug("getHead called");
       const opts = await factory(ctx);
-      debug("Factory returned options with path: %s", opts.path);
+      const { path: originalPath, fallback, override } = opts;
+      const path = normalizePathname(originalPath);
+      debug("Factory returned options with path: %s", path);
 
       try {
         const metadata = await this.fetchMetadata(opts);
@@ -368,17 +371,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           : {};
 
         // Deep merge: override > generated > fallback
-        const result = this.mergeMetadata(
-          opts.fallback,
-          tanstackHead,
-          opts.override,
-        );
+        const result = this.mergeMetadata(fallback, tanstackHead, override);
         debug("Returning merged head metadata");
         return result;
       } catch (error) {
         debug("Error getting head metadata: %O", error);
         console.warn("Failed to get head metadata:", error);
-        return opts.fallback || {};
+        return fallback || {};
       }
     };
   }
@@ -426,13 +425,17 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         const { path: originalPath } = data;
-        debug("Processing metadata_update webhook for path: %s", originalPath);
+        const normalizedPath = normalizePathname(originalPath);
+        debug(
+          "Processing metadata_update webhook for path: %s",
+          normalizedPath,
+        );
 
         const path =
-          options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath;
 
-        if (path !== originalPath) {
-          debug("Path rewritten from %s to %s", originalPath, path);
+        if (path !== normalizedPath) {
+          debug("Path rewritten from %s to %s", normalizedPath, path);
         }
 
         this.clearCache(path);

@@ -413,7 +413,7 @@ describe("Webhook Verification", () => {
       expect(result).toEqual({
         ok: true,
         metadata: {
-          path: "",
+          path: null,
           revalidated: true,
         },
       });

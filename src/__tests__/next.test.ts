@@ -1219,6 +1219,293 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
+  describe("path normalization", () => {
+    it("should normalize paths with trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test/" }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized without trailing slash
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should normalize paths without leading slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "test" }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized with leading slash
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with both missing leading and trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "test/page/" }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // Normalized with leading slash, without trailing
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should handle root path correctly", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/" }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/" }, // Root path remains as "/"
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with query strings", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({
+        path: "/test?query=param",
+      }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Query string removed
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with hash fragments", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test#section" }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Hash fragment removed
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with multiple trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({
+        path: "/test/page///",
+      }));
+      await metadataFn({}, {} as any);
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // All trailing slashes removed correctly
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+    });
+
+    it("should cache using normalized paths", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn1 = client.getMetadata(() => ({ path: "/test/" }));
+      const metadataFn2 = client.getMetadata(() => ({ path: "test" }));
+      const metadataFn3 = client.getMetadata(() => ({ path: "/test" }));
+
+      // First call
+      await metadataFn1({}, {} as any);
+      // Second call with different format but same normalized path
+      await metadataFn2({}, {} as any);
+      // Third call with normalized format
+      await metadataFn3({}, {} as any);
+
+      // API should only be called once due to cache normalization
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
+    });
+
+    it("should normalize path in revalidate", async () => {
+      await (client as any).revalidate("/test/");
+      expect(revalidatePath).toHaveBeenCalledWith("/test");
+
+      await (client as any).revalidate("test");
+      expect(revalidatePath).toHaveBeenCalledWith("/test");
+    });
+
+    it("should normalize path in clearCache", async () => {
+      // First populate cache with different path formats
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      await metadataFn({}, {} as any);
+
+      // Clear cache with unnormalized path
+      (client as any).clearCache("/test/");
+
+      // Verify cache was cleared by fetching again
+      await metadataFn({}, {} as any);
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
+    });
+
+    it("should normalize path in webhook handler", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      // Test with trailing slash
+      const mockRequest1 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test/",
+        }),
+      });
+
+      await handlers.POST(mockRequest1);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidatePath).toHaveBeenCalledWith("/test");
+
+      // Test without leading slash
+      const mockRequest2 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "test",
+        }),
+      });
+
+      await handlers.POST(mockRequest2);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidatePath).toHaveBeenCalledWith("/test");
+    });
+
+    it("should normalize path before applying pathRewrite", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
+
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "old/", // Unnormalized path
+        }),
+      });
+
+      await handlers.POST(mockRequest);
+
+      // pathRewrite should receive normalized path
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(revalidatePath).toHaveBeenCalledWith("/new");
+    });
+  });
+
   describe("revalidateWebhookHandler", () => {
     it("should return route handlers for all HTTP methods", () => {
       const handlers = client.revalidateWebhookHandler({

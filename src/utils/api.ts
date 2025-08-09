@@ -12,14 +12,8 @@ export function getApi(framework: "next" | "tanstack-start") {
     .with("next", () =>
       createClient<paths>({
         baseUrl,
-        fetch(input) {
-          return fetch(input, {
-            cache: "no-store",
-            next: {
-              revalidate: 0,
-            },
-          });
-        },
+        cache: "no-cache",
+        next: { revalidate: 0 },
       }),
     )
     .with("tanstack-start", () => createClient<paths>({ baseUrl }))

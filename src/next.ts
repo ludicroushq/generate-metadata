@@ -10,6 +10,7 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+import { normalizePathname } from "./utils/normalize-pathname";
 
 const debug = createDebug("generate-metadata:next");
 
@@ -254,7 +255,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     ): Promise<Metadata> => {
       debug("getMetadata called");
       const opts = await factory(props, parent);
-      debug("Factory returned options with path: %s", opts.path);
+      const { path: originalPath, fallback, override } = opts;
+      const path = normalizePathname(originalPath);
+      debug("Factory returned options with path: %s", path);
 
       try {
         const metadata = await this.fetchMetadata(opts);
@@ -264,17 +267,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           : {};
 
         // Deep merge: override > generated > fallback
-        const result = this.mergeMetadata(
-          opts.fallback,
-          nextMetadata,
-          opts.override,
-        );
+        const result = this.mergeMetadata(fallback, nextMetadata, override);
         debug("Returning merged metadata");
         return result;
       } catch (error) {
         debug("Error generating metadata: %O", error);
         console.warn("Failed to generate metadata:", error);
-        return opts.fallback || {};
+        return fallback || {};
       }
     };
   }
@@ -298,9 +297,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   protected async revalidate(path: string | null): Promise<void> {
-    if (path !== null) {
-      debug("Revalidating path: %s", path);
-      await revalidatePath(path);
+    const normalizedPath = normalizePathname(path);
+    if (normalizedPath !== null) {
+      debug("Revalidating path: %s", normalizedPath);
+      await revalidatePath(normalizedPath);
     } else {
       debug("Revalidating all paths (root layout)");
       // Revalidate all paths by revalidating the root layout
@@ -352,13 +352,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         const { path: originalPath } = data;
+        const normalizedPath = normalizePathname(originalPath);
         debug("Processing metadata_update webhook for path: %s", originalPath);
 
         const path =
-          options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath;
 
-        if (path !== originalPath) {
-          debug("Path rewritten from %s to %s", originalPath, path);
+        if (path !== normalizedPath) {
+          debug("Path rewritten from %s to %s", normalizedPath, path);
         }
 
         this.clearCache(path);

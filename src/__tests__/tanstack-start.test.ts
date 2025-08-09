@@ -1134,6 +1134,270 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
+  describe("path normalization", () => {
+    it("should normalize paths with trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test/" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized without trailing slash
+          },
+        },
+      );
+    });
+
+    it("should normalize paths without leading slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "test" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized with leading slash
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with both missing leading and trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "test/page/" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // Normalized with leading slash, without trailing
+          },
+        },
+      );
+    });
+
+    it("should handle root path correctly", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/" }, // Root path remains as "/"
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with query strings", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test?query=param" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Query string removed
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with hash fragments", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test#section" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Hash fragment removed
+          },
+        },
+      );
+    });
+
+    it("should normalize paths with multiple trailing slashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test/page///" }));
+      await headFn({});
+
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // All trailing slashes removed correctly
+          },
+        },
+      );
+    });
+
+    it("should cache using normalized paths", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn1 = client.getHead(() => ({ path: "/test/" }));
+      const headFn2 = client.getHead(() => ({ path: "test" }));
+      const headFn3 = client.getHead(() => ({ path: "/test" }));
+
+      // First call
+      await headFn1({});
+      // Second call with different format but same normalized path
+      await headFn2({});
+      // Third call with normalized format
+      await headFn3({});
+
+      // API should only be called once due to cache normalization
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
+    });
+
+    it("should normalize path in clearCache", async () => {
+      // First populate cache with different path formats
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      await headFn({});
+
+      // Clear cache with unnormalized path
+      (client as any).clearCache("/test/");
+
+      // Verify cache was cleared by fetching again
+      await headFn({});
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
+    });
+
+    it("should normalize path in webhook handler", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const revalidateSpy = vi
+        .spyOn(client as any, "revalidate")
+        .mockImplementation(() => {});
+
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      // Test with trailing slash
+      const mockRequest1 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test/",
+        }),
+      });
+
+      await app.fetch(mockRequest1);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidateSpy).toHaveBeenCalledWith("/test");
+
+      // Test without leading slash
+      const mockRequest2 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "test",
+        }),
+      });
+
+      await app.fetch(mockRequest2);
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidateSpy).toHaveBeenCalledWith("/test");
+
+      revalidateSpy.mockRestore();
+    });
+
+    it("should normalize path before applying pathRewrite", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const revalidateSpy = vi
+        .spyOn(client as any, "revalidate")
+        .mockImplementation(() => {});
+      const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
+
+      const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+        revalidate: {
+          pathRewrite: pathRewriteSpy,
+        },
+      });
+
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "old/", // Unnormalized path
+        }),
+      });
+
+      await app.fetch(mockRequest);
+
+      // pathRewrite should receive normalized path
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(revalidateSpy).toHaveBeenCalledWith("/new");
+
+      revalidateSpy.mockRestore();
+    });
+  });
+
   describe("revalidateWebhookHandler", () => {
     it("should return a Hono app instance", () => {
       const app = client.revalidateWebhookHandler({

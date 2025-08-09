@@ -6,6 +6,7 @@ import { validator } from "hono/validator";
 import type { operations, paths, webhooks } from "./__generated__/api";
 import type { Client } from "openapi-fetch";
 import { getApi } from "./utils/api";
+import { normalizePathname } from "./utils/normalize-pathname";
 
 const debug = createDebug("generate-metadata");
 
@@ -57,7 +58,8 @@ export abstract class GenerateMetadataClientBase {
   protected async fetchMetadata(
     opts: GenerateMetadataOptions,
   ): Promise<MetadataApiResponse | null> {
-    debug("fetchMetadata called with path: %s", opts.path);
+    const normalizedPath = normalizePathname(opts.path);
+    debug("fetchMetadata called with path: %s", normalizedPath);
 
     // If DSN is undefined, return empty metadata structure (development mode)
     if (this.dsn === undefined) {
@@ -67,16 +69,15 @@ export abstract class GenerateMetadataClientBase {
       };
     }
 
-    const cacheKey = opts.path;
-    const cached = this.cache.latestMetadata.get(cacheKey);
+    const cached = this.cache.latestMetadata.get(normalizedPath);
     if (cached) {
-      debug("Found cached metadata for path: %s", opts.path);
+      debug("Found cached metadata for path: %s", normalizedPath);
       return cached;
     }
 
     debug(
       "No cached metadata found, fetching from API for path: %s",
-      opts.path,
+      normalizedPath,
     );
     try {
       const res = await this.api.GET("/v1/{dsn}/metadata/get-latest", {
@@ -85,7 +86,7 @@ export abstract class GenerateMetadataClientBase {
             dsn: this.dsn,
           },
           query: {
-            path: opts.path,
+            path: normalizePathname(normalizedPath),
           },
         },
         ...(this.apiKey && {
@@ -102,23 +103,23 @@ export abstract class GenerateMetadataClientBase {
 
       debug(
         "Successfully fetched metadata from API for path: %s",
-        opts.path,
-        res.data,
+        normalizedPath,
       );
-      this.cache.latestMetadata.set(cacheKey, res.data);
+      this.cache.latestMetadata.set(normalizedPath, res.data);
 
       return res.data;
     } catch (err) {
-      debug("Failed to fetch metadata for path %s: %O", opts.path, err);
-      console.warn(`Failed to fetch metadata for ${opts.path}:`, err);
+      debug("Failed to fetch metadata for path %s: %O", normalizedPath, err);
+      console.warn(`Failed to fetch metadata for ${normalizedPath}:`, err);
       return null;
     }
   }
 
   protected clearCache(path: string | null): void {
-    if (path !== null) {
-      debug("Clearing cache for path: %s", path);
-      this.cache.latestMetadata.delete(path);
+    const normalizedPath = normalizePathname(path);
+    if (normalizedPath !== null) {
+      debug("Clearing cache for path: %s", normalizedPath);
+      this.cache.latestMetadata.delete(normalizedPath);
     } else {
       debug("Clearing entire cache");
       // If path is null, clear entire cache
@@ -341,7 +342,8 @@ export abstract class GenerateMetadataClientBase {
           return;
         }
 
-        const { path } = data;
+        const { path: originalPath } = data;
+        const path = normalizePathname(originalPath);
         debug("Processing metadata_update for path: %s", path);
 
         this.clearCache(path);
