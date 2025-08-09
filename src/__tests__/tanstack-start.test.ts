@@ -802,6 +802,190 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       });
     });
+
+    it("should handle custom meta tags with name format", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              type: "meta",
+              attributes: {
+                format: "name",
+                name: "author",
+                content: "John Doe",
+              },
+            },
+            {
+              type: "meta",
+              attributes: {
+                format: "name",
+                name: "keywords",
+                content: "test,metadata,seo",
+              },
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "author", content: "John Doe" },
+          { name: "keywords", content: "test,metadata,seo" },
+        ],
+      });
+    });
+
+    it("should handle custom link tags", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              type: "link",
+              attributes: {
+                rel: "canonical",
+                href: "https://example.com/canonical",
+              },
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+        ],
+        links: [
+          {
+            rel: "canonical",
+            href: "https://example.com/canonical",
+          },
+        ],
+      });
+    });
+
+    it("should handle mixed custom tag types", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              type: "meta",
+              attributes: {
+                format: "name",
+                name: "author",
+                content: "John Doe",
+              },
+            },
+            {
+              type: "link",
+              attributes: {
+                rel: "canonical",
+                href: "https://example.com/canonical",
+              },
+            },
+            {
+              type: "base",
+              attributes: {
+                href: "https://example.com/",
+                target: "_blank",
+              },
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "author", content: "John Doe" },
+        ],
+        links: [
+          {
+            rel: "canonical",
+            href: "https://example.com/canonical",
+          },
+        ],
+      });
+    });
+
+    it("should handle noindex metadata", async () => {
+      const noindexApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          noindex: true,
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: noindexApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "robots", content: "noindex,nofollow" },
+        ],
+      });
+    });
+
+    it("should handle empty customTags array", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+        ],
+      });
+    });
   });
 
   describe("getRootHead", () => {

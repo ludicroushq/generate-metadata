@@ -296,8 +296,81 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
               .exhaustive(() => {});
           });
         })
-        .with("noindex", () => {})
-        .with("customTags", () => {})
+        .with("noindex", () => {
+          if (metadata.noindex) {
+            meta.push({ name: "robots", content: "noindex,nofollow" });
+          }
+        })
+        .with("customTags", () => {
+          if (!metadata.customTags) {
+            return;
+          }
+
+          // Handle custom tags - convert to TanStack Start format
+          for (const tag of metadata.customTags) {
+            if (tag.type === "meta") {
+              // Convert meta tags based on their format
+              if (tag.attributes.format === "name") {
+                meta.push({
+                  name: tag.attributes.name,
+                  content: tag.attributes.content,
+                });
+              } else if (tag.attributes.format === "property") {
+                meta.push({
+                  property: tag.attributes.property,
+                  content: tag.attributes.content,
+                });
+              } else if (tag.attributes.format === "http-equiv") {
+                meta.push({
+                  httpEquiv: tag.attributes.httpEquiv,
+                  content: tag.attributes.content,
+                });
+              } else if (tag.attributes.format === "charset") {
+                meta.push({
+                  charSet: tag.attributes.charset,
+                });
+              } else if (tag.attributes.format === "itemprop") {
+                meta.push({
+                  itemProp: tag.attributes.itemprop,
+                  content: tag.attributes.content,
+                });
+              }
+            } else if (tag.type === "link") {
+              // Convert link tags
+              const linkTag: any = {
+                rel: tag.attributes.rel,
+                href: tag.attributes.href,
+              };
+
+              // Add optional attributes
+              if (tag.attributes.hreflang) {
+                linkTag.hreflang = tag.attributes.hreflang;
+              }
+              if (tag.attributes.media) linkTag.media = tag.attributes.media;
+              if (tag.attributes.title) linkTag.title = tag.attributes.title;
+              if (tag.attributes.type) linkTag.type = tag.attributes.type;
+              if (tag.attributes.sizes) linkTag.sizes = tag.attributes.sizes;
+              if (tag.attributes.color) linkTag.color = tag.attributes.color;
+              if (tag.attributes.crossorigin) {
+                linkTag.crossOrigin = tag.attributes.crossorigin;
+              }
+              if (tag.attributes.integrity) {
+                linkTag.integrity = tag.attributes.integrity;
+              }
+              if (tag.attributes.as) linkTag.as = tag.attributes.as;
+              if (tag.attributes.imagesrcset) {
+                linkTag.imageSrcSet = tag.attributes.imagesrcset;
+              }
+              if (tag.attributes.imagesizes) {
+                linkTag.imageSizes = tag.attributes.imagesizes;
+              }
+
+              links.push(linkTag);
+            }
+            // Note: base tags would require special handling in TanStack Start
+            // and are typically set at the document level, so we skip them here
+          }
+        })
         .exhaustive(() => {});
     });
 
