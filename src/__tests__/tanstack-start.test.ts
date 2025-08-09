@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GenerateMetadataClient } from "../tanstack-start";
 import type { MetadataApiResponse } from "../index";
 
-import { api } from "../utils/api";
 import type { webhooks } from "../__generated__/api";
 
 const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
@@ -15,11 +14,14 @@ const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["conte
     timestamp: new Date().toISOString(),
   };
 
+// Create a mock API client
+const mockApiClient = {
+  GET: vi.fn(),
+};
+
 // Mock the API module
 vi.mock("../utils/api", () => ({
-  api: {
-    GET: vi.fn(),
-  },
+  getApi: vi.fn(() => mockApiClient),
 }));
 
 const mockApiResponse: MetadataApiResponse = {
@@ -92,7 +94,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
   describe("getHead", () => {
     it("should return generated metadata when API call succeeds", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -208,7 +210,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponseNoIcons,
         error: undefined,
       });
@@ -278,7 +280,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle fallback metadata when API call fails", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const fallbackHead = {
         meta: [{ name: "fallback", content: "Fallback Meta" }],
@@ -294,7 +296,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should merge override metadata with generated metadata", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -388,7 +390,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should return fallback head when API call fails", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const fallbackHead = {
         meta: [{ name: "fallback", content: "Fallback Meta" }],
@@ -404,7 +406,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should return empty object when API fails and no fallback head provided", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const headFn = client.getHead(() => ({ path: "/test" }));
       const result = await headFn({});
@@ -413,7 +415,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should use fallback, generated, and override in correct priority order", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -522,7 +524,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle empty API response gracefully", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
@@ -534,7 +536,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should cache API responses", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -547,11 +549,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       await headFn({});
 
       // API should only be called once due to caching
-      expect(api.GET).toHaveBeenCalledTimes(1);
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
     it("should handle different paths separately in cache", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -563,7 +565,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       await headFn2({});
 
       // API should be called twice for different paths
-      expect(api.GET).toHaveBeenCalledTimes(2);
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(2);
     });
 
     it("should return empty metadata when DSN is undefined (development mode)", async () => {
@@ -575,7 +577,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await headFn({});
 
       expect(result).toEqual({});
-      expect(api.GET).not.toHaveBeenCalled();
+      expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
     it("should use fallback metadata when DSN is undefined", async () => {
@@ -597,7 +599,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const result = await headFn({});
 
       expect(result).toEqual(fallbackHead);
-      expect(api.GET).not.toHaveBeenCalled();
+      expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
     it("should handle null values gracefully", async () => {
@@ -625,7 +627,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: responseWithNulls,
         error: undefined,
       });
@@ -676,7 +678,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: responseWithoutAlt,
         error: undefined,
       });
@@ -710,7 +712,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle meta without name property", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
@@ -738,7 +740,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle empty meta map and nonNameMeta", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
@@ -763,7 +765,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         apiKey: "test-api-key",
       });
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -771,15 +773,18 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       await headFn({});
 
-      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test" },
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
         },
-        headers: {
-          Authorization: "Bearer test-api-key",
-        },
-      });
+      );
     });
 
     it("should not include authorization header when apiKey is not provided", async () => {
@@ -787,7 +792,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: "test-dsn",
       });
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -795,12 +800,15 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       const headFn = client.getHead(() => ({ path: "/test" }));
       await headFn({});
 
-      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test" },
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
+          },
         },
-      });
+      );
     });
 
     it("should handle custom meta tags", async () => {
@@ -820,7 +828,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -846,7 +854,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: noindexApiResponse,
         error: undefined,
       });
@@ -871,7 +879,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -1001,7 +1009,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle meta deduplication with priority: override > generated > fallback", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: {
           metadata: {
             title: "Generated Title",
@@ -1080,7 +1088,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
   describe("revalidate", () => {
     it("should clear cache for specific path", async () => {
       // First, populate the cache
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -1096,12 +1104,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       // Verify cache was cleared by fetching again
       await headFn({});
-      expect(api.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
     it("should clear entire cache when path is null", async () => {
       // Populate cache with multiple paths
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -1122,7 +1130,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       await headFn1({});
       await headFn2({});
 
-      expect(api.GET).toHaveBeenCalledTimes(2); // Both should fetch again
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Both should fetch again
     });
   });
 

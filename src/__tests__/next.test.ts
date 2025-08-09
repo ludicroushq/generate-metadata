@@ -3,13 +3,14 @@ import { GenerateMetadataClient } from "../next";
 import type { MetadataApiResponse } from "../index";
 import { revalidatePath } from "next/cache";
 
-import { api } from "../utils/api";
+// Create a mock API client
+const mockApiClient = {
+  GET: vi.fn(),
+};
 
 // Mock the API module
 vi.mock("../utils/api", () => ({
-  api: {
-    GET: vi.fn(),
-  },
+  getApi: vi.fn(() => mockApiClient),
 }));
 
 // Mock Next.js cache module
@@ -99,7 +100,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
   describe("getMetadata", () => {
     it("should return Next.js metadata when API call succeeds", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -156,7 +157,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should work with extra keys", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: {
           ...mockApiResponse,
           metadata: {
@@ -222,7 +223,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should handle function-based options", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -233,19 +234,22 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await metadataFn({}, {} as any);
 
       expect(optsFn).toHaveBeenCalled();
-      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/dynamic-test" },
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/dynamic-test" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
         },
-        headers: {
-          Authorization: "Bearer test-api-key",
-        },
-      });
+      );
     });
 
     it("should return empty object when API call fails", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       const result = await metadataFn({}, {} as any);
@@ -254,7 +258,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should return empty object when API returns null data", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: null,
         error: { message: "Not found" },
       });
@@ -266,7 +270,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should return empty object when metadata is null", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
@@ -297,7 +301,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: partialApiResponse,
         error: undefined,
       });
@@ -321,7 +325,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should cache API responses", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -334,11 +338,11 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await metadataFn({}, {} as any);
 
       // API should only be called once due to caching
-      expect(api.GET).toHaveBeenCalledTimes(1);
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
     it("should handle different paths separately in cache", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -350,11 +354,11 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await metadataFn2({}, {} as any);
 
       // API should be called twice for different paths
-      expect(api.GET).toHaveBeenCalledTimes(2);
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(2);
     });
 
     it("should handle async function-based options", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -368,19 +372,22 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const result = await metadataFn({}, {} as any);
 
       expect(result.title).toBe("Test Page Title");
-      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/async-test" },
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/async-test" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
         },
-        headers: {
-          Authorization: "Bearer test-api-key",
-        },
-      });
+      );
     });
 
     it("should use fallback metadata when API call fails", async () => {
-      vi.mocked(api.GET).mockRejectedValue(new Error("API Error"));
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const fallbackMetadata = {
         title: "Fallback Title",
@@ -397,7 +404,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should merge override metadata with generated metadata", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -419,7 +426,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should use fallback, generated, and override in correct priority order", async () => {
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -458,7 +465,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
-      expect(api.GET).not.toHaveBeenCalled();
+      expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
     it("should use fallback metadata when DSN is undefined", async () => {
@@ -479,7 +486,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual(fallbackMetadata);
-      expect(api.GET).not.toHaveBeenCalled();
+      expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
     it("should handle icons that are not arrays", async () => {
@@ -504,7 +511,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: responseWithBadIcons,
         error: undefined,
       });
@@ -548,7 +555,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: responseWithoutCard,
         error: undefined,
       });
@@ -602,7 +609,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: responseWithoutAlt,
         error: undefined,
       });
@@ -635,7 +642,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         apiKey: "test-api-key",
       });
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -643,15 +650,18 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const metadataFn = client.getMetadata(() => ({ path: "/test" }));
       await metadataFn({}, {} as any);
 
-      expect(api.GET).toHaveBeenCalledWith("/v1/{dsn}/metadata/get-latest", {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test" },
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
         },
-        headers: {
-          Authorization: "Bearer test-api-key",
-        },
-      });
+      );
     });
 
     it("should handle custom meta tags", async () => {
@@ -671,7 +681,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -705,7 +715,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -739,7 +749,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -769,7 +779,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -802,7 +812,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -844,7 +854,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -871,7 +881,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -892,7 +902,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       };
 
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: customTagsApiResponse,
         error: undefined,
       });
@@ -996,7 +1006,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
   describe("revalidate", () => {
     it("should clear cache and call revalidatePath for specific path", async () => {
       // First, populate the cache
-      vi.mocked(api.GET).mockResolvedValue({
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
@@ -1016,7 +1026,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       // Verify cache was cleared by fetching again
       await metadataFn({}, {} as any);
-      expect(api.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
+      expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
     it("should clear entire cache and revalidate all paths when path is null", async () => {
