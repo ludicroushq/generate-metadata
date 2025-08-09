@@ -59,6 +59,7 @@
     ]
   },
   "dependencies": {
+    "debug": "^4.4.1",
     "hono": "^4.8.5",
     "immer": "^10.1.1",
     "lodash.merge": "^4.6.2",
@@ -69,6 +70,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.5",
+    "@types/debug": "^4.1.12",
     "@types/lodash.merge": "^4.6.9",
     "@types/node": "^24.0.10",
     "@vitest/coverage-v8": "^3.2.4",

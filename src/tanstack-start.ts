@@ -1,3 +1,4 @@
+import createDebug from "debug";
 import merge from "lodash.merge";
 import { match } from "ts-pattern";
 import {
@@ -6,6 +7,8 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+
+const debug = createDebug("generate-metadata:tanstack-start");
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -47,6 +50,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generated: TanstackHead,
     override: TanstackHead | undefined,
   ): TanstackHead {
+    debug(
+      "Merging metadata - fallback: %s, generated: %s, override: %s",
+      fallback ? "present" : "absent",
+      generated ? "present" : "absent",
+      override ? "present" : "absent",
+    );
+
     // Merge non-meta properties (destructure to exclude meta)
     const { meta: _, ...fallbackBase } = fallback || {};
     const { meta: __, ...generatedBase } = generated;
@@ -104,11 +114,16 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       result.meta = finalMeta;
     }
 
+    debug("Merged metadata has %d meta tags", finalMeta.length);
+
     return result;
   }
 
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
+    debug("Converting API response to TanStack Start head");
+
     if (!response.metadata) {
+      debug("No metadata in response");
       return {};
     }
 
@@ -119,6 +134,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const keys: (keyof typeof metadata)[] = Object.keys(
       metadata,
     ) as (keyof typeof metadata)[];
+
+    debug("Processing metadata keys: %O", keys);
 
     keys.forEach((key) => {
       match(key)
@@ -306,6 +323,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             return;
           }
 
+          debug("Processing %d custom tags", metadata.customTags.length);
+
           // Handle custom tags - convert to TanStack Start format
           for (const tag of metadata.customTags) {
             meta.push({
@@ -337,7 +356,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         >,
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
+      debug("getHead called");
       const opts = await factory(ctx);
+      debug("Factory returned options with path: %s", opts.path);
+
       try {
         const metadata = await this.fetchMetadata(opts);
 
@@ -346,8 +368,15 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           : {};
 
         // Deep merge: override > generated > fallback
-        return this.mergeMetadata(opts.fallback, tanstackHead, opts.override);
+        const result = this.mergeMetadata(
+          opts.fallback,
+          tanstackHead,
+          opts.override,
+        );
+        debug("Returning merged head metadata");
+        return result;
       } catch (error) {
+        debug("Error getting head metadata: %O", error);
         console.warn("Failed to get head metadata:", error);
         return opts.fallback || {};
       }
@@ -373,6 +402,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   protected async revalidate(_path: string | null): Promise<void> {
+    debug("Revalidate called with path: %s (no-op for TanStack Start)", _path);
     // TanStack Start doesn't have a built-in revalidation mechanism
     // So we just return void
   }
@@ -383,19 +413,27 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string;
     };
   }) {
+    debug("Creating revalidate webhook handler");
+
     // Get the Hono app from base class
     const app = this.createWebhookApp({
       webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
         if (data._type !== "metadata_update") {
+          debug("Ignoring webhook type: %s", data._type);
           // Ignore other webhook types
           return;
         }
 
         const { path: originalPath } = data;
+        debug("Processing metadata_update webhook for path: %s", originalPath);
 
         const path =
           options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+
+        if (path !== originalPath) {
+          debug("Path rewritten from %s to %s", originalPath, path);
+        }
 
         this.clearCache(path);
         await this.revalidate(path);

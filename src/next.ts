@@ -1,3 +1,4 @@
+import createDebug from "debug";
 import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
@@ -9,6 +10,8 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+
+const debug = createDebug("generate-metadata:next");
 
 export type GenerateMetadataClientOptions =
   GenerateMetadataClientBaseOptions & {
@@ -30,12 +33,21 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generated: Metadata,
     override: Metadata | undefined,
   ): Metadata {
+    debug(
+      "Merging metadata - fallback: %s, generated: %s, override: %s",
+      fallback ? "present" : "absent",
+      generated ? "present" : "absent",
+      override ? "present" : "absent",
+    );
     // Deep merge: override > generated > fallback
     return merge({}, fallback || {}, generated, override || {});
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
+    debug("Converting API response to Next.js metadata");
+
     if (!response.metadata) {
+      debug("No metadata in response");
       return {};
     }
 
@@ -45,6 +57,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const keys: (keyof typeof metadata)[] = Object.keys(
       metadata,
     ) as (keyof typeof metadata)[];
+
+    debug("Processing metadata keys: %O", keys);
 
     keys.forEach((key) => {
       match(key)
@@ -206,6 +220,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             return;
           }
 
+          debug("Processing %d custom tags", metadata.customTags.length);
+
           // Handle custom tags - convert to Next.js metadata format
           for (const tag of metadata.customTags) {
             if (!nextMetadata.other) {
@@ -236,7 +252,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       props: Props,
       parent: ResolvingMetadata,
     ): Promise<Metadata> => {
+      debug("getMetadata called");
       const opts = await factory(props, parent);
+      debug("Factory returned options with path: %s", opts.path);
+
       try {
         const metadata = await this.fetchMetadata(opts);
 
@@ -245,8 +264,15 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           : {};
 
         // Deep merge: override > generated > fallback
-        return this.mergeMetadata(opts.fallback, nextMetadata, opts.override);
+        const result = this.mergeMetadata(
+          opts.fallback,
+          nextMetadata,
+          opts.override,
+        );
+        debug("Returning merged metadata");
+        return result;
       } catch (error) {
+        debug("Error generating metadata: %O", error);
         console.warn("Failed to generate metadata:", error);
         return opts.fallback || {};
       }
@@ -273,8 +299,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
   protected async revalidate(path: string | null): Promise<void> {
     if (path !== null) {
+      debug("Revalidating path: %s", path);
       await revalidatePath(path);
     } else {
+      debug("Revalidating all paths (root layout)");
       // Revalidate all paths by revalidating the root layout
       await revalidatePath("/", "layout");
     }
@@ -311,19 +339,27 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string;
     };
   }) {
+    debug("Creating revalidate webhook handler");
+
     // Get the Hono app from base class
     const app = this.createWebhookApp({
       webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
         if (data._type !== "metadata_update") {
+          debug("Ignoring webhook type: %s", data._type);
           // Ignore other webhook types
           return;
         }
 
         const { path: originalPath } = data;
+        debug("Processing metadata_update webhook for path: %s", originalPath);
 
         const path =
           options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+
+        if (path !== originalPath) {
+          debug("Path rewritten from %s to %s", originalPath, path);
+        }
 
         this.clearCache(path);
         await this.revalidate(path);
