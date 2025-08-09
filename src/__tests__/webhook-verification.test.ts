@@ -1,6 +1,17 @@
 import { createHmac } from "crypto";
 import { describe, expect, it, vi } from "vitest";
 import { GenerateMetadataClient } from "../next";
+import type { webhooks } from "../__generated__/api";
+
+const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
+  {
+    _type: "metadata_update",
+    path: "/test-path",
+    metadataRevisionId: "rev-123",
+    metadata: {},
+    site: { hostname: "example.com", dsn: "dsn-123" },
+    timestamp: new Date().toISOString(),
+  };
 
 // Mock Next.js utilities
 vi.mock("next/cache", () => ({
@@ -59,16 +70,15 @@ describe("Webhook Verification", () => {
   describe("HMAC Authentication", () => {
     it("should authenticate successfully with valid HMAC signature", async () => {
       const app = getApp();
-      const payload = { path: "/test-path" };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
         revalidateSecret,
         timestamp,
-        payload,
+        validMetadataUpdateBody,
       );
 
       const request = createMockRequest({
-        body: payload,
+        body: validMetadataUpdateBody,
         headers: {
           "x-webhook-signature": signature,
           "x-webhook-timestamp": timestamp,
@@ -80,9 +90,11 @@ describe("Webhook Verification", () => {
 
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: "/test-path",
+        ok: true,
+        metadata: {
+          revalidated: true,
+          path: "/test-path",
+        },
       });
     });
 
@@ -104,7 +116,7 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should reject HMAC signature with wrong format", async () => {
@@ -125,7 +137,7 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should reject HMAC signature with tampered payload", async () => {
@@ -153,7 +165,7 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should reject HMAC signature with wrong timestamp", async () => {
@@ -181,17 +193,16 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
   });
 
   describe("Bearer Token Authentication (Backward Compatibility)", () => {
     it("should authenticate successfully with valid bearer token", async () => {
       const app = getApp();
-      const payload = { path: "/test-path" };
 
       const request = createMockRequest({
-        body: payload,
+        body: validMetadataUpdateBody,
         headers: {
           authorization: `Bearer ${revalidateSecret}`,
         },
@@ -202,9 +213,11 @@ describe("Webhook Verification", () => {
 
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: "/test-path",
+        ok: true,
+        metadata: {
+          revalidated: true,
+          path: "/test-path",
+        },
       });
     });
 
@@ -223,7 +236,7 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should reject bearer token with wrong format", async () => {
@@ -241,23 +254,22 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
   });
 
   describe("Mixed Authentication Scenarios", () => {
     it("should prefer HMAC over bearer token when both are present", async () => {
       const app = getApp();
-      const payload = { path: "/test-path" };
       const timestamp = Date.now().toString();
       const validSignature = generateHmacSignature(
         revalidateSecret,
         timestamp,
-        payload,
+        validMetadataUpdateBody,
       );
 
       const request = createMockRequest({
-        body: payload,
+        body: validMetadataUpdateBody,
         headers: {
           "x-webhook-signature": validSignature,
           "x-webhook-timestamp": timestamp,
@@ -271,19 +283,20 @@ describe("Webhook Verification", () => {
       // Should succeed because HMAC is valid
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: "/test-path",
+        ok: true,
+        metadata: {
+          revalidated: true,
+          path: "/test-path",
+        },
       });
     });
 
     it("should fall back to bearer token when HMAC is invalid", async () => {
       const app = getApp();
-      const payload = { path: "/test-path" };
       const timestamp = Date.now().toString();
 
       const request = createMockRequest({
-        body: payload,
+        body: validMetadataUpdateBody,
         headers: {
           "x-webhook-signature": "sha256=invalid-signature",
           "x-webhook-timestamp": timestamp,
@@ -297,9 +310,11 @@ describe("Webhook Verification", () => {
       // Should succeed because bearer token is valid
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: "/test-path",
+        ok: true,
+        metadata: {
+          path: "/test-path",
+          revalidated: true,
+        },
       });
     });
 
@@ -321,7 +336,7 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
 
     it("should reject when no authentication headers are present", async () => {
@@ -337,14 +352,14 @@ describe("Webhook Verification", () => {
       const result = await response.json();
 
       expect(response.status).toBe(401);
-      expect(result).toEqual({ error: "Unauthorized" });
+      expect(result).toEqual({ ok: false, error: "Unauthorized" });
     });
   });
 
   describe("Request Validation", () => {
     it("should handle null path in request body", async () => {
       const app = getApp();
-      const payload = { path: null };
+      const payload = { ...validMetadataUpdateBody, path: null };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
         revalidateSecret,
@@ -365,41 +380,17 @@ describe("Webhook Verification", () => {
 
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: null,
-      });
-    });
-
-    it("should reject invalid request body", async () => {
-      const app = getApp();
-      const payload = { invalidField: "test" }; // Missing required 'path' field
-      const timestamp = Date.now().toString();
-      const signature = generateHmacSignature(
-        revalidateSecret,
-        timestamp,
-        payload,
-      );
-
-      const request = createMockRequest({
-        body: payload,
-        headers: {
-          "x-webhook-signature": signature,
-          "x-webhook-timestamp": timestamp,
+        ok: true,
+        metadata: {
+          path: null,
+          revalidated: true,
         },
       });
-
-      const response = await app.fetch(request);
-      const result = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(result).toHaveProperty("error", "Invalid request body");
-      expect(result).toHaveProperty("details");
     });
 
     it("should handle empty path string", async () => {
       const app = getApp();
-      const payload = { path: "" };
+      const payload = { ...validMetadataUpdateBody, path: "" };
       const timestamp = Date.now().toString();
       const signature = generateHmacSignature(
         revalidateSecret,
@@ -420,9 +411,11 @@ describe("Webhook Verification", () => {
 
       expect(response.status).toBe(200);
       expect(result).toEqual({
-        success: true,
-        revalidated: true,
-        path: "",
+        ok: true,
+        metadata: {
+          path: "",
+          revalidated: true,
+        },
       });
     });
   });

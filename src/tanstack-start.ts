@@ -356,31 +356,37 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  // Override to provide framework-specific revalidation
-  protected async revalidatePath(path: string | null): Promise<void> {
-    // Use custom function if provided
-    if (this.revalidatePathFn) {
-      await this.revalidatePathFn(path);
-    }
-
+  protected async revalidate(_path: string | null): Promise<void> {
     // TanStack Start doesn't have a built-in revalidation mechanism
     // So we just return void
   }
 
-  protected async revalidate(path: string | null): Promise<void> {
-    // Clear the internal cache
-    this.clearCache(path);
-
-    await this.revalidatePath(path);
-  }
-
-  public revalidateHandler(options: {
-    revalidateSecret: string | undefined;
-    basePath?: string;
-    revalidatePath?: (path: string | null) => void | Promise<void>;
+  public revalidateWebhookHandler(options: {
+    webhookSecret: string | undefined;
+    revalidate?: {
+      pathRewrite?: (path: string | null) => string;
+    };
   }) {
     // Get the Hono app from base class
-    const app = this.createRevalidateApp(options);
+    const app = this.createWebhookApp({
+      webhookSecret: options.webhookSecret,
+      webhookHandler: async (data) => {
+        if (data._type !== "metadata_update") {
+          // Ignore other webhook types
+          return;
+        }
+
+        const { path: originalPath } = data;
+
+        const path =
+          options.revalidate?.pathRewrite?.(originalPath) ?? originalPath;
+
+        this.clearCache(path);
+        await this.revalidate(path);
+
+        return { revalidated: true, path };
+      },
+    });
 
     // Return the Hono app directly for TanStack Start
     // TanStack Start can use Hono directly or users can wrap it as needed
