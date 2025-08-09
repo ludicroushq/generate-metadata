@@ -134,10 +134,10 @@ The revalidation handler will automatically refresh the metadata cache when your
 Create the webhook API route handler:
 
 ```ts title="app/api/generate-metadata/route.ts"
-import { metadataClient } from "@/lib/metadata";
+import { metadataClient } from "@/generate-metadata";
 
 export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
-  metadataClient.webhookHandler({
+  metadataClient.revalidateWebhookHandler({
     webhookSecret: process.env.GENERATE_METADATA_WEBHOOK_SECRET!,
   });
 ```
