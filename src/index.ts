@@ -100,7 +100,11 @@ export abstract class GenerateMetadataClientBase {
         throw res.error;
       }
 
-      debug("Successfully fetched metadata from API for path: %s", opts.path);
+      debug(
+        "Successfully fetched metadata from API for path: %s",
+        opts.path,
+        res.data,
+      );
       this.cache.latestMetadata.set(cacheKey, res.data);
 
       return res.data;
