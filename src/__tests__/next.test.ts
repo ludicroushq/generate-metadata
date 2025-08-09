@@ -653,6 +653,257 @@ describe("GenerateMetadataClient (Next.js)", () => {
         },
       });
     });
+
+    it("should handle custom meta tags", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "author",
+              content: "John Doe",
+            },
+            {
+              name: "keywords",
+              content: "test,metadata,seo",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          author: "John Doe",
+          keywords: "test,metadata,seo",
+        },
+      });
+    });
+
+    it("should handle custom meta tags with property-like names", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "fb:app_id",
+              content: "123456789",
+            },
+            {
+              name: "article:author",
+              content: "Jane Smith",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          "fb:app_id": "123456789",
+          "article:author": "Jane Smith",
+        },
+      });
+    });
+
+    it("should handle custom meta tags with http-equiv-like names", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "refresh",
+              content: "30",
+            },
+            {
+              name: "content-security-policy",
+              content: "default-src 'self'",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          refresh: "30",
+          "content-security-policy": "default-src 'self'",
+        },
+      });
+    });
+
+    it("should handle custom meta tags with charset name", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "charset",
+              content: "utf-8",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          charset: "utf-8",
+        },
+      });
+    });
+
+    it("should handle custom meta tags with various names", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "name",
+              content: "Test Article",
+            },
+            {
+              name: "description",
+              content: "A test article description",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          name: "Test Article",
+          description: "A test article description",
+        },
+      });
+    });
+
+    it("should handle mixed custom meta tags", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "author",
+              content: "John Doe",
+            },
+            {
+              name: "fb:app_id",
+              content: "123456789",
+            },
+            {
+              name: "refresh",
+              content: "30",
+            },
+            {
+              name: "price",
+              content: "$29.99",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+        other: {
+          author: "John Doe",
+          "fb:app_id": "123456789",
+          refresh: "30",
+          price: "$29.99",
+        },
+      });
+    });
+
+    it("should handle empty customTags array", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+      });
+    });
+
+    it("should handle undefined customTags", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: undefined,
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const result = await metadataFn({}, {} as any);
+
+      expect(result).toEqual({
+        title: "Test Title",
+      });
+    });
   });
 
   describe("getRootMetadata", () => {

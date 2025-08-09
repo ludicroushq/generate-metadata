@@ -802,6 +802,90 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       });
     });
+
+    it("should handle custom meta tags", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [
+            {
+              name: "author",
+              content: "John Doe",
+            },
+            {
+              name: "keywords",
+              content: "test,metadata,seo",
+            },
+          ],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "author", content: "John Doe" },
+          { name: "keywords", content: "test,metadata,seo" },
+        ],
+      });
+    });
+
+    it("should handle noindex metadata", async () => {
+      const noindexApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          noindex: true,
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: noindexApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "robots", content: "noindex,nofollow" },
+        ],
+      });
+    });
+
+    it("should handle empty customTags array", async () => {
+      const customTagsApiResponse: MetadataApiResponse = {
+        metadata: {
+          title: "Test Title",
+          customTags: [],
+        },
+      };
+
+      vi.mocked(api.GET).mockResolvedValue({
+        data: customTagsApiResponse,
+        error: undefined,
+      });
+
+      const headFn = client.getHead(() => ({ path: "/test" }));
+      const result = await headFn({});
+
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+        ],
+      });
+    });
   });
 
   describe("getRootHead", () => {

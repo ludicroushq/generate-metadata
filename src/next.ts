@@ -202,7 +202,19 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           nextMetadata.robots = "noindex,nofollow";
         })
         .with("customTags", () => {
-          // TODO: Handle custom tags
+          if (!metadata.customTags) {
+            return;
+          }
+
+          // Handle custom tags - convert to Next.js metadata format
+          for (const tag of metadata.customTags) {
+            if (!nextMetadata.other) {
+              nextMetadata.other = {};
+            }
+
+            // Convert meta tags based on their format
+            nextMetadata.other[tag.name] = tag.content;
+          }
         })
         .exhaustive(() => {});
     });

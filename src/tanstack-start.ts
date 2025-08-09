@@ -296,8 +296,24 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
               .exhaustive(() => {});
           });
         })
-        .with("noindex", () => {})
-        .with("customTags", () => {})
+        .with("noindex", () => {
+          if (metadata.noindex) {
+            meta.push({ name: "robots", content: "noindex,nofollow" });
+          }
+        })
+        .with("customTags", () => {
+          if (!metadata.customTags) {
+            return;
+          }
+
+          // Handle custom tags - convert to TanStack Start format
+          for (const tag of metadata.customTags) {
+            meta.push({
+              name: tag.name,
+              content: tag.content,
+            });
+          }
+        })
         .exhaustive(() => {});
     });
 
