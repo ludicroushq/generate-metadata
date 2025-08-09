@@ -3,8 +3,9 @@ import createDebug from "debug";
 import { Hono, type Context } from "hono";
 import { logger } from "hono/logger";
 import { validator } from "hono/validator";
-import type { operations, webhooks } from "./__generated__/api";
-import { api } from "./utils/api";
+import type { operations, paths, webhooks } from "./__generated__/api";
+import type { Client } from "openapi-fetch";
+import { getApi } from "./utils/api";
 
 const debug = createDebug("generate-metadata");
 
@@ -33,6 +34,7 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
+  protected api: Client<paths, `${string}/${string}`>;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey } = props;
@@ -42,6 +44,7 @@ export abstract class GenerateMetadataClientBase {
     this.cache = {
       latestMetadata: new Map(),
     };
+    this.api = getApi(this.getFrameworkName());
 
     debug(
       "Initialized client with DSN: %s, API key: %s",
@@ -76,7 +79,7 @@ export abstract class GenerateMetadataClientBase {
       opts.path,
     );
     try {
-      const res = await api.GET("/v1/{dsn}/metadata/get-latest", {
+      const res = await this.api.GET("/v1/{dsn}/metadata/get-latest", {
         params: {
           path: {
             dsn: this.dsn,
