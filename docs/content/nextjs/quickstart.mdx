@@ -133,7 +133,7 @@ The revalidation handler will automatically refresh the metadata cache when your
 
 Create the webhook API route handler:
 
-```ts title="app/api/generate-metadata/route.ts"
+```ts title="app/api/generate-metadata/revalidate/route.ts"
 import { metadataClient } from "@/generate-metadata";
 
 export const { DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT } =
@@ -161,7 +161,7 @@ Then click "Add Webhook" to create a new webhook.
 
 ![Add Webhook](./_images/add-webhook.png)
 
-Give the webhook a name such as "Production Webhook". If you named placed the route handler in `app/api/generate-metadata/route.ts` and your site name matches, you can leave the URL as the default setting.
+Give the webhook a name such as "Production Webhook". If you named placed the route handler in `app/api/generate-metadata/revalidate/route.ts` and your site name matches, you can leave the URL as the default setting.
 
 ![Webhook form](./_images/webhook-form.png)
 
