@@ -8,6 +8,7 @@ import {
   type MetadataApiResponse,
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
+import type { OptionalFetcher } from "@tanstack/react-start";
 
 const debug = createDebug("generate-metadata:tanstack-start");
 
@@ -348,11 +349,23 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       | (GenerateMetadataOptions & {
           override?: TanstackHead;
           fallback?: TanstackHead;
+          getMetadata: OptionalFetcher<
+            undefined,
+            (data: unknown) => unknown,
+            MetadataApiResponse,
+            "data"
+          >;
         })
       | Promise<
           GenerateMetadataOptions & {
             override?: TanstackHead;
             fallback?: TanstackHead;
+            getMetadata: OptionalFetcher<
+              undefined,
+              (data: unknown) => unknown,
+              MetadataApiResponse,
+              "data"
+            >;
           }
         >,
   ) {
@@ -364,7 +377,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       debug("Factory returned options with path: %s", path);
 
       try {
-        const metadata = await this.fetchMetadata(opts);
+        const metadata = await opts.getMetadata({
+          data: opts,
+        });
 
         const tanstackHead = metadata
           ? this.convertToTanstackHead(metadata)
@@ -379,6 +394,24 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         console.warn("Failed to get head metadata:", error);
         return fallback || {};
       }
+    };
+  }
+
+  public getMetadataValidator(data: unknown) {
+    return data;
+  }
+
+  public async getMetadataHandler({ data }: { data: unknown }) {
+    const metadata = await this.fetchMetadata(data as GenerateMetadataOptions);
+    return metadata ?? {};
+  }
+
+  public getMetadata() {
+    return async ({ data }: { data: unknown }) => {
+      const metadata = await this.fetchMetadata(
+        data as GenerateMetadataOptions,
+      );
+      return metadata ?? {};
     };
   }
 

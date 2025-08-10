@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
-  type GenerateMetadataClientBaseOptions,
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
@@ -14,17 +13,7 @@ import { normalizePathname } from "./utils/normalize-pathname";
 
 const debug = createDebug("generate-metadata:next");
 
-export type GenerateMetadataClientOptions =
-  GenerateMetadataClientBaseOptions & {
-    apiKey: string | undefined;
-  };
-
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-  constructor(props: GenerateMetadataClientOptions) {
-    super(props);
-  }
-
   protected getFrameworkName(): "next" {
     return "next";
   }

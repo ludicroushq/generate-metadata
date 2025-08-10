@@ -26,7 +26,7 @@ type WebhookResponse = {
 
 export type GenerateMetadataClientBaseOptions = {
   dsn: string | undefined;
-  apiKey?: string;
+  apiKey: string | undefined;
 };
 
 export abstract class GenerateMetadataClientBase {
