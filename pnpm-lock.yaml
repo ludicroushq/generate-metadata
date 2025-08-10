@@ -25,6 +25,9 @@ importers:
       next:
         specifier: ">=13.0.0"
         version: 14.2.15(@babel/core@7.28.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      normalize-url:
+        specifier: ^8.0.2
+        version: 8.0.2
       openapi-fetch:
         specifier: ^0.14.0
         version: 0.14.0
@@ -5799,6 +5802,13 @@ packages:
         integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==,
       }
     engines: { node: ">=0.10.0" }
+
+  normalize-url@8.0.2:
+    resolution:
+      {
+        integrity: sha512-Ee/R3SyN4BuynXcnTaekmaVdbDAEiNrHqjQIA37mHU8G9pf7aaAD4ZX3XjBLo6rsdcxA/gtkcNYZLt30ACgynw==,
+      }
+    engines: { node: ">=14.16" }
 
   npm-run-path@5.3.0:
     resolution:
@@ -12169,6 +12179,8 @@ snapshots:
       remove-trailing-separator: 1.1.0
 
   normalize-path@3.0.0: {}
+
+  normalize-url@8.0.2: {}
 
   npm-run-path@5.3.0:
     dependencies:
