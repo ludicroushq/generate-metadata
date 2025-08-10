@@ -1,7 +1,7 @@
-import { createHmac } from "crypto";
 import { describe, expect, it, vi } from "vitest";
 import { GenerateMetadataClient } from "../next";
 import type { webhooks } from "../__generated__/api";
+import { createHmacSha256 } from "../utils/crypto";
 
 const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
   {
@@ -27,16 +27,14 @@ describe("Webhook Verification", () => {
   const revalidateSecret = "test-webhook-secret";
 
   // Helper function to generate HMAC signature
-  const generateHmacSignature = (
+  const generateHmacSignature = async (
     secret: string,
     timestamp: string,
     payload: unknown,
-  ): string => {
+  ): Promise<string> => {
     const rawBody = JSON.stringify(payload);
     const message = `${timestamp}.${rawBody}`;
-    const signature = createHmac("sha256", secret)
-      .update(message)
-      .digest("hex");
+    const signature = await createHmacSha256(secret, message);
     return `sha256=${signature}`;
   };
 
@@ -71,7 +69,7 @@ describe("Webhook Verification", () => {
     it("should authenticate successfully with valid HMAC signature", async () => {
       const app = getApp();
       const timestamp = Date.now().toString();
-      const signature = generateHmacSignature(
+      const signature = await generateHmacSignature(
         revalidateSecret,
         timestamp,
         validMetadataUpdateBody,
@@ -146,7 +144,7 @@ describe("Webhook Verification", () => {
       const tamperedPayload = { path: "/tampered-path" };
       const timestamp = Date.now().toString();
       // Generate signature with original payload
-      const signature = generateHmacSignature(
+      const signature = await generateHmacSignature(
         revalidateSecret,
         timestamp,
         originalPayload,
@@ -174,7 +172,7 @@ describe("Webhook Verification", () => {
       const originalTimestamp = Date.now().toString();
       const wrongTimestamp = (Date.now() + 1000).toString();
       // Generate signature with original timestamp
-      const signature = generateHmacSignature(
+      const signature = await generateHmacSignature(
         revalidateSecret,
         originalTimestamp,
         payload,
@@ -262,7 +260,7 @@ describe("Webhook Verification", () => {
     it("should prefer HMAC over bearer token when both are present", async () => {
       const app = getApp();
       const timestamp = Date.now().toString();
-      const validSignature = generateHmacSignature(
+      const validSignature = await generateHmacSignature(
         revalidateSecret,
         timestamp,
         validMetadataUpdateBody,
@@ -361,7 +359,7 @@ describe("Webhook Verification", () => {
       const app = getApp();
       const payload = { ...validMetadataUpdateBody, path: null };
       const timestamp = Date.now().toString();
-      const signature = generateHmacSignature(
+      const signature = await generateHmacSignature(
         revalidateSecret,
         timestamp,
         payload,
@@ -392,7 +390,7 @@ describe("Webhook Verification", () => {
       const app = getApp();
       const payload = { ...validMetadataUpdateBody, path: "" };
       const timestamp = Date.now().toString();
-      const signature = generateHmacSignature(
+      const signature = await generateHmacSignature(
         revalidateSecret,
         timestamp,
         payload,

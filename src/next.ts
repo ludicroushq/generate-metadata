@@ -1,4 +1,3 @@
-import createDebug from "debug";
 import { handle } from "hono/vercel";
 import merge from "lodash.merge";
 import type { Metadata, ResolvingMetadata } from "next";
@@ -11,8 +10,6 @@ import {
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
 
-const debug = createDebug("generate-metadata:next");
-
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   protected getFrameworkName(): "next" {
     return "next";
@@ -23,10 +20,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generated: Metadata,
     override: Metadata | undefined,
   ): Metadata {
-    debug(
-      "Merging metadata - fallback: %s, generated: %s, override: %s",
+    this.debug(
+      "Merging metadata - fallback:",
       fallback ? "present" : "absent",
+      "generated:",
       generated ? "present" : "absent",
+      "override:",
       override ? "present" : "absent",
     );
     // Deep merge: override > generated > fallback
@@ -34,10 +33,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
-    debug("Converting API response to Next.js metadata");
+    this.debug("Converting API response to Next.js metadata");
 
     if (!response.metadata) {
-      debug("No metadata in response");
+      this.debug("No metadata in response");
       return {};
     }
 
@@ -48,7 +47,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       metadata,
     ) as (keyof typeof metadata)[];
 
-    debug("Processing metadata keys: %O", keys);
+    this.debug("Processing metadata keys:", keys);
 
     keys.forEach((key) => {
       match(key)
@@ -210,7 +209,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             return;
           }
 
-          debug("Processing %d custom tags", metadata.customTags.length);
+          this.debug("Processing custom tags:", metadata.customTags.length);
 
           // Handle custom tags - convert to Next.js metadata format
           for (const tag of metadata.customTags) {
@@ -242,11 +241,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       props: Props,
       parent: ResolvingMetadata,
     ): Promise<Metadata> => {
-      debug("getMetadata called");
+      this.debug("getMetadata called");
       const opts = await factory(props, parent);
       const { path: originalPath, fallback, override } = opts;
       const path = normalizePathname(originalPath);
-      debug("Factory returned options with path: %s", path);
+      this.debug("Factory returned options with path:", path);
 
       try {
         const metadata = await this.fetchMetadata(opts);
@@ -257,10 +256,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
         // Deep merge: override > generated > fallback
         const result = this.mergeMetadata(fallback, nextMetadata, override);
-        debug("Returning merged metadata");
+        this.debug("Returning merged metadata");
         return result;
       } catch (error) {
-        debug("Error generating metadata: %O", error);
+        this.debug("Error generating metadata:", error);
         console.warn("Failed to generate metadata:", error);
         return fallback || {};
       }
@@ -288,10 +287,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   protected async revalidate(path: string | null): Promise<void> {
     const normalizedPath = normalizePathname(path);
     if (normalizedPath !== null) {
-      debug("Revalidating path: %s", normalizedPath);
+      this.debug("Revalidating path:", normalizedPath);
       await revalidatePath(normalizedPath);
     } else {
-      debug("Revalidating all paths (root layout)");
+      this.debug("Revalidating all paths (root layout)");
       // Revalidate all paths by revalidating the root layout
       await revalidatePath("/", "layout");
     }
@@ -328,28 +327,31 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string | null;
     };
   }) {
-    debug("Creating revalidate webhook handler");
+    this.debug("Creating revalidate webhook handler");
 
     // Get the Hono app from base class
     const app = this.createWebhookApp({
       webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
         if (data._type !== "metadata_update") {
-          debug("Ignoring webhook type: %s", data._type);
+          this.debug("Ignoring webhook type:", data._type);
           // Ignore other webhook types
           return;
         }
 
         const { path: originalPath } = data;
         const normalizedPath = normalizePathname(originalPath);
-        debug("Processing metadata_update webhook for path: %s", originalPath);
+        this.debug(
+          "Processing metadata_update webhook for path:",
+          originalPath,
+        );
 
         const path = normalizePathname(
           options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
         );
 
         if (path !== normalizedPath) {
-          debug("Path rewritten from %s to %s", normalizedPath, path);
+          this.debug("Path rewritten from", normalizedPath, "to", path);
         }
 
         this.clearCache(path);

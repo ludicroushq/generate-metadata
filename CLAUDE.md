@@ -211,6 +211,8 @@ export const metadataClient = new GenerateMetadataClient({
   // dsn: undefined, // This will skip API calls and use only fallback metadata
   // Required: API key for authentication (Next.js adapter requires this)
   apiKey: process.env.GENERATE_METADATA_API_KEY!,
+  // Optional: Enable debug logging
+  debug: process.env.NODE_ENV === "development",
 });
 
 // app/page.tsx
@@ -269,6 +271,8 @@ const metadataClient = new GenerateMetadataClient({
   // dsn: undefined, // This will skip API calls and use only fallback metadata
   // Optional: API key for authentication
   apiKey: process.env.GENERATE_METADATA_API_KEY,
+  // Optional: Enable debug logging
+  debug: process.env.NODE_ENV === "development",
 });
 
 export const head = metadataClient.getHead(() => ({
@@ -401,6 +405,14 @@ This is particularly useful for:
 - CI/CD pipelines where metadata API access isn't needed
 - Testing environments where you want predictable, static metadata
 
+### Debug Logging
+
+- **Instance-based**: Debug logging is controlled per client instance via the `debug` flag
+- **No environment dependencies**: Unlike traditional debug libraries, doesn't rely on `DEBUG` env var or localStorage
+- **Opt-in**: Disabled by default, enable with `debug: true` in client options
+- **Namespaced**: Logs are prefixed with timestamp and namespace (e.g., `[2025-01-23T10:00:00.000Z] generate-metadata`)
+- **Simple format**: Uses `console.debug` directly without printf-style formatting
+
 ### Error Handling
 
 - **API failures**: Gracefully fall back to provided fallback metadata
@@ -480,7 +492,23 @@ This is particularly useful for:
 
 ---
 
-**Last Updated**: 2025-01-23 - Updated `revalidateHandler` to:
+**Last Updated**: 2025-08-10 - Simplified debug logging implementation:
+
+1. **Simplified debug function** to use `console.debug` directly without printf-style formatting
+2. **Removed format string support** - all arguments are now passed directly to `console.debug`
+3. **Cleaner output** - timestamp and namespace prefix followed by all arguments
+
+Previous update (2025-08-10) - Made library fully isomorphic and updated debug logging:
+
+1. **Replaced Node.js-only dependencies** with isomorphic alternatives:
+   - `crypto` module replaced with Web Crypto API for HMAC verification
+   - `debug` module replaced with custom isomorphic implementation
+2. **Updated debug logging** to be instance-based:
+   - Added `debug?: boolean` option to client constructor
+   - Debug is now controlled per client instance, not via environment variables
+   - Works in both Node.js and browser environments
+
+Previous update (2025-01-23) - Updated `revalidateHandler` to:
 
 1. Allow `revalidateSecret` to be undefined. When undefined, the handler returns a 500 error indicating the revalidate secret is not configured. This allows developers to skip configuration during local development without causing build errors.
 2. Accept an optional `revalidatePath` function parameter in both Next.js and TanStack Start adapters, allowing users to provide custom revalidation logic.

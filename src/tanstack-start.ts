@@ -1,4 +1,3 @@
-import createDebug from "debug";
 import merge from "lodash.merge";
 import { match } from "ts-pattern";
 import {
@@ -9,8 +8,6 @@ import {
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
 import type { OptionalFetcher } from "@tanstack/react-start";
-
-const debug = createDebug("generate-metadata:tanstack-start");
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -52,10 +49,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     generated: TanstackHead,
     override: TanstackHead | undefined,
   ): TanstackHead {
-    debug(
-      "Merging metadata - fallback: %s, generated: %s, override: %s",
+    this.debug(
+      "Merging metadata - fallback:",
       fallback ? "present" : "absent",
+      "generated:",
       generated ? "present" : "absent",
+      "override:",
       override ? "present" : "absent",
     );
 
@@ -116,16 +115,16 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       result.meta = finalMeta;
     }
 
-    debug("Merged metadata has %d meta tags", finalMeta.length);
+    this.debug("Merged metadata has", finalMeta.length, "meta tags");
 
     return result;
   }
 
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
-    debug("Converting API response to TanStack Start head");
+    this.debug("Converting API response to TanStack Start head");
 
     if (!response.metadata) {
-      debug("No metadata in response");
+      this.debug("No metadata in response");
       return {};
     }
 
@@ -137,7 +136,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       metadata,
     ) as (keyof typeof metadata)[];
 
-    debug("Processing metadata keys: %O", keys);
+    this.debug("Processing metadata keys:", keys);
 
     keys.forEach((key) => {
       match(key)
@@ -325,7 +324,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             return;
           }
 
-          debug("Processing %d custom tags", metadata.customTags.length);
+          this.debug("Processing custom tags:", metadata.customTags.length);
 
           // Handle custom tags - convert to TanStack Start format
           for (const tag of metadata.customTags) {
@@ -370,11 +369,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         >,
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
-      debug("getHead called");
+      this.debug("getHead called");
       const opts = await factory(ctx);
       const { path: originalPath, fallback, override } = opts;
       const path = normalizePathname(originalPath);
-      debug("Factory returned options with path: %s", path);
+      this.debug("Factory returned options with path:", path);
 
       try {
         const metadata = await opts.getMetadata({
@@ -387,10 +386,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
         // Deep merge: override > generated > fallback
         const result = this.mergeMetadata(fallback, tanstackHead, override);
-        debug("Returning merged head metadata");
+        this.debug("Returning merged head metadata");
         return result;
       } catch (error) {
-        debug("Error getting head metadata: %O", error);
+        this.debug("Error getting head metadata:", error);
         console.warn("Failed to get head metadata:", error);
         return fallback || {};
       }
@@ -434,7 +433,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   protected async revalidate(_path: string | null): Promise<void> {
-    debug("Revalidate called with path: %s (no-op for TanStack Start)", _path);
+    this.debug(
+      "Revalidate called with path:",
+      _path,
+      "(no-op for TanStack Start)",
+    );
     // TanStack Start doesn't have a built-in revalidation mechanism
     // So we just return void
   }
@@ -445,22 +448,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string | null;
     };
   }) {
-    debug("Creating revalidate webhook handler");
+    this.debug("Creating revalidate webhook handler");
 
     // Get the Hono app from base class
     const app = this.createWebhookApp({
       webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
         if (data._type !== "metadata_update") {
-          debug("Ignoring webhook type: %s", data._type);
+          this.debug("Ignoring webhook type:", data._type);
           // Ignore other webhook types
           return;
         }
 
         const { path: originalPath } = data;
         const normalizedPath = normalizePathname(originalPath);
-        debug(
-          "Processing metadata_update webhook for path: %s",
+        this.debug(
+          "Processing metadata_update webhook for path:",
           normalizedPath,
         );
 
@@ -469,7 +472,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         );
 
         if (path !== normalizedPath) {
-          debug("Path rewritten from %s to %s", normalizedPath, path);
+          this.debug("Path rewritten from", normalizedPath, "to", path);
         }
 
         this.clearCache(path);
