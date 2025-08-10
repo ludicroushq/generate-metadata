@@ -352,7 +352,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           getMetadata: OptionalFetcher<
             undefined,
             (data: unknown) => unknown,
-            MetadataApiResponse,
+            MetadataApiResponse | null,
             "data"
           >;
         })
@@ -363,7 +363,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
             getMetadata: OptionalFetcher<
               undefined,
               (data: unknown) => unknown,
-              MetadataApiResponse,
+              MetadataApiResponse | null,
               "data"
             >;
           }
@@ -403,7 +403,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
   public async getMetadataHandler({ data }: { data: unknown }) {
     const metadata = await this.fetchMetadata(data as GenerateMetadataOptions);
-    return metadata ?? {};
+    return metadata;
   }
 
   public getMetadata() {
