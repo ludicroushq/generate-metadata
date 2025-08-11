@@ -1,4 +1,4 @@
-import _ from "lodash";
+import { merge } from "es-toolkit/compat";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -63,7 +63,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const { meta: _2, ...generatedBase } = generated;
     const { meta: _3, ...overrideBase } = override || {};
 
-    const result: TanstackHead = _.merge(
+    const result: TanstackHead = merge(
       {},
       fallbackBase,
       generatedBase,
