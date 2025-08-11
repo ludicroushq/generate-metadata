@@ -14,6 +14,7 @@ export type MetadataApiResponse =
 
 export type GenerateMetadataOptions = {
   path: string;
+  apiKey?: string;
 };
 
 type WebhookResponse = {
@@ -24,7 +25,7 @@ type WebhookResponse = {
 
 export type GenerateMetadataClientBaseOptions = {
   dsn: string | undefined;
-  apiKey: string | undefined;
+  apiKey?: string | undefined;
   debug?: boolean;
 };
 
@@ -73,6 +74,8 @@ export abstract class GenerateMetadataClientBase {
       };
     }
 
+    const apiKey = opts.apiKey ?? this.apiKey;
+
     const cached = this.cache.latestMetadata.get(normalizedPath);
     if (cached) {
       this.debug("Found cached metadata for path:", normalizedPath);
@@ -93,9 +96,9 @@ export abstract class GenerateMetadataClientBase {
             path: normalizePathname(normalizedPath),
           },
         },
-        ...(this.apiKey && {
+        ...(apiKey && {
           headers: {
-            Authorization: `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
           },
         }),
       });

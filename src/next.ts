@@ -5,12 +5,21 @@ import { revalidatePath } from "next/cache";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
+  type GenerateMetadataClientBaseOptions,
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
 
+type GenerateMetadataClientNextOptions = GenerateMetadataClientBaseOptions & {
+  apiKey: string | undefined;
+};
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor(props: GenerateMetadataClientNextOptions) {
+    super(props);
+  }
+
   protected getFrameworkName(): "next" {
     return "next";
   }

@@ -94,7 +94,10 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
   });
 
   const getMetadata: any = async ({ data }: { data: unknown }) => {
-    return await client.getMetadataHandler({ data });
+    return await client.getMetadataHandler(
+      { apiKey: "test-api-key" },
+      { data },
+    );
   };
 
   describe("getHead", () => {
@@ -581,11 +584,13 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should return empty metadata when DSN is undefined (development mode)", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
-        apiKey: undefined,
       });
 
       const getMetadataDev: any = async ({ data }: { data: unknown }) => {
-        return await devClient.getMetadataHandler({ data });
+        return await devClient.getMetadataHandler(
+          { apiKey: undefined },
+          { data },
+        );
       };
 
       const headFn = devClient.getHead(() => ({
@@ -601,11 +606,13 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should use fallback metadata when DSN is undefined", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
-        apiKey: undefined,
       });
 
       const getMetadataDev: any = async ({ data }: { data: unknown }) => {
-        return await devClient.getMetadataHandler({ data });
+        return await devClient.getMetadataHandler(
+          { apiKey: undefined },
+          { data },
+        );
       };
 
       const fallbackHead = {
@@ -829,7 +836,10 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       }: {
         data: unknown;
       }) => {
-        return await clientWithoutApiKey.getMetadataHandler({ data });
+        return await clientWithoutApiKey.getMetadataHandler(
+          { apiKey: undefined },
+          { data },
+        );
       };
 
       const headFn = clientWithoutApiKey.getHead(() => ({

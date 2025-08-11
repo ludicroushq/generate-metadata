@@ -400,8 +400,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return data;
   }
 
-  public async getMetadataHandler({ data }: { data: unknown }) {
-    const metadata = await this.fetchMetadata(data as GenerateMetadataOptions);
+  public async getMetadataHandler(
+    { apiKey }: { apiKey: string | undefined },
+    { data }: { data: unknown },
+  ) {
+    const metadata = await this.fetchMetadata({
+      ...(data as GenerateMetadataOptions),
+      apiKey,
+    });
     return metadata;
   }
 
