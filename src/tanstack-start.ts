@@ -1,4 +1,4 @@
-import merge from "lodash.merge";
+import _ from "lodash";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -59,11 +59,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     );
 
     // Merge non-meta properties (destructure to exclude meta)
-    const { meta: _, ...fallbackBase } = fallback || {};
-    const { meta: __, ...generatedBase } = generated;
-    const { meta: ___, ...overrideBase } = override || {};
+    const { meta: _1, ...fallbackBase } = fallback || {};
+    const { meta: _2, ...generatedBase } = generated;
+    const { meta: _3, ...overrideBase } = override || {};
 
-    const result: TanstackHead = merge(
+    const result: TanstackHead = _.merge(
       {},
       fallbackBase,
       generatedBase,

@@ -1,5 +1,5 @@
 import { handle } from "hono/vercel";
-import merge from "lodash.merge";
+import _ from "lodash";
 import type { Metadata, ResolvingMetadata } from "next";
 import { revalidatePath } from "next/cache";
 import { match } from "ts-pattern";
@@ -38,7 +38,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       override ? "present" : "absent",
     );
     // Deep merge: override > generated > fallback
-    return merge({}, fallback || {}, generated, override || {});
+    return _.merge({}, fallback || {}, generated, override || {});
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
