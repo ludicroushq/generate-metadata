@@ -398,8 +398,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   public async getMetadataHandler(
-    { apiKey }: { apiKey: string | undefined },
     { data }: { data: unknown },
+    { apiKey }: { apiKey: string | undefined },
   ) {
     const metadata = await this.fetchMetadata({
       ...(data as GenerateMetadataOptions),
