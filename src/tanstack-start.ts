@@ -1,4 +1,4 @@
-import { merge } from "es-toolkit/compat";
+import _, { merge } from "es-toolkit/compat";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -343,57 +343,54 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  public getHead<Ctx = any>(
-    factory: (ctx: Ctx) =>
-      | (GenerateMetadataOptions & {
-          override?: TanstackHead;
-          fallback?: TanstackHead;
-          getMetadata: OptionalFetcher<
-            undefined,
-            (data: unknown) => unknown,
-            MetadataApiResponse | null,
-            "data"
-          >;
-        })
-      | Promise<
-          GenerateMetadataOptions & {
-            override?: TanstackHead;
-            fallback?: TanstackHead;
-            getMetadata: OptionalFetcher<
-              undefined,
-              (data: unknown) => unknown,
-              MetadataApiResponse | null,
-              "data"
-            >;
-          }
-        >,
+  public async getHead(
+    opts: Omit<GenerateMetadataOptions, "path"> & {
+      ctx: {
+        match: {
+          pathname: string;
+        };
+        matches: {
+          pathname: string;
+        }[];
+      };
+      path?: string;
+      override?: TanstackHead;
+      fallback?: TanstackHead;
+      getMetadataServerFn: OptionalFetcher<
+        undefined,
+        (data: unknown) => unknown,
+        MetadataApiResponse | null,
+        "data"
+      >;
+    },
   ) {
-    return async (ctx: Ctx): Promise<TanstackHead> => {
-      this.debug("getHead called");
-      const opts = await factory(ctx);
-      const { path: originalPath, fallback, override } = opts;
-      const path = normalizePathname(originalPath);
-      this.debug("Factory returned options with path:", path);
+    this.debug("getHead called");
+    const { path: originalPath, fallback, override, ctx } = opts;
+    const path = normalizePathname(
+      originalPath ?? _.last(ctx.matches)?.pathname ?? ctx.match.pathname,
+    );
+    this.debug("Factory returned options with path:", path);
 
-      try {
-        const metadata = await opts.getMetadata({
-          data: opts,
-        });
-
-        const tanstackHead = metadata
-          ? this.convertToTanstackHead(metadata)
-          : {};
-
-        // Deep merge: override > generated > fallback
-        const result = this.mergeMetadata(fallback, tanstackHead, override);
-        this.debug("Returning merged head metadata");
-        return result;
-      } catch (error) {
-        this.debug("Error getting head metadata:", error);
-        console.warn("Failed to get head metadata:", error);
-        return fallback || {};
-      }
+    const data: GenerateMetadataOptions = {
+      path,
     };
+
+    try {
+      const metadata = await opts.getMetadataServerFn({
+        data,
+      });
+
+      const tanstackHead = metadata ? this.convertToTanstackHead(metadata) : {};
+
+      // Deep merge: override > generated > fallback
+      const result = this.mergeMetadata(fallback, tanstackHead, override);
+      this.debug("Returning merged head metadata");
+      return result;
+    } catch (error) {
+      this.debug("Error getting head metadata:", error);
+      console.warn("Failed to get head metadata:", error);
+      return fallback || {};
+    }
   }
 
   public getMetadataValidator(data: unknown) {

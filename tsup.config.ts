@@ -2,7 +2,7 @@ import "dotenv/config";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src"],
+  entry: ["src", "!src/**/*.test.ts"],
   format: ["cjs", "esm"],
   dts: true,
   splitting: false,

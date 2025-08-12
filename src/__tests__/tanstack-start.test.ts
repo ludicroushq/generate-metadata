@@ -93,11 +93,18 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  const getMetadata: any = async ({ data }: { data: unknown }) => {
+  const getMetadataServerFn: any = async ({ data }: { data: unknown }) => {
     return await client.getMetadataHandler(
       { apiKey: "test-api-key" },
       { data },
     );
+  };
+
+  const mockCtx = {
+    match: {
+      pathname: "/test",
+    },
+    matches: [{ pathname: "/test" }],
   };
 
   describe("getHead", () => {
@@ -107,8 +114,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ path: "/test", getMetadata }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result.meta).toMatchInlineSnapshot(`
         [
@@ -231,12 +241,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         links: [{ rel: "canonical", href: "https://example.com/canonical" }],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Override meta should take priority
       expect(result.meta).toMatchInlineSnapshot(`
@@ -295,12 +305,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         meta: [{ name: "fallback", content: "Fallback Meta" }],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual(fallbackHead);
     });
@@ -315,12 +325,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         meta: [{ name: "custom", content: "Override Meta" }],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Should have both generated and override metadata
       expect(result.meta).toMatchInlineSnapshot(`
@@ -407,12 +417,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         meta: [{ name: "fallback", content: "Fallback Meta" }],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual(fallbackHead);
     });
@@ -420,8 +430,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should return empty object when API fails and no fallback head provided", async () => {
       vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({});
     });
@@ -446,13 +459,13 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         ],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Should have override title, generated description, fallback-only meta
       expect(result.meta).toMatchInlineSnapshot(`
@@ -542,8 +555,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({});
     });
@@ -554,12 +570,18 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-
       // First call
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
       // Second call
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       // API should only be called once due to caching
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
@@ -571,11 +593,24 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn1 = client.getHead(() => ({ getMetadata, path: "/test1" }));
-      const headFn2 = client.getHead(() => ({ getMetadata, path: "/test2" }));
-
-      await headFn1({});
-      await headFn2({});
+      await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
+        },
+      });
+      await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
+        },
+      });
 
       // API should be called twice for different paths
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2);
@@ -586,18 +621,22 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataDev: any = async ({ data }: { data: unknown }) => {
+      const getMetadataServerFnDev: any = async ({
+        data,
+      }: {
+        data: unknown;
+      }) => {
         return await devClient.getMetadataHandler(
           { apiKey: undefined },
           { data },
         );
       };
 
-      const headFn = devClient.getHead(() => ({
-        getMetadata: getMetadataDev,
+      const result = await devClient.getHead({
+        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({});
       expect(mockApiClient.GET).not.toHaveBeenCalled();
@@ -608,7 +647,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataDev: any = async ({ data }: { data: unknown }) => {
+      const getMetadataServerFnDev: any = async ({
+        data,
+      }: {
+        data: unknown;
+      }) => {
         return await devClient.getMetadataHandler(
           { apiKey: undefined },
           { data },
@@ -622,12 +665,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         ],
       };
 
-      const headFn = devClient.getHead(() => ({
-        getMetadata: getMetadataDev,
+      const result = await devClient.getHead({
+        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
         fallback: fallbackHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual(fallbackHead);
       expect(mockApiClient.GET).not.toHaveBeenCalled();
@@ -663,8 +706,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({});
     });
@@ -714,8 +760,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result.meta).toMatchInlineSnapshot(`
         [
@@ -756,12 +805,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         ],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Non-name meta should be preserved as is
       expect(result.meta).toEqual([
@@ -781,12 +830,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         meta: [],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Result should not have meta property if no meta items
       expect(result.meta).toBeUndefined();
@@ -803,8 +852,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -831,7 +883,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const getMetadataWithoutApiKey: any = async ({
+      const getMetadataServerFnWithoutApiKey: any = async ({
         data,
       }: {
         data: unknown;
@@ -842,11 +894,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         );
       };
 
-      const headFn = clientWithoutApiKey.getHead(() => ({
-        getMetadata: getMetadataWithoutApiKey,
+      await clientWithoutApiKey.getHead({
+        getMetadataServerFn: getMetadataServerFnWithoutApiKey,
         path: "/test",
-      }));
-      await headFn({});
+        ctx: mockCtx,
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -881,8 +933,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({
         meta: [
@@ -907,8 +962,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({
         meta: [
@@ -932,8 +990,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      const result = await headFn({});
+      const result = await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       expect(result).toEqual({
         meta: [
@@ -941,6 +1002,317 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
           { title: "Test Title" },
         ],
       });
+    });
+  });
+
+  describe("path inference from context", () => {
+    it("should use last match from matches array when path is not defined", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/should-not-use-this",
+        },
+        matches: [
+          { pathname: "/root" },
+          { pathname: "/products" },
+          { pathname: "/products/123" },
+        ],
+      };
+
+      const result = await client.getHead({
+        // path is not defined, should use last match from matches array
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Verify it used the last match pathname
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/products/123" }, // Should use last match
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should fall back to match.pathname when matches array is empty and path is not defined", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/fallback-path",
+        },
+        matches: [], // Empty matches array
+      };
+
+      const result = await client.getHead({
+        // path is not defined, should use match.pathname as fallback
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Verify it used match.pathname as fallback
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/fallback-path" }, // Should use match.pathname
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should prioritize explicit path over matches array", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/match-path",
+        },
+        matches: [
+          { pathname: "/root" },
+          { pathname: "/products" },
+          { pathname: "/products/456" },
+        ],
+      };
+
+      const result = await client.getHead({
+        path: "/explicit-path", // Explicitly defined path
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Verify it used the explicit path
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/explicit-path" }, // Should use explicit path
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should handle nested route matches correctly", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/admin",
+        },
+        matches: [
+          { pathname: "/" },
+          { pathname: "/admin" },
+          { pathname: "/admin/users" },
+          { pathname: "/admin/users/123" },
+          { pathname: "/admin/users/123/edit" },
+        ],
+      };
+
+      const result = await client.getHead({
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Should use the last (most specific) match
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/admin/users/123/edit" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should normalize paths from matches array", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/test/",
+        },
+        matches: [
+          { pathname: "/root/" },
+          { pathname: "products/" }, // Missing leading slash
+          { pathname: "/items//" }, // Double slashes
+          { pathname: "final/path/" }, // Missing leading slash and trailing slash
+        ],
+      };
+
+      const result = await client.getHead({
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Should normalize the last match
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/final/path" }, // Normalized
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should handle single match in matches array", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/different",
+        },
+        matches: [
+          { pathname: "/single-match" }, // Only one match
+        ],
+      };
+
+      const result = await client.getHead({
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Should use the single match
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/single-match" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should handle undefined matches array", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/only-match-path",
+        },
+        matches: undefined as any, // Matches might be undefined
+      };
+
+      const result = await client.getHead({
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Should fallback to match.pathname
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/only-match-path" },
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should handle matches with query strings and hashes", async () => {
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const customCtx = {
+        match: {
+          pathname: "/test",
+        },
+        matches: [
+          { pathname: "/root" },
+          { pathname: "/products?category=electronics" }, // With query string
+          { pathname: "/items#section" }, // With hash
+          { pathname: "/final?query=test#hash" }, // With both
+        ],
+      };
+
+      const result = await client.getHead({
+        getMetadataServerFn,
+        ctx: customCtx,
+      });
+
+      // Should normalize and strip query/hash from the last match
+      expect(mockApiClient.GET).toHaveBeenCalledWith(
+        "/v1/{dsn}/metadata/get-latest",
+        {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/final" }, // Normalized without query and hash
+          },
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
+      );
+
+      expect(result.meta).toBeDefined();
     });
   });
 
@@ -1094,13 +1466,13 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         ],
       };
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      const result = await client.getHead({
+        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
-      }));
-      const result = await headFn({});
+        ctx: mockCtx,
+      });
 
       // Expected priority:
       // - title: Override > Generated > Fallback = "Override Title"
@@ -1142,8 +1514,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
@@ -1152,7 +1527,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       (client as any).clearCache("/test");
 
       // Verify cache was cleared by fetching again
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
@@ -1163,11 +1542,24 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn1 = client.getHead(() => ({ getMetadata, path: "/test1" }));
-      const headFn2 = client.getHead(() => ({ getMetadata, path: "/test2" }));
-
-      await headFn1({});
-      await headFn2({});
+      await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
+        },
+      });
+      await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
+        },
+      });
 
       // Clear mocks
       vi.clearAllMocks();
@@ -1176,8 +1568,24 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       (client as any).clearCache(null);
 
       // Both paths should fetch again
-      await headFn1({});
-      await headFn2({});
+      await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
+        },
+      });
+      await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
+        ctx: {
+          ...mockCtx,
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
+        },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Both should fetch again
     });
@@ -1190,8 +1598,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test/" }));
-      await headFn({});
+      await client.getHead({
+        path: "/test/",
+        getMetadataServerFn,
+        ctx: { ...mockCtx, match: { pathname: "/test/" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1213,8 +1624,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "test" }));
-      await headFn({});
+      await client.getHead({
+        path: "test",
+        getMetadataServerFn,
+        ctx: { ...mockCtx, match: { pathname: "test" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1236,11 +1650,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      await client.getHead({
+        getMetadataServerFn,
         path: "test/page/",
-      }));
-      await headFn({});
+        ctx: { ...mockCtx, match: { pathname: "test/page/" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1262,8 +1676,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/" }));
-      await headFn({});
+      await client.getHead({
+        path: "/",
+        getMetadataServerFn,
+        ctx: { ...mockCtx, match: { pathname: "/" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1285,11 +1702,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      await client.getHead({
+        getMetadataServerFn,
         path: "/test?query=param",
-      }));
-      await headFn({});
+        ctx: { ...mockCtx, match: { pathname: "/test?query=param" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1311,11 +1728,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      await client.getHead({
+        getMetadataServerFn,
         path: "/test#section",
-      }));
-      await headFn({});
+        ctx: { ...mockCtx, match: { pathname: "/test#section" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1337,11 +1754,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({
-        getMetadata,
+      await client.getHead({
+        getMetadataServerFn,
         path: "/test/page///",
-      }));
-      await headFn({});
+        ctx: { ...mockCtx, match: { pathname: "/test/page///" } },
+      });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
         "/v1/{dsn}/metadata/get-latest",
@@ -1363,16 +1780,24 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn1 = client.getHead(() => ({ getMetadata, path: "/test/" }));
-      const headFn2 = client.getHead(() => ({ getMetadata, path: "test" }));
-      const headFn3 = client.getHead(() => ({ getMetadata, path: "/test" }));
-
       // First call
-      await headFn1({});
+      await client.getHead({
+        path: "/test/",
+        getMetadataServerFn,
+        ctx: { ...mockCtx, match: { pathname: "/test/" } },
+      });
       // Second call with different format but same normalized path
-      await headFn2({});
+      await client.getHead({
+        path: "test",
+        getMetadataServerFn,
+        ctx: { ...mockCtx, match: { pathname: "test" } },
+      });
       // Third call with normalized format
-      await headFn3({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       // API should only be called once due to cache normalization
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
@@ -1385,14 +1810,21 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const headFn = client.getHead(() => ({ getMetadata, path: "/test" }));
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
 
       // Clear cache with unnormalized path
       (client as any).clearCache("/test/");
 
       // Verify cache was cleared by fetching again
-      await headFn({});
+      await client.getHead({
+        path: "/test",
+        getMetadataServerFn,
+        ctx: mockCtx,
+      });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
     });
 
