@@ -498,15 +498,18 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     });
 
     const handler = handle(app);
+    function handlerWrapper(ctx: { request: Request }) {
+      return handler(ctx.request);
+    }
 
     return {
-      GET: handler,
-      POST: handler,
-      PUT: handler,
-      PATCH: handler,
-      DELETE: handler,
-      OPTIONS: handler,
-      HEAD: handler,
+      GET: handlerWrapper,
+      POST: handlerWrapper,
+      PUT: handlerWrapper,
+      PATCH: handlerWrapper,
+      DELETE: handlerWrapper,
+      OPTIONS: handlerWrapper,
+      HEAD: handlerWrapper,
     };
   }
 }

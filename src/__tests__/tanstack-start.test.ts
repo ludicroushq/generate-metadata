@@ -10,7 +10,7 @@ vi.mock("hono/vercel", () => ({
   handle: vi.fn((app) => {
     // Return a mock handler function that simulates Vercel's edge function handler
     const handler = async (req: Request) => {
-      // Call the Hono app's fetch method
+      // Call the Hono app's fetch method with the request
       return app.fetch(req);
     };
     return handler;
@@ -1783,7 +1783,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest1);
+      await handlers.POST({ request: mockRequest1 });
       expect(clearCacheSpy).toHaveBeenCalledWith("/test");
       expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
@@ -1800,7 +1800,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest2);
+      await handlers.POST({ request: mockRequest2 });
       expect(clearCacheSpy).toHaveBeenCalledWith("/test");
       expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
@@ -1833,7 +1833,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       // pathRewrite should receive normalized path
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
@@ -1874,7 +1874,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
@@ -1913,7 +1913,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/skip");
       // When pathRewrite returns null, it falls back to the original normalized path
@@ -1952,7 +1952,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
       expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
@@ -1990,7 +1990,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await handlers.POST(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
       expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
@@ -2016,9 +2016,13 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       expect(handlers.OPTIONS).toBeDefined();
       expect(handlers.HEAD).toBeDefined();
 
-      // All handlers should be the same function (from handle())
+      // All handlers should be the same function (handlerWrapper)
       expect(handlers.GET).toBe(handlers.POST);
       expect(handlers.GET).toBe(handlers.PUT);
+      expect(handlers.GET).toBe(handlers.PATCH);
+      expect(handlers.GET).toBe(handlers.DELETE);
+      expect(handlers.GET).toBe(handlers.OPTIONS);
+      expect(handlers.GET).toBe(handlers.HEAD);
     });
 
     it("should handle POST /revalidate request", async () => {
@@ -2044,7 +2048,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
 
-      const response = await handlers.POST(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
       const responseBody = await response.json();
 
       expect(response.status).toBe(200);
@@ -2077,7 +2081,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await handlers.POST(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(401);
       // Our custom auth middleware returns JSON for unauthorized
@@ -2107,7 +2111,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
 
-      const response = await handlers.POST(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
       const responseBody = await response.json();
 
       expect(response.status).toBe(200);
@@ -2145,7 +2149,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await handlers.POST(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(200);
       expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
@@ -2173,7 +2177,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await handlers.POST(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(200);
       expect(customRevalidatePath).toHaveBeenCalledWith(null);
@@ -2191,7 +2195,8 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await handlers.GET(mockRequest);
+      // GET handler expects a context object with request property
+      const response = await handlers.GET({ request: mockRequest });
 
       // GET should work (might return 405 or other response based on Hono setup)
       expect(response).toBeDefined();
