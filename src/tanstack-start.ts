@@ -408,20 +408,20 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
   public static async serverFnHandler(
     ctx: ServerFnCtx<unknown, "data", undefined, typeof validator>,
-    options: { apiKey: string },
+    options: { apiKey: string | undefined },
   ) {
     const { apiKey } = options;
     const fetchApiClient = new FetchApiClient();
 
     if (ctx.data.type === "metadataGetLatest") {
-      const asdf = await fetchApiClient.metadataGetLatest({
+      const response = await fetchApiClient.metadataGetLatest({
         ...ctx.data.args,
         headers: {
           ...ctx.data.args?.headers,
           Authorization: `Bearer ${apiKey}`,
         },
       });
-      return _.omit(asdf, "response");
+      return _.omit(response, "response");
     }
 
     throw new Error(
