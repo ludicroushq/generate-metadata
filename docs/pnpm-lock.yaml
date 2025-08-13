@@ -23,8 +23,8 @@ importers:
         specifier: 15.2.10
         version: 15.2.10(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11)
       generate-metadata:
-        specifier: https://pkg.pr.new/ludicroushq/generate-metadata@d079af4
-        version: https://pkg.pr.new/ludicroushq/generate-metadata@d079af4(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+        specifier: https://pkg.pr.new/ludicroushq/generate-metadata@7a370ec
+        version: https://pkg.pr.new/ludicroushq/generate-metadata@7a370ec(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.1.0)
@@ -1975,9 +1975,9 @@ packages:
       tailwindcss:
         optional: true
 
-  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@d079af4:
+  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@7a370ec:
     resolution:
-      { tarball: https://pkg.pr.new/ludicroushq/generate-metadata@d079af4 }
+      { tarball: https://pkg.pr.new/ludicroushq/generate-metadata@7a370ec }
     version: 0.0.8
     peerDependencies:
       "@tanstack/react-start": ">=1.0.0"
@@ -4563,7 +4563,7 @@ snapshots:
       - algoliasearch
       - supports-color
 
-  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@d079af4(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
+  generate-metadata@https://pkg.pr.new/ludicroushq/generate-metadata@7a370ec(next@15.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)):
     dependencies:
       debug: 4.4.1
       es-toolkit: 1.39.9
