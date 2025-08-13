@@ -1,3 +1,4 @@
+import { handle } from "hono/vercel";
 import type { ServerFnCtx } from "@tanstack/react-start";
 import _, { merge } from "es-toolkit/compat";
 import { match } from "ts-pattern";
@@ -402,10 +403,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
   }
 
-  public getMetadataValidator(data: unknown) {
-    return data;
-  }
-
   // Static validator for serverFn input
   public static serverFnValidator = validator;
 
@@ -500,8 +497,16 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       },
     });
 
-    // Return the Hono app directly for TanStack Start
-    // TanStack Start can use Hono directly or users can wrap it as needed
-    return app;
+    const handler = handle(app);
+
+    return {
+      GET: handler,
+      POST: handler,
+      PUT: handler,
+      PATCH: handler,
+      DELETE: handler,
+      OPTIONS: handler,
+      HEAD: handler,
+    };
   }
 }
