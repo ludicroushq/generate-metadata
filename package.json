@@ -61,6 +61,7 @@
   "dependencies": {
     "debug": "^4.4.1",
     "es-toolkit": "^1.39.9",
+    "generate-metadata": "https://pkg.pr.new/ludicroushq/generate-metadata@3386b47",
     "hono": "^4.8.5",
     "immer": "^10.1.1",
     "normalize-url": "^8.0.2",
