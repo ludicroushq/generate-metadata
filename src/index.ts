@@ -1,12 +1,12 @@
-import createDebug, { type DebugFunction } from "./utils/debug";
 import { Hono, type Context } from "hono";
 import { logger } from "hono/logger";
 import { validator } from "hono/validator";
-import type { operations, paths, webhooks } from "./__generated__/api";
-import type { Client } from "openapi-fetch";
-import { getApi } from "./utils/api";
-import { normalizePathname } from "./utils/normalize-pathname";
+import type { operations, webhooks } from "./__generated__/api";
+import { type BaseApiClient } from "./utils/api";
 import { verifyHmacSignature } from "./utils/crypto";
+import createDebug, { type DebugFunction } from "./utils/debug";
+import { normalizePathname } from "./utils/normalize-pathname";
+import { FetchApiClient } from "./utils/api/fetch";
 
 // Extract the metadata response type from the generated API types
 export type MetadataApiResponse =
@@ -36,7 +36,7 @@ export abstract class GenerateMetadataClientBase {
   protected cache: {
     latestMetadata: Map<string, MetadataApiResponse>;
   };
-  protected api: Client<paths, `${string}/${string}`>;
+  protected api: BaseApiClient;
 
   constructor(props: GenerateMetadataClientBaseOptions) {
     const { dsn, apiKey, debug: debugEnabled = false } = props;
@@ -47,7 +47,7 @@ export abstract class GenerateMetadataClientBase {
     this.cache = {
       latestMetadata: new Map(),
     };
-    this.api = getApi(this.getFrameworkName());
+    this.api = new FetchApiClient();
 
     this.debug(
       "Initialized client with DSN:",
@@ -87,7 +87,7 @@ export abstract class GenerateMetadataClientBase {
       normalizedPath,
     );
     try {
-      const res = await this.api.GET("/v1/{dsn}/metadata/get-latest", {
+      const res = await this.api.metadataGetLatest({
         params: {
           path: {
             dsn: this.dsn,
@@ -139,8 +139,12 @@ export abstract class GenerateMetadataClientBase {
     }
   }
 
-  // Abstract method to be implemented by framework adapters
-  protected abstract revalidate(path: string | null): void | Promise<void>;
+  /**
+   * DO NOT NAME THIS FUNCTION `revalidate`.
+   */
+  protected abstract triggerRevalidation(
+    path: string | null,
+  ): void | Promise<void>;
 
   // HMAC signature verification
   private async verifyHmacSignature(
@@ -356,7 +360,7 @@ export abstract class GenerateMetadataClientBase {
           await options.revalidatePath(path);
         } else {
           this.debug("Using framework revalidate method");
-          await this.revalidate(path);
+          await this.triggerRevalidation(path);
         }
 
         return { revalidated: true, path };

@@ -1,8 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MetadataApiResponse } from "../index";
 import { GenerateMetadataClient } from "../tanstack-start";
+import { FetchApiClient } from "../utils/api/fetch";
 
 import type { webhooks } from "../__generated__/api";
+
+// Mock hono/vercel
+vi.mock("hono/vercel", () => ({
+  handle: vi.fn((app) => {
+    // Return a mock handler function that simulates Vercel's edge function handler
+    const handler = async (req: Request) => {
+      // Call the Hono app's fetch method with the request
+      return app.fetch(req);
+    };
+    return handler;
+  }),
+}));
 
 const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
   {
@@ -19,9 +32,18 @@ const mockApiClient = {
   GET: vi.fn(),
 };
 
-// Mock the API module
+// Mock the FetchApiClient
+vi.mock("../utils/api/fetch", () => ({
+  FetchApiClient: vi.fn().mockImplementation(() => ({
+    metadataGetLatest: vi.fn((args) =>
+      mockApiClient.GET("/v1/{dsn}/metadata/get-latest", args),
+    ),
+  })),
+}));
+
+// Mock the base URL export
 vi.mock("../utils/api", () => ({
-  getApi: vi.fn(() => mockApiClient),
+  baseUrl: "https://www.generate-metadata.com/api/openapi",
 }));
 
 const mockApiResponse: MetadataApiResponse = {
@@ -93,13 +115,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  const getMetadataServerFn: any = async ({ data }: { data: unknown }) => {
-    return await client.getMetadataHandler(
-      { data },
-      { apiKey: "test-api-key" },
-    );
-  };
-
   const mockCtx = {
     match: {
       pathname: "/test",
@@ -116,7 +131,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -242,7 +256,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
         ctx: mockCtx,
@@ -306,7 +319,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -326,7 +338,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
         ctx: mockCtx,
@@ -418,7 +429,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -432,7 +442,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -460,7 +469,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
@@ -557,7 +565,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -573,13 +580,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // First call
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       // Second call
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -595,7 +600,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -604,7 +608,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -621,19 +624,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataServerFnDev: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await devClient.getMetadataHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       const result = await devClient.getHead({
-        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
         ctx: mockCtx,
       });
@@ -647,17 +638,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataServerFnDev: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await devClient.getMetadataHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       const fallbackHead = {
         meta: [
           { name: "title", content: "Development Title" },
@@ -666,7 +646,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await devClient.getHead({
-        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -708,7 +687,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -762,7 +740,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -806,7 +783,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -831,7 +807,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -854,7 +829,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -883,19 +857,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const getMetadataServerFnWithoutApiKey: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await clientWithoutApiKey.getMetadataHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       await clientWithoutApiKey.getHead({
-        getMetadataServerFn: getMetadataServerFnWithoutApiKey,
         path: "/test",
         ctx: mockCtx,
       });
@@ -935,7 +897,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -964,7 +925,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -992,7 +952,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1025,7 +984,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         // path is not defined, should use last match from matches array
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1061,7 +1019,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         // path is not defined, should use match.pathname as fallback
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1101,7 +1058,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/explicit-path", // Explicitly defined path
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1142,7 +1098,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1182,7 +1137,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1219,7 +1173,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1254,7 +1207,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1294,7 +1246,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1467,7 +1418,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
@@ -1506,7 +1456,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  describe("revalidate", () => {
+  describe("triggerRevalidation", () => {
     it("should clear cache for specific path", async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -1516,7 +1466,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1529,7 +1478,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Verify cache was cleared by fetching again
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
@@ -1544,7 +1492,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -1553,7 +1500,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -1570,7 +1516,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Both paths should fetch again
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -1579,7 +1524,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -1600,7 +1544,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
 
@@ -1626,7 +1569,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "test",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "test" } },
       });
 
@@ -1651,7 +1593,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "test/page/",
         ctx: { ...mockCtx, match: { pathname: "test/page/" } },
       });
@@ -1678,7 +1619,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/" } },
       });
 
@@ -1703,7 +1643,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test?query=param",
         ctx: { ...mockCtx, match: { pathname: "/test?query=param" } },
       });
@@ -1729,7 +1668,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test#section",
         ctx: { ...mockCtx, match: { pathname: "/test#section" } },
       });
@@ -1755,7 +1693,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test/page///",
         ctx: { ...mockCtx, match: { pathname: "/test/page///" } },
       });
@@ -1783,19 +1720,16 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // First call
       await client.getHead({
         path: "/test/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
       // Second call with different format but same normalized path
       await client.getHead({
         path: "test",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "test" } },
       });
       // Third call with normalized format
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1812,7 +1746,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1822,7 +1755,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Verify cache was cleared by fetching again
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
@@ -1831,10 +1763,10 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize path in webhook handler", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
       });
 
@@ -1851,7 +1783,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest1);
+      await handlers.POST({ request: mockRequest1 });
       expect(clearCacheSpy).toHaveBeenCalledWith("/test");
       expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
@@ -1868,7 +1800,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest2);
+      await handlers.POST({ request: mockRequest2 });
       expect(clearCacheSpy).toHaveBeenCalledWith("/test");
       expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
@@ -1878,11 +1810,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize path before applying pathRewrite", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
@@ -1901,7 +1833,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       // pathRewrite should receive normalized path
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
@@ -1916,14 +1848,14 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize the result of pathRewrite", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return unnormalized path
         return path === "/old" ? "/new/path/" : path;
       });
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
@@ -1942,7 +1874,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
@@ -1955,14 +1887,14 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should handle pathRewrite returning null (falls back to original path)", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return null for certain paths
         return path === "/skip" ? null : path;
       });
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
@@ -1981,7 +1913,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/skip");
       // When pathRewrite returns null, it falls back to the original normalized path
@@ -1994,14 +1926,14 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize pathRewrite result with multiple trailing slashes", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path with multiple trailing slashes
         return path === "/test" ? "/rewritten///" : path;
       });
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
@@ -2020,7 +1952,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
       expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
@@ -2032,14 +1964,14 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should handle pathRewrite returning path without leading slash", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path without leading slash
         return path === "/test" ? "rewritten/path" : path;
       });
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
@@ -2058,7 +1990,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         }),
       });
 
-      await app.fetch(mockRequest);
+      await handlers.POST({ request: mockRequest });
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
       expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
@@ -2069,22 +2001,36 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
   });
 
   describe("revalidateWebhookHandler", () => {
-    it("should return a Hono app instance", () => {
-      const app = client.revalidateWebhookHandler({
+    it("should return route handlers object", () => {
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
       });
 
-      // Check that it returns a Hono instance
-      expect(app).toBeDefined();
-      expect(app.fetch).toBeDefined(); // Hono apps have a fetch method
+      // Check that it returns an object with route handler methods
+      expect(handlers).toBeDefined();
+      expect(handlers.GET).toBeDefined();
+      expect(handlers.POST).toBeDefined();
+      expect(handlers.PUT).toBeDefined();
+      expect(handlers.PATCH).toBeDefined();
+      expect(handlers.DELETE).toBeDefined();
+      expect(handlers.OPTIONS).toBeDefined();
+      expect(handlers.HEAD).toBeDefined();
+
+      // All handlers should be the same function (handlerWrapper)
+      expect(handlers.GET).toBe(handlers.POST);
+      expect(handlers.GET).toBe(handlers.PUT);
+      expect(handlers.GET).toBe(handlers.PATCH);
+      expect(handlers.GET).toBe(handlers.DELETE);
+      expect(handlers.GET).toBe(handlers.OPTIONS);
+      expect(handlers.GET).toBe(handlers.HEAD);
     });
 
     it("should handle POST /revalidate request", async () => {
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
       });
 
-      // Mock request for Hono
+      // Mock request for webhook
       const mockRequest = new Request(
         "http://localhost:3000/api/generate-metadata/revalidate",
         {
@@ -2097,12 +2043,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      // Spy on the revalidate method
+      // Spy on the triggerRevalidation method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
-      const response = await app.fetch(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
       const responseBody = await response.json();
 
       expect(response.status).toBe(200);
@@ -2119,7 +2065,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should reject request with invalid auth", async () => {
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
       });
 
@@ -2135,7 +2081,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await app.fetch(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(401);
       // Our custom auth middleware returns JSON for unauthorized
@@ -2144,7 +2090,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
 
     it("should handle request with null path", async () => {
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
       });
 
@@ -2160,12 +2106,12 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      // Spy on the revalidate method
+      // Spy on the triggerRevalidation method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
-      const response = await app.fetch(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
       const responseBody = await response.json();
 
       expect(response.status).toBe(200);
@@ -2184,7 +2130,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should use custom revalidatePath function when provided", async () => {
       const customRevalidatePath = vi.fn();
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: customRevalidatePath,
@@ -2203,7 +2149,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await app.fetch(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(200);
       expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
@@ -2212,7 +2158,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should use custom revalidatePath function with null path", async () => {
       const customRevalidatePath = vi.fn();
 
-      const app = client.revalidateWebhookHandler({
+      const handlers = client.revalidateWebhookHandler({
         webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: customRevalidatePath,
@@ -2231,10 +2177,387 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      const response = await app.fetch(mockRequest);
+      const response = await handlers.POST({ request: mockRequest });
 
       expect(response.status).toBe(200);
       expect(customRevalidatePath).toHaveBeenCalledWith(null);
+    });
+
+    it("should work with GET requests", async () => {
+      const handlers = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      const mockRequest = new Request(
+        "http://localhost:3000/api/generate-metadata/webhook",
+        {
+          method: "GET",
+        },
+      );
+
+      // GET handler expects a context object with request property
+      const response = await handlers.GET({ request: mockRequest });
+
+      // GET should work (might return 405 or other response based on Hono setup)
+      expect(response).toBeDefined();
+    });
+
+    it("should use hono/vercel handle function", async () => {
+      // Import the mocked handle function
+      const { handle } = await import("hono/vercel");
+
+      client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
+      });
+
+      // Verify that handle was called
+      expect(handle).toHaveBeenCalled();
+    });
+  });
+
+  describe("serverFn functionality", () => {
+    it("should use TanstackStartApiClient when serverFn is provided", async () => {
+      const mockServerFn = vi.fn().mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      }) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        serverFn: mockServerFn,
+      });
+
+      const result = await clientWithServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      // Should call the serverFn with correct data structure
+      expect(mockServerFn).toHaveBeenCalledWith({
+        data: {
+          type: "metadataGetLatest",
+          args: expect.objectContaining({
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+            headers: {
+              Authorization: "Bearer test-api-key",
+            },
+          }),
+        },
+      });
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should use FetchApiClient when serverFn is not provided", async () => {
+      const clientWithoutServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        // No serverFn provided
+      });
+
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const result = await clientWithoutServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      // Should use the mocked FetchApiClient
+      expect(mockApiClient.GET).toHaveBeenCalled();
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should pass apiKey to serverFn through TanstackStartApiClient", async () => {
+      const mockServerFn = vi.fn().mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      }) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "custom-api-key",
+        serverFn: mockServerFn,
+      });
+
+      await clientWithServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      expect(mockServerFn).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          args: expect.objectContaining({
+            headers: {
+              Authorization: "Bearer custom-api-key",
+            },
+          }),
+        }),
+      });
+    });
+
+    it("should handle serverFn errors gracefully", async () => {
+      const mockServerFn = vi
+        .fn()
+        .mockRejectedValue(new Error("ServerFn Error")) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        serverFn: mockServerFn,
+      });
+
+      const fallbackHead = {
+        meta: [{ name: "fallback", content: "Fallback Meta" }],
+      };
+
+      const result = await clientWithServerFn.getHead({
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
+      });
+
+      expect(result).toEqual(fallbackHead);
+      expect(mockServerFn).toHaveBeenCalled();
+    });
+  });
+
+  describe("serverFnHandler static method", () => {
+    it("should handle metadataGetLatest type correctly", async () => {
+      // Mock the FetchApiClient for serverFnHandler
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      const result = await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      expect(result).toEqual({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer test-api-key",
+        },
+      });
+    });
+
+    it("should throw error for unknown type", async () => {
+      const ctx = {
+        data: {
+          type: "unknownType" as any,
+          args: {},
+        },
+      };
+
+      await expect(
+        GenerateMetadataClient.serverFnHandler(ctx as any, {
+          apiKey: "test-api-key",
+        }),
+      ).rejects.toThrow(
+        "generate metadata server function called with unknown type unknownType",
+      );
+    });
+
+    it("should merge headers correctly in serverFnHandler", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+            headers: {
+              "X-Custom-Header": "custom-value",
+            },
+          },
+        },
+      };
+
+      await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          "X-Custom-Header": "custom-value",
+          Authorization: "Bearer test-api-key",
+        },
+      });
+    });
+
+    it("should handle serverFnHandler without apiKey", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      await GenerateMetadataClient.serverFnHandler(ctx as any, { apiKey: "" });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer ",
+        },
+      });
+    });
+
+    it("should omit response from serverFnHandler result", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      const result = await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      // Result should not have the response property
+      expect(result).not.toHaveProperty("response");
+      expect(result).toHaveProperty("data");
+      expect(result).toHaveProperty("error");
+    });
+  });
+
+  describe("serverFnValidator", () => {
+    it("should validate metadataGetLatest type", () => {
+      const validData = {
+        type: "metadataGetLatest",
+        args: {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
+          },
+        },
+      };
+
+      // Should not throw
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(validData),
+      ).not.toThrow();
+    });
+
+    it("should validate placeholder type", () => {
+      const validData = {
+        type: "placeholder",
+      };
+
+      // Should not throw
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(validData),
+      ).not.toThrow();
+    });
+
+    it("should reject invalid type", () => {
+      const invalidData = {
+        type: "invalid",
+        args: {},
+      };
+
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(invalidData),
+      ).toThrow();
+    });
+
+    it("should reject missing type", () => {
+      const invalidData = {
+        args: {},
+      };
+
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(invalidData),
+      ).toThrow();
     });
   });
 });

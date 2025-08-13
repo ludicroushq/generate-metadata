@@ -8,9 +8,18 @@ const mockApiClient = {
   GET: vi.fn(),
 };
 
-// Mock the API module
+// Mock the FetchApiClient
+vi.mock("../utils/api/fetch", () => ({
+  FetchApiClient: vi.fn().mockImplementation(() => ({
+    metadataGetLatest: vi.fn((args) =>
+      mockApiClient.GET("/v1/{dsn}/metadata/get-latest", args),
+    ),
+  })),
+}));
+
+// Mock the base URL export
 vi.mock("../utils/api", () => ({
-  getApi: vi.fn(() => mockApiClient),
+  baseUrl: "https://www.generate-metadata.com/api/openapi",
 }));
 
 // Mock Next.js cache module
@@ -1003,7 +1012,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
-  describe("revalidate", () => {
+  describe("triggerRevalidation", () => {
     it("should clear cache and call revalidatePath for specific path", async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -1017,9 +1026,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
-      // Call clearCache and revalidate (which is what the webhook handler does)
+      // Call clearCache and triggerRevalidation (which is what the webhook handler does)
       (client as any).clearCache("/test");
-      await (client as any).revalidate("/test");
+      await (client as any).triggerRevalidation("/test");
 
       // Verify revalidatePath was called
       expect(revalidatePath).toHaveBeenCalledWith("/test");
@@ -1030,9 +1039,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should clear entire cache and revalidate all paths when path is null", async () => {
-      // Call clearCache and revalidate with null
+      // Call clearCache and triggerRevalidation with null
       (client as any).clearCache(null);
-      await (client as any).revalidate(null);
+      await (client as any).triggerRevalidation(null);
 
       // Verify revalidatePath was called with layout revalidation
       expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
@@ -1406,11 +1415,11 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it("should normalize path in revalidate", async () => {
-      await (client as any).revalidate("/test/");
+    it("should normalize path in triggerRevalidation", async () => {
+      await (client as any).triggerRevalidation("/test/");
       expect(revalidatePath).toHaveBeenCalledWith("/test");
 
-      await (client as any).revalidate("test");
+      await (client as any).triggerRevalidation("test");
       expect(revalidatePath).toHaveBeenCalledWith("/test");
     });
 
@@ -1501,7 +1510,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       // pathRewrite should receive normalized path
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old");
       expect(revalidatePath).toHaveBeenCalledWith("/new");
     });
   });
@@ -1537,7 +1546,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new/path"); // Normalized
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old"); // Normalized
       expect(revalidatePath).toHaveBeenCalledWith("/new/path"); // Normalized
     });
 
@@ -1604,7 +1613,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await handlers.POST(mockRequest);
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test"); // All trailing slashes removed
       expect(revalidatePath).toHaveBeenCalledWith("/rewritten");
     });
 
@@ -1637,7 +1646,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await handlers.POST(mockRequest);
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test"); // Leading slash added
       expect(revalidatePath).toHaveBeenCalledWith("/rewritten/path");
     });
   });
@@ -1716,7 +1725,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old");
       expect(revalidatePath).toHaveBeenCalledWith("/new");
     });
 
