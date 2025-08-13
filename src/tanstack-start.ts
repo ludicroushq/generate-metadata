@@ -45,13 +45,15 @@ type TanstackHead = {
 
 export type GenerateMetadataClientOptions =
   GenerateMetadataClientBaseOptions & {
-    serverFn: ServerFnType;
+    serverFn?: ServerFnType;
   };
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
   constructor(props: GenerateMetadataClientOptions) {
     super(props);
-    this.api = new TanstackStartApiClient(props.serverFn);
+    if (props.serverFn) {
+      this.api = new TanstackStartApiClient(props.serverFn);
+    }
   }
   protected getFrameworkName(): "tanstack-start" {
     return "tanstack-start";
