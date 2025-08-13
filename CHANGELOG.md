@@ -1,5 +1,11 @@
 # generate-metadata
 
+## 0.0.9
+
+### Patch Changes
+
+- f2bf1d1: gradual improvements
+
 ## 0.0.8
 
 ### Patch Changes
