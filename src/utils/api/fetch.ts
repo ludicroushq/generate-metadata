@@ -8,7 +8,6 @@ export class FetchApiClient implements BaseApiClient {
   constructor() {
     this.client = createClient<paths>({
       baseUrl,
-      cache: "no-cache",
     });
   }
 

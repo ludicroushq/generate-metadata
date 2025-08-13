@@ -29,7 +29,6 @@ describe("FetchApiClient", () => {
     it("should create client with correct configuration", () => {
       expect(createClient).toHaveBeenCalledWith({
         baseUrl: "https://www.generate-metadata.com/api/openapi",
-        cache: "no-cache",
       });
     });
 
@@ -231,7 +230,6 @@ describe("FetchApiClient", () => {
 
       expect(createClient).toHaveBeenCalledWith({
         baseUrl: "https://www.generate-metadata.com/api/openapi",
-        cache: "no-cache",
       });
       expect(client.client).toBeDefined();
     });
