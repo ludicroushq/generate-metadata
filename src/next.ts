@@ -9,7 +9,7 @@ import {
   type MetadataApiResponse,
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
-import { merge } from "es-toolkit/compat";
+import _ from "es-toolkit/compat";
 
 type GenerateMetadataClientNextOptions = GenerateMetadataClientBaseOptions & {
   apiKey: string | undefined;
@@ -38,7 +38,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       override ? "present" : "absent",
     );
     // Deep merge: override > generated > fallback
-    return merge({}, fallback || {}, generated, override || {});
+    return _.merge({}, fallback || {}, generated, override || {});
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {

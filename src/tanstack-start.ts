@@ -1,6 +1,6 @@
 import { handle } from "hono/vercel";
 import type { ServerFnCtx } from "@tanstack/react-start";
-import _, { merge } from "es-toolkit/compat";
+import _ from "es-toolkit/compat";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -79,7 +79,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const { meta: _2, ...generatedBase } = generated;
     const { meta: _3, ...overrideBase } = override || {};
 
-    const result: TanstackHead = merge(
+    const result: TanstackHead = _.merge(
       {},
       fallbackBase,
       generatedBase,
