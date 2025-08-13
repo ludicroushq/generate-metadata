@@ -10,15 +10,14 @@ import {
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
 import { merge } from "es-toolkit/compat";
-import { NextApiClient } from "./utils/api/next";
 
 type GenerateMetadataClientNextOptions = GenerateMetadataClientBaseOptions & {
   apiKey: string | undefined;
 };
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(props: GenerateMetadataClientNextOptions) {
     super(props);
-    this.api = new NextApiClient();
   }
 
   protected getFrameworkName(): "next" {
