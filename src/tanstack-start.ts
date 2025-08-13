@@ -447,7 +447,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected async revalidate(_path: string | null): Promise<void> {
+  protected async triggerRevalidation(_path: string | null): Promise<void> {
     this.debug(
       "Revalidate called with path:",
       _path,
@@ -491,7 +491,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         this.clearCache(path);
-        await this.revalidate(path);
+        await this.triggerRevalidation(path);
 
         return { revalidated: true, path };
       },

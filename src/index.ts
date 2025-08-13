@@ -139,8 +139,12 @@ export abstract class GenerateMetadataClientBase {
     }
   }
 
-  // Abstract method to be implemented by framework adapters
-  protected abstract revalidate(path: string | null): void | Promise<void>;
+  /**
+   * DO NOT NAME THIS FUNCTION `revalidate`.
+   */
+  protected abstract triggerRevalidation(
+    path: string | null,
+  ): void | Promise<void>;
 
   // HMAC signature verification
   private async verifyHmacSignature(
@@ -356,7 +360,7 @@ export abstract class GenerateMetadataClientBase {
           await options.revalidatePath(path);
         } else {
           this.debug("Using framework revalidate method");
-          await this.revalidate(path);
+          await this.triggerRevalidation(path);
         }
 
         return { revalidated: true, path };

@@ -293,7 +293,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected async revalidate(path: string | null): Promise<void> {
+  protected async triggerRevalidation(path: string | null): Promise<void> {
     const normalizedPath = normalizePathname(path);
     if (normalizedPath !== null) {
       this.debug("Revalidating path:", normalizedPath);
@@ -364,7 +364,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         this.clearCache(path);
-        await this.revalidate(path);
+        await this.triggerRevalidation(path);
 
         return { revalidated: true, path };
       },
