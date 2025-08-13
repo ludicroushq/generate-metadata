@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MetadataApiResponse } from "../index";
 import { GenerateMetadataClient } from "../tanstack-start";
+import { FetchApiClient } from "../utils/api/fetch";
 
 import type { webhooks } from "../__generated__/api";
 
@@ -2154,6 +2155,370 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       expect(response.status).toBe(200);
       expect(customRevalidatePath).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe("serverFn functionality", () => {
+    it("should use TanstackStartApiClient when serverFn is provided", async () => {
+      const mockServerFn = vi.fn().mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      }) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        serverFn: mockServerFn,
+      });
+
+      const result = await clientWithServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      // Should call the serverFn with correct data structure
+      expect(mockServerFn).toHaveBeenCalledWith({
+        data: {
+          type: "metadataGetLatest",
+          args: expect.objectContaining({
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+            headers: {
+              Authorization: "Bearer test-api-key",
+            },
+          }),
+        },
+      });
+
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should use FetchApiClient when serverFn is not provided", async () => {
+      const clientWithoutServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        // No serverFn provided
+      });
+
+      vi.mocked(mockApiClient.GET).mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      const result = await clientWithoutServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      // Should use the mocked FetchApiClient
+      expect(mockApiClient.GET).toHaveBeenCalled();
+      expect(result.meta).toBeDefined();
+    });
+
+    it("should pass apiKey to serverFn through TanstackStartApiClient", async () => {
+      const mockServerFn = vi.fn().mockResolvedValue({
+        data: mockApiResponse,
+        error: undefined,
+      }) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "custom-api-key",
+        serverFn: mockServerFn,
+      });
+
+      await clientWithServerFn.getHead({
+        path: "/test",
+        ctx: mockCtx,
+      });
+
+      expect(mockServerFn).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          args: expect.objectContaining({
+            headers: {
+              Authorization: "Bearer custom-api-key",
+            },
+          }),
+        }),
+      });
+    });
+
+    it("should handle serverFn errors gracefully", async () => {
+      const mockServerFn = vi
+        .fn()
+        .mockRejectedValue(new Error("ServerFn Error")) as any;
+
+      const clientWithServerFn = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
+        serverFn: mockServerFn,
+      });
+
+      const fallbackHead = {
+        meta: [{ name: "fallback", content: "Fallback Meta" }],
+      };
+
+      const result = await clientWithServerFn.getHead({
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
+      });
+
+      expect(result).toEqual(fallbackHead);
+      expect(mockServerFn).toHaveBeenCalled();
+    });
+  });
+
+  describe("serverFnHandler static method", () => {
+    it("should handle metadataGetLatest type correctly", async () => {
+      // Mock the FetchApiClient for serverFnHandler
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      const result = await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      expect(result).toEqual({
+        data: mockApiResponse,
+        error: undefined,
+      });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer test-api-key",
+        },
+      });
+    });
+
+    it("should throw error for unknown type", async () => {
+      const ctx = {
+        data: {
+          type: "unknownType" as any,
+          args: {},
+        },
+      };
+
+      await expect(
+        GenerateMetadataClient.serverFnHandler(ctx as any, {
+          apiKey: "test-api-key",
+        }),
+      ).rejects.toThrow(
+        "generate metadata server function called with unknown type unknownType",
+      );
+    });
+
+    it("should merge headers correctly in serverFnHandler", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+            headers: {
+              "X-Custom-Header": "custom-value",
+            },
+          },
+        },
+      };
+
+      await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          "X-Custom-Header": "custom-value",
+          Authorization: "Bearer test-api-key",
+        },
+      });
+    });
+
+    it("should handle serverFnHandler without apiKey", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      await GenerateMetadataClient.serverFnHandler(ctx as any, { apiKey: "" });
+
+      expect(mockFetchApiClient.metadataGetLatest).toHaveBeenCalledWith({
+        params: {
+          path: { dsn: "test-dsn" },
+          query: { path: "/test" },
+        },
+        headers: {
+          Authorization: "Bearer ",
+        },
+      });
+    });
+
+    it("should omit response from serverFnHandler result", async () => {
+      const mockFetchApiClient = {
+        metadataGetLatest: vi.fn().mockResolvedValue({
+          data: mockApiResponse,
+          error: undefined,
+          response: new Response(),
+        }),
+      };
+
+      vi.mocked(FetchApiClient).mockImplementation(
+        () => mockFetchApiClient as any,
+      );
+
+      const ctx = {
+        data: {
+          type: "metadataGetLatest" as const,
+          args: {
+            params: {
+              path: { dsn: "test-dsn" },
+              query: { path: "/test" },
+            },
+          },
+        },
+      };
+
+      const result = await GenerateMetadataClient.serverFnHandler(ctx as any, {
+        apiKey: "test-api-key",
+      });
+
+      // Result should not have the response property
+      expect(result).not.toHaveProperty("response");
+      expect(result).toHaveProperty("data");
+      expect(result).toHaveProperty("error");
+    });
+  });
+
+  describe("serverFnValidator", () => {
+    it("should validate metadataGetLatest type", () => {
+      const validData = {
+        type: "metadataGetLatest",
+        args: {
+          params: {
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
+          },
+        },
+      };
+
+      // Should not throw
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(validData),
+      ).not.toThrow();
+    });
+
+    it("should validate placeholder type", () => {
+      const validData = {
+        type: "placeholder",
+      };
+
+      // Should not throw
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(validData),
+      ).not.toThrow();
+    });
+
+    it("should reject invalid type", () => {
+      const invalidData = {
+        type: "invalid",
+        args: {},
+      };
+
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(invalidData),
+      ).toThrow();
+    });
+
+    it("should reject missing type", () => {
+      const invalidData = {
+        args: {},
+      };
+
+      expect(() =>
+        GenerateMetadataClient.serverFnValidator(invalidData),
+      ).toThrow();
+    });
+  });
+
+  describe("getMetadataValidator", () => {
+    it("should pass through any data", () => {
+      const testData = { foo: "bar", baz: 123 };
+      const result = client.getMetadataValidator(testData);
+      expect(result).toBe(testData);
+    });
+
+    it("should handle undefined", () => {
+      const result = client.getMetadataValidator(undefined);
+      expect(result).toBe(undefined);
+    });
+
+    it("should handle null", () => {
+      const result = client.getMetadataValidator(null);
+      expect(result).toBe(null);
     });
   });
 });
