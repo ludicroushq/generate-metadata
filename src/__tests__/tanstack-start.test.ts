@@ -19,9 +19,18 @@ const mockApiClient = {
   GET: vi.fn(),
 };
 
-// Mock the API module
+// Mock the FetchApiClient
+vi.mock("../utils/api/fetch", () => ({
+  FetchApiClient: vi.fn().mockImplementation(() => ({
+    metadataGetLatest: vi.fn((args) =>
+      mockApiClient.GET("/v1/{dsn}/metadata/get-latest", args),
+    ),
+  })),
+}));
+
+// Mock the base URL export
 vi.mock("../utils/api", () => ({
-  getApi: vi.fn(() => mockApiClient),
+  baseUrl: "https://www.generate-metadata.com/api/openapi",
 }));
 
 const mockApiResponse: MetadataApiResponse = {
@@ -93,13 +102,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  const getMetadataServerFn: any = async ({ data }: { data: unknown }) => {
-    return await client.getMetadataServerFnHandler(
-      { data },
-      { apiKey: "test-api-key" },
-    );
-  };
-
   const mockCtx = {
     match: {
       pathname: "/test",
@@ -116,7 +118,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -242,7 +243,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
         ctx: mockCtx,
@@ -306,7 +306,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -326,7 +325,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         override: overrideHead,
         ctx: mockCtx,
@@ -418,7 +416,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -432,7 +429,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -460,7 +456,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
@@ -557,7 +552,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -573,13 +567,11 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // First call
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       // Second call
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -595,7 +587,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -604,7 +595,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -621,19 +611,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataServerFnDev: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await devClient.getMetadataServerFnHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       const result = await devClient.getHead({
-        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
         ctx: mockCtx,
       });
@@ -647,17 +625,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         dsn: undefined,
       });
 
-      const getMetadataServerFnDev: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await devClient.getMetadataServerFnHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       const fallbackHead = {
         meta: [
           { name: "title", content: "Development Title" },
@@ -666,7 +633,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await devClient.getHead({
-        getMetadataServerFn: getMetadataServerFnDev,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -708,7 +674,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -762,7 +727,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -806,7 +770,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -831,7 +794,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         ctx: mockCtx,
@@ -854,7 +816,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -883,19 +844,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         error: undefined,
       });
 
-      const getMetadataServerFnWithoutApiKey: any = async ({
-        data,
-      }: {
-        data: unknown;
-      }) => {
-        return await clientWithoutApiKey.getMetadataServerFnHandler(
-          { data },
-          { apiKey: undefined },
-        );
-      };
-
       await clientWithoutApiKey.getHead({
-        getMetadataServerFn: getMetadataServerFnWithoutApiKey,
         path: "/test",
         ctx: mockCtx,
       });
@@ -935,7 +884,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -964,7 +912,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -992,7 +939,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1025,7 +971,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         // path is not defined, should use last match from matches array
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1061,7 +1006,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         // path is not defined, should use match.pathname as fallback
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1101,7 +1045,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       const result = await client.getHead({
         path: "/explicit-path", // Explicitly defined path
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1142,7 +1085,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1182,7 +1124,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1219,7 +1160,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1254,7 +1194,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1294,7 +1233,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         ctx: customCtx,
       });
 
@@ -1467,7 +1405,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       };
 
       const result = await client.getHead({
-        getMetadataServerFn,
         path: "/test",
         fallback: fallbackHead,
         override: overrideHead,
@@ -1516,7 +1453,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1529,7 +1465,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Verify cache was cleared by fetching again
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
@@ -1544,7 +1479,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -1553,7 +1487,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -1570,7 +1503,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Both paths should fetch again
       await client.getHead({
         path: "/test1",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test1" },
@@ -1579,7 +1511,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
       await client.getHead({
         path: "/test2",
-        getMetadataServerFn,
         ctx: {
           ...mockCtx,
           match: { pathname: "/test2" },
@@ -1600,7 +1531,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
 
@@ -1626,7 +1556,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "test",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "test" } },
       });
 
@@ -1651,7 +1580,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "test/page/",
         ctx: { ...mockCtx, match: { pathname: "test/page/" } },
       });
@@ -1678,7 +1606,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/" } },
       });
 
@@ -1703,7 +1630,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test?query=param",
         ctx: { ...mockCtx, match: { pathname: "/test?query=param" } },
       });
@@ -1729,7 +1655,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test#section",
         ctx: { ...mockCtx, match: { pathname: "/test#section" } },
       });
@@ -1755,7 +1680,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       });
 
       await client.getHead({
-        getMetadataServerFn,
         path: "/test/page///",
         ctx: { ...mockCtx, match: { pathname: "/test/page///" } },
       });
@@ -1783,19 +1707,16 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // First call
       await client.getHead({
         path: "/test/",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
       // Second call with different format but same normalized path
       await client.getHead({
         path: "test",
-        getMetadataServerFn,
         ctx: { ...mockCtx, match: { pathname: "test" } },
       });
       // Third call with normalized format
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1812,7 +1733,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
 
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
 
@@ -1822,7 +1742,6 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       // Verify cache was cleared by fetching again
       await client.getHead({
         path: "/test",
-        getMetadataServerFn,
         ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared

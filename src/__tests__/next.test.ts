@@ -8,9 +8,18 @@ const mockApiClient = {
   GET: vi.fn(),
 };
 
-// Mock the API module
+// Mock the FetchApiClient
+vi.mock("../utils/api/fetch", () => ({
+  FetchApiClient: vi.fn().mockImplementation(() => ({
+    metadataGetLatest: vi.fn((args) =>
+      mockApiClient.GET("/v1/{dsn}/metadata/get-latest", args),
+    ),
+  })),
+}));
+
+// Mock the base URL export
 vi.mock("../utils/api", () => ({
-  getApi: vi.fn(() => mockApiClient),
+  baseUrl: "https://www.generate-metadata.com/api/openapi",
 }));
 
 // Mock Next.js cache module
