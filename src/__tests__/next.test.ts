@@ -1510,7 +1510,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       // pathRewrite should receive normalized path
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old");
       expect(revalidatePath).toHaveBeenCalledWith("/new");
     });
   });
@@ -1546,7 +1546,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
       expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new/path"); // Normalized
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old"); // Normalized
       expect(revalidatePath).toHaveBeenCalledWith("/new/path"); // Normalized
     });
 
@@ -1613,7 +1613,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await handlers.POST(mockRequest);
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test"); // All trailing slashes removed
       expect(revalidatePath).toHaveBeenCalledWith("/rewritten");
     });
 
@@ -1646,7 +1646,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       await handlers.POST(mockRequest);
 
       expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test"); // Leading slash added
       expect(revalidatePath).toHaveBeenCalledWith("/rewritten/path");
     });
   });
@@ -1725,7 +1725,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/old");
       expect(revalidatePath).toHaveBeenCalledWith("/new");
     });
 

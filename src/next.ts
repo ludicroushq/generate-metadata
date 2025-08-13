@@ -349,22 +349,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         const { path: originalPath } = data;
-        const normalizedPath = normalizePathname(originalPath);
+        const path = normalizePathname(originalPath);
         this.debug(
           "Processing metadata_update webhook for path:",
           originalPath,
         );
 
-        const path = normalizePathname(
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
+        const revalidatePath = normalizePathname(
+          options.revalidate?.pathRewrite?.(path) ?? path,
         );
 
-        if (path !== normalizedPath) {
-          this.debug("Path rewritten from", normalizedPath, "to", path);
+        if (path !== revalidatePath) {
+          this.debug("Path rewritten from", path, "to", path);
         }
 
         this.clearCache(path);
-        await this.triggerRevalidation(path);
+        await this.triggerRevalidation(revalidatePath);
 
         return { revalidated: true, path };
       },
