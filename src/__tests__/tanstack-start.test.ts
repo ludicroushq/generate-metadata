@@ -94,7 +94,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
   });
 
   const getMetadataServerFn: any = async ({ data }: { data: unknown }) => {
-    return await client.getMetadataHandler(
+    return await client.getMetadataServerFnHandler(
       { data },
       { apiKey: "test-api-key" },
     );
@@ -626,7 +626,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       }: {
         data: unknown;
       }) => {
-        return await devClient.getMetadataHandler(
+        return await devClient.getMetadataServerFnHandler(
           { data },
           { apiKey: undefined },
         );
@@ -652,7 +652,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       }: {
         data: unknown;
       }) => {
-        return await devClient.getMetadataHandler(
+        return await devClient.getMetadataServerFnHandler(
           { data },
           { apiKey: undefined },
         );
@@ -888,7 +888,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
       }: {
         data: unknown;
       }) => {
-        return await clientWithoutApiKey.getMetadataHandler(
+        return await clientWithoutApiKey.getMetadataServerFnHandler(
           { data },
           { apiKey: undefined },
         );

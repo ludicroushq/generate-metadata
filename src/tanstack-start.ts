@@ -1,3 +1,4 @@
+import type { ServerFnCtx } from "@tanstack/react-start";
 import _, { merge } from "es-toolkit/compat";
 import { match } from "ts-pattern";
 import {
@@ -6,8 +7,13 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+import { FetchApiClient } from "./utils/api/fetch";
+import {
+  TanstackStartApiClient,
+  validator,
+  type ServerFnType,
+} from "./utils/api/tanstack-start";
 import { normalizePathname } from "./utils/normalize-pathname";
-import type { OptionalFetcher } from "@tanstack/react-start";
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -37,9 +43,16 @@ type TanstackHead = {
   }>;
 };
 
-export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
+export type GenerateMetadataClientOptions =
+  GenerateMetadataClientBaseOptions & {
+    serverFn: ServerFnType;
+  };
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
+  constructor(props: GenerateMetadataClientOptions) {
+    super(props);
+    this.api = new TanstackStartApiClient(props.serverFn);
+  }
   protected getFrameworkName(): "tanstack-start" {
     return "tanstack-start";
   }
@@ -356,12 +369,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       path?: string;
       override?: TanstackHead;
       fallback?: TanstackHead;
-      getMetadataServerFn: OptionalFetcher<
-        undefined,
-        (data: unknown) => unknown,
-        MetadataApiResponse | null,
-        "data"
-      >;
     },
   ) {
     this.debug("getHead called");
@@ -376,8 +383,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
 
     try {
-      const metadata = await opts.getMetadataServerFn({
-        data,
+      const metadata = await this.fetchMetadata({
+        ...data,
       });
 
       const tanstackHead = metadata ? this.convertToTanstackHead(metadata) : {};
@@ -397,24 +404,30 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return data;
   }
 
-  public async getMetadataHandler(
-    { data }: { data: unknown },
-    { apiKey }: { apiKey: string | undefined },
-  ) {
-    const metadata = await this.fetchMetadata({
-      ...(data as GenerateMetadataOptions),
-      apiKey,
-    });
-    return metadata;
-  }
+  // Static validator for serverFn input
+  public static serverFnValidator = validator;
 
-  public getMetadata() {
-    return async ({ data }: { data: unknown }) => {
-      const metadata = await this.fetchMetadata(
-        data as GenerateMetadataOptions,
-      );
-      return metadata ?? {};
-    };
+  public static async serverFnHandler(
+    ctx: ServerFnCtx<unknown, "data", undefined, typeof validator>,
+    options: { apiKey: string },
+  ) {
+    const { apiKey } = options;
+    const fetchApiClient = new FetchApiClient();
+
+    if (ctx.data.type === "metadataGetLatest") {
+      const asdf = await fetchApiClient.metadataGetLatest({
+        ...ctx.data.args,
+        headers: {
+          ...ctx.data.args?.headers,
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+      return _.omit(asdf, "response");
+    }
+
+    throw new Error(
+      `generate metadata server function called with unknown type ${ctx.data.type}`,
+    );
   }
 
   public getRootHead<Ctx = {}>(
