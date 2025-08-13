@@ -1456,7 +1456,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     });
   });
 
-  describe("revalidate", () => {
+  describe("triggerRevalidation", () => {
     it("should clear cache for specific path", async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -1763,7 +1763,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize path in webhook handler", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
       const handlers = client.revalidateWebhookHandler({
@@ -1810,7 +1810,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize path before applying pathRewrite", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
 
@@ -1848,7 +1848,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize the result of pathRewrite", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return unnormalized path
@@ -1887,7 +1887,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should handle pathRewrite returning null (falls back to original path)", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return null for certain paths
@@ -1926,7 +1926,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should normalize pathRewrite result with multiple trailing slashes", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path with multiple trailing slashes
@@ -1964,7 +1964,7 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
     it("should handle pathRewrite returning path without leading slash", async () => {
       const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path without leading slash
@@ -2043,9 +2043,9 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      // Spy on the revalidate method
+      // Spy on the triggerRevalidation method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
       const response = await handlers.POST({ request: mockRequest });
@@ -2106,9 +2106,9 @@ describe("GenerateMetadataClient (TanStack Start)", () => {
         },
       );
 
-      // Spy on the revalidate method
+      // Spy on the triggerRevalidation method
       const revalidateSpy = vi
-        .spyOn(client as any, "revalidate")
+        .spyOn(client as any, "triggerRevalidation")
         .mockImplementation(() => {});
 
       const response = await handlers.POST({ request: mockRequest });

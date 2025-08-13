@@ -1012,7 +1012,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
-  describe("revalidate", () => {
+  describe("triggerRevalidation", () => {
     it("should clear cache and call revalidatePath for specific path", async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -1026,9 +1026,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
-      // Call clearCache and revalidate (which is what the webhook handler does)
+      // Call clearCache and triggerRevalidation (which is what the webhook handler does)
       (client as any).clearCache("/test");
-      await (client as any).revalidate("/test");
+      await (client as any).triggerRevalidation("/test");
 
       // Verify revalidatePath was called
       expect(revalidatePath).toHaveBeenCalledWith("/test");
@@ -1039,9 +1039,9 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
 
     it("should clear entire cache and revalidate all paths when path is null", async () => {
-      // Call clearCache and revalidate with null
+      // Call clearCache and triggerRevalidation with null
       (client as any).clearCache(null);
-      await (client as any).revalidate(null);
+      await (client as any).triggerRevalidation(null);
 
       // Verify revalidatePath was called with layout revalidation
       expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
@@ -1415,11 +1415,11 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it("should normalize path in revalidate", async () => {
-      await (client as any).revalidate("/test/");
+    it("should normalize path in triggerRevalidation", async () => {
+      await (client as any).triggerRevalidation("/test/");
       expect(revalidatePath).toHaveBeenCalledWith("/test");
 
-      await (client as any).revalidate("test");
+      await (client as any).triggerRevalidation("test");
       expect(revalidatePath).toHaveBeenCalledWith("/test");
     });
 
