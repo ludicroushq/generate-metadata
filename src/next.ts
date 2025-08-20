@@ -9,7 +9,7 @@ import {
   type MetadataApiResponse,
 } from ".";
 import { normalizePathname } from "./utils/normalize-pathname";
-import { merge } from "es-toolkit/compat";
+import _ from "es-toolkit/compat";
 
 type GenerateMetadataClientNextOptions = GenerateMetadataClientBaseOptions & {
   apiKey: string | undefined;
@@ -38,7 +38,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       override ? "present" : "absent",
     );
     // Deep merge: override > generated > fallback
-    return merge({}, fallback || {}, generated, override || {});
+    return _.merge({}, fallback || {}, generated, override || {});
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
@@ -293,7 +293,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected async revalidate(path: string | null): Promise<void> {
+  protected async triggerRevalidation(path: string | null): Promise<void> {
     const normalizedPath = normalizePathname(path);
     if (normalizedPath !== null) {
       this.debug("Revalidating path:", normalizedPath);
@@ -349,22 +349,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         const { path: originalPath } = data;
-        const normalizedPath = normalizePathname(originalPath);
+        const path = normalizePathname(originalPath);
         this.debug(
           "Processing metadata_update webhook for path:",
           originalPath,
         );
 
-        const path = normalizePathname(
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
+        const revalidatePath = normalizePathname(
+          options.revalidate?.pathRewrite?.(path) ?? path,
         );
 
-        if (path !== normalizedPath) {
-          this.debug("Path rewritten from", normalizedPath, "to", path);
+        if (path !== revalidatePath) {
+          this.debug("Path rewritten from", path, "to", path);
         }
 
         this.clearCache(path);
-        await this.revalidate(path);
+        await this.triggerRevalidation(revalidatePath);
 
         return { revalidated: true, path };
       },

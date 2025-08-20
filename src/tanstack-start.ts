@@ -1,4 +1,6 @@
-import _, { merge } from "es-toolkit/compat";
+import { handle } from "hono/vercel";
+import type { ServerFnCtx } from "@tanstack/react-start";
+import _ from "es-toolkit/compat";
 import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
@@ -6,8 +8,13 @@ import {
   type GenerateMetadataOptions,
   type MetadataApiResponse,
 } from ".";
+import { FetchApiClient } from "./utils/api/fetch";
+import {
+  TanstackStartApiClient,
+  validator,
+  type ServerFnType,
+} from "./utils/api/tanstack-start";
 import { normalizePathname } from "./utils/normalize-pathname";
-import type { OptionalFetcher } from "@tanstack/react-start";
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -37,9 +44,18 @@ type TanstackHead = {
   }>;
 };
 
-export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
+export type GenerateMetadataClientOptions =
+  GenerateMetadataClientBaseOptions & {
+    serverFn?: ServerFnType;
+  };
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
+  constructor(props: GenerateMetadataClientOptions) {
+    super(props);
+    if (props.serverFn) {
+      this.api = new TanstackStartApiClient(props.serverFn);
+    }
+  }
   protected getFrameworkName(): "tanstack-start" {
     return "tanstack-start";
   }
@@ -63,7 +79,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const { meta: _2, ...generatedBase } = generated;
     const { meta: _3, ...overrideBase } = override || {};
 
-    const result: TanstackHead = merge(
+    const result: TanstackHead = _.merge(
       {},
       fallbackBase,
       generatedBase,
@@ -356,12 +372,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       path?: string;
       override?: TanstackHead;
       fallback?: TanstackHead;
-      getMetadataServerFn: OptionalFetcher<
-        undefined,
-        (data: unknown) => unknown,
-        MetadataApiResponse | null,
-        "data"
-      >;
     },
   ) {
     this.debug("getHead called");
@@ -376,8 +386,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
 
     try {
-      const metadata = await opts.getMetadataServerFn({
-        data,
+      const metadata = await this.fetchMetadata({
+        ...data,
       });
 
       const tanstackHead = metadata ? this.convertToTanstackHead(metadata) : {};
@@ -393,28 +403,30 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
   }
 
-  public getMetadataValidator(data: unknown) {
-    return data;
-  }
+  // Static validator for serverFn input
+  public static serverFnValidator = validator;
 
-  public async getMetadataHandler(
-    { data }: { data: unknown },
-    { apiKey }: { apiKey: string | undefined },
+  public static async serverFnHandler(
+    ctx: ServerFnCtx<unknown, "data", undefined, typeof validator>,
+    options: { apiKey: string | undefined },
   ) {
-    const metadata = await this.fetchMetadata({
-      ...(data as GenerateMetadataOptions),
-      apiKey,
-    });
-    return metadata;
-  }
+    const { apiKey } = options;
+    const fetchApiClient = new FetchApiClient();
 
-  public getMetadata() {
-    return async ({ data }: { data: unknown }) => {
-      const metadata = await this.fetchMetadata(
-        data as GenerateMetadataOptions,
-      );
-      return metadata ?? {};
-    };
+    if (ctx.data.type === "metadataGetLatest") {
+      const response = await fetchApiClient.metadataGetLatest({
+        ...ctx.data.args,
+        headers: {
+          ...ctx.data.args?.headers,
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+      return _.omit(response, "response");
+    }
+
+    throw new Error(
+      `generate metadata server function called with unknown type ${ctx.data.type}`,
+    );
   }
 
   public getRootHead<Ctx = {}>(
@@ -435,7 +447,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  protected async revalidate(_path: string | null): Promise<void> {
+  protected async triggerRevalidation(_path: string | null): Promise<void> {
     this.debug(
       "Revalidate called with path:",
       _path,
@@ -479,14 +491,25 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         }
 
         this.clearCache(path);
-        await this.revalidate(path);
+        await this.triggerRevalidation(path);
 
         return { revalidated: true, path };
       },
     });
 
-    // Return the Hono app directly for TanStack Start
-    // TanStack Start can use Hono directly or users can wrap it as needed
-    return app;
+    const handler = handle(app);
+    function handlerWrapper(ctx: { request: Request }) {
+      return handler(ctx.request);
+    }
+
+    return {
+      GET: handlerWrapper,
+      POST: handlerWrapper,
+      PUT: handlerWrapper,
+      PATCH: handlerWrapper,
+      DELETE: handlerWrapper,
+      OPTIONS: handlerWrapper,
+      HEAD: handlerWrapper,
+    };
   }
 }
