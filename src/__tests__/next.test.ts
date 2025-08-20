@@ -922,39 +922,13 @@ describe('GenerateMetadataClient (Next.js)', () => {
 
   describe('getRootMetadata', () => {
     it('should return empty metadata when no factory provided', async () => {
-      // Mock API to return null for root metadata
-      vi.mocked(mockApiClient.GET).mockResolvedValue({
-        data: { metadata: {} },
-        error: undefined,
-      });
-
       const rootMetadataFn = client.getRootMetadata();
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({});
-
-      // Verify API was called with undefined path
-      expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
-        {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
-          params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: undefined },
-          },
-        }
-      );
     });
 
     it('should return empty metadata when factory returns empty object', async () => {
-      // Mock API to return null for root metadata
-      vi.mocked(mockApiClient.GET).mockResolvedValue({
-        data: { metadata: {} },
-        error: undefined,
-      });
-
       const rootMetadataFn = client.getRootMetadata(() => ({}));
       const result = await rootMetadataFn({}, {} as any);
 
@@ -962,12 +936,6 @@ describe('GenerateMetadataClient (Next.js)', () => {
     });
 
     it('should return fallback metadata when provided', async () => {
-      // Mock API to return empty metadata for root
-      vi.mocked(mockApiClient.GET).mockResolvedValue({
-        data: { metadata: {} },
-        error: undefined,
-      });
-
       const fallbackMetadata = {
         description: 'Root Fallback Description',
         title: 'Root Fallback Title',
@@ -982,12 +950,6 @@ describe('GenerateMetadataClient (Next.js)', () => {
     });
 
     it('should merge override metadata properly', async () => {
-      // Mock API to return empty metadata for root
-      vi.mocked(mockApiClient.GET).mockResolvedValue({
-        data: { metadata: {} },
-        error: undefined,
-      });
-
       const fallbackMetadata = {
         description: 'Root Fallback Description',
         title: 'Root Fallback Title',
@@ -1012,12 +974,6 @@ describe('GenerateMetadataClient (Next.js)', () => {
     });
 
     it('should handle async factory functions', async () => {
-      // Mock API to return empty metadata for root
-      vi.mocked(mockApiClient.GET).mockResolvedValue({
-        data: { metadata: {} },
-        error: undefined,
-      });
-
       const asyncFactory = async () => {
         await new Promise((resolve) => setTimeout(resolve, 1));
         return {

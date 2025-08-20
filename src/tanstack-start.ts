@@ -355,30 +355,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     };
   }
 
-  public getMetadataValidator(data: unknown) {
-    return data;
-  }
-
-  public async getMetadataHandler(
-    { data }: { data: unknown },
-    { apiKey }: { apiKey: string | undefined }
-  ) {
-    const metadata = await this.fetchMetadata({
-      ...(data as GenerateMetadataOptions),
-      apiKey,
-    });
-    return metadata;
-  }
-
-  public getMetadata() {
-    return async ({ data }: { data: unknown }) => {
-      const metadata = await this.fetchMetadata(
-        data as GenerateMetadataOptions
-      );
-      return metadata ?? {};
-    };
-  }
-
   public async getHead(
     opts: Omit<GenerateMetadataOptions, 'path'> & {
       ctx: {
@@ -428,62 +404,47 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
   }
 
+  public getMetadataValidator(data: unknown) {
+    return data;
+  }
+
+  public async getMetadataHandler(
+    { data }: { data: unknown },
+    { apiKey }: { apiKey: string | undefined }
+  ) {
+    const metadata = await this.fetchMetadata({
+      ...(data as GenerateMetadataOptions),
+      apiKey,
+    });
+    return metadata;
+  }
+
+  public getMetadata() {
+    return async ({ data }: { data: unknown }) => {
+      const metadata = await this.fetchMetadata(
+        data as GenerateMetadataOptions
+      );
+      return metadata ?? {};
+    };
+  }
+
   // biome-ignore lint/complexity/noBannedTypes: ok
   public getRootHead<Ctx = {}>(
     factory?: (ctx: Ctx) =>
       | {
           override?: TanstackHead;
           fallback?: TanstackHead;
-          getMetadataServerFn?: OptionalFetcher<
-            undefined,
-            (data: unknown) => unknown,
-            MetadataApiResponse | null,
-            'data'
-          >;
         }
       | Promise<{
           override?: TanstackHead;
           fallback?: TanstackHead;
-          getMetadataServerFn?: OptionalFetcher<
-            undefined,
-            (data: unknown) => unknown,
-            MetadataApiResponse | null,
-            'data'
-          >;
         }>
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
-      this.debug('getRootHead called');
       // biome-ignore lint/nursery/noUnnecessaryConditions: biome is wrong
       const opts = factory ? await factory(ctx) : {};
-      const { fallback, override, getMetadataServerFn } = opts;
-
-      if (!getMetadataServerFn) {
-        // No API call - just merge fallback and override
-        return this.mergeMetadata(fallback, {}, override);
-      }
-
-      const data: GenerateMetadataOptions = {
-        path: undefined,
-      };
-
-      try {
-        const metadata = await getMetadataServerFn({
-          data,
-        });
-
-        const tanstackHead = metadata
-          ? this.convertToTanstackHead(metadata)
-          : {};
-
-        // Deep merge: override > generated > fallback
-        const result = this.mergeMetadata(fallback, tanstackHead, override);
-        this.debug('Returning merged root head metadata');
-        return result;
-      } catch (error) {
-        this.debug('Error getting root head metadata:', error);
-        return fallback || {};
-      }
+      // Return empty metadata merged with fallback and override
+      return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
 

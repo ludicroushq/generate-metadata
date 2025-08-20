@@ -233,17 +233,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       props: Props,
       parent: ResolvingMetadata
     ) =>
-      | (GenerateMetadataOptions & {
-          override?: Metadata;
-          fallback?: Metadata;
-          path: string;
-        })
+      | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
       | Promise<
-          GenerateMetadataOptions & {
-            override?: Metadata;
-            fallback?: Metadata;
-            path: string;
-          }
+          GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
         >
   ) {
     return async (
@@ -280,36 +272,17 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       props: Props,
       parent: ResolvingMetadata
     ) =>
-      | { override?: Metadata; fallback?: Metadata; path?: undefined }
-      | Promise<{ override?: Metadata; fallback?: Metadata; path?: undefined }>
+      | { override?: Metadata; fallback?: Metadata }
+      | Promise<{ override?: Metadata; fallback?: Metadata }>
   ) {
-    this.debug('getRootMetadata called');
     return async (
       props: Props,
       parent: ResolvingMetadata
     ): Promise<Metadata> => {
       // biome-ignore lint/nursery/noUnnecessaryConditions: biome is wrong
       const opts = factory ? await factory(props, parent) : {};
-      const { fallback, override } = opts;
-
-      try {
-        const metadata = await this.fetchMetadata({
-          ...opts,
-          path: opts.path ?? undefined,
-        });
-
-        const nextMetadata = metadata
-          ? this.convertToNextMetadata(metadata)
-          : {};
-
-        // Deep merge: override > generated > fallback
-        const result = this.mergeMetadata(fallback, nextMetadata, override);
-        this.debug('Returning merged root metadata');
-        return result;
-      } catch (error) {
-        this.debug('Error generating root metadata:', error);
-        return fallback || {};
-      }
+      // Return empty metadata merged with fallback and override
+      return this.mergeMetadata(opts.fallback, {}, opts.override);
     };
   }
 
