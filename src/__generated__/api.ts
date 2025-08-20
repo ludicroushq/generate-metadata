@@ -3,15 +3,15 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = {
-  '/v1/{dsn}/sites/get-site': {
+export interface paths {
+  "/v1/{dsn}/sites/get-site": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations['v1.sites.getSite'];
+    get: operations["v1.sites.getSite"];
     put?: never;
     post?: never;
     delete?: never;
@@ -20,7 +20,7 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
-  '/v1/{dsn}/sites/register-build': {
+  "/v1/{dsn}/sites/register-build": {
     parameters: {
       query?: never;
       header?: never;
@@ -29,21 +29,21 @@ export type paths = {
     };
     get?: never;
     put?: never;
-    post: operations['v1.sites.registerBuild'];
+    post: operations["v1.sites.registerBuild"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  '/v1/{dsn}/metadata/get-latest': {
+  "/v1/{dsn}/metadata/get-latest": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations['v1.metadata.getLatest'];
+    get: operations["v1.metadata.getLatest"];
     put?: never;
     post?: never;
     delete?: never;
@@ -52,8 +52,8 @@ export type paths = {
     patch?: never;
     trace?: never;
   };
-};
-export type webhooks = {
+}
+export interface webhooks {
   webhook: {
     parameters: {
       query?: never;
@@ -72,33 +72,33 @@ export type webhooks = {
         query?: never;
         header: {
           /** @description HMAC SHA256 signature in format: sha256=<hex>. Generated from timestamp.payload using the webhook secret. */
-          'X-Webhook-Signature': string;
+          "X-Webhook-Signature": string;
           /** @description Unix timestamp (milliseconds) when the webhook was sent */
-          'X-Webhook-Timestamp': string;
+          "X-Webhook-Timestamp": string;
           /**
            * @deprecated
            * @description Bearer token with the webhook secret (deprecated, use signature verification instead)
            */
           Authorization: string;
           /** @description Always set to application/json */
-          'Content-Type': 'application/json';
+          "Content-Type": "application/json";
         };
         path?: never;
         cookie?: never;
       };
       requestBody: {
         content: {
-          'application/json':
+          "application/json":
             | {
                 /** @enum {string} */
-                _type: 'placeholder';
+                _type: "placeholder";
               }
             | {
                 /**
                  * @description Type of webhook event
                  * @enum {string}
                  */
-                _type: 'metadata_update';
+                _type: "metadata_update";
                 /** @description Page path (null for site default) */
                 path: string | null;
                 /** @description ID of the metadata revision */
@@ -130,21 +130,21 @@ export type webhooks = {
                     siteName?: string;
                     /** @enum {string} */
                     type?:
-                      | 'website'
-                      | 'article'
-                      | 'book'
-                      | 'profile'
-                      | 'music.song'
-                      | 'music.album'
-                      | 'music.playlist'
-                      | 'music.radio_station'
-                      | 'video.movie'
-                      | 'video.episode'
-                      | 'video.tv_show'
-                      | 'video.other';
+                      | "website"
+                      | "article"
+                      | "book"
+                      | "profile"
+                      | "music.song"
+                      | "music.album"
+                      | "music.playlist"
+                      | "music.radio_station"
+                      | "video.movie"
+                      | "video.episode"
+                      | "video.tv_show"
+                      | "video.other";
                     url?: string;
                     /** @enum {string} */
-                    determiner?: '' | 'a' | 'an' | 'the' | 'auto';
+                    determiner?: "" | "a" | "an" | "the" | "auto";
                     image?: {
                       url: string;
                       alt?: string;
@@ -164,7 +164,7 @@ export type webhooks = {
                     title?: string;
                     description?: string;
                     /** @enum {string} */
-                    card?: 'summary' | 'summary_large_image';
+                    card?: "summary" | "summary_large_image";
                     image?: {
                       url: string;
                       alt?: string;
@@ -197,7 +197,7 @@ export type webhooks = {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
+            "application/json": {
               /** @example true */
               ok: boolean;
               /** @description Optional metadata object with any additional information */
@@ -213,7 +213,7 @@ export type webhooks = {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
+            "application/json": {
               /** @example false */
               ok: boolean;
               /** @example Invalid webhook signature */
@@ -231,7 +231,7 @@ export type webhooks = {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
+            "application/json": {
               /** @example false */
               ok: boolean;
               /** @example Internal server error */
@@ -251,18 +251,18 @@ export type webhooks = {
     patch?: never;
     trace?: never;
   };
-};
-export type components = {
+}
+export interface components {
   schemas: never;
   responses: never;
   parameters: never;
   requestBodies: never;
   headers: never;
   pathItems: never;
-};
+}
 export type $defs = Record<string, never>;
-export type operations = {
-  'v1.sites.getSite': {
+export interface operations {
+  "v1.sites.getSite": {
     parameters: {
       query?: never;
       header?: never;
@@ -279,7 +279,7 @@ export type operations = {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             site: {
               id: string;
               name: string;
@@ -293,7 +293,7 @@ export type operations = {
       };
     };
   };
-  'v1.sites.registerBuild': {
+  "v1.sites.registerBuild": {
     parameters: {
       query?: never;
       header?: never;
@@ -304,10 +304,10 @@ export type operations = {
     };
     requestBody: {
       content: {
-        'application/json': {
+        "application/json": {
           buildId: string;
           /** @enum {unknown} */
-          framework?: 'next' | 'tanstack-start';
+          framework?: "next" | "tanstack-start";
         };
       };
     };
@@ -318,7 +318,7 @@ export type operations = {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             success: boolean;
             message: string;
           };
@@ -326,7 +326,7 @@ export type operations = {
       };
     };
   };
-  'v1.metadata.getLatest': {
+  "v1.metadata.getLatest": {
     parameters: {
       query: {
         path: string;
@@ -345,7 +345,7 @@ export type operations = {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
+          "application/json": {
             metadata: {
               title?: string;
               description?: string;
@@ -372,21 +372,21 @@ export type operations = {
                 siteName?: string;
                 /** @enum {unknown} */
                 type?:
-                  | 'website'
-                  | 'article'
-                  | 'book'
-                  | 'profile'
-                  | 'music.song'
-                  | 'music.album'
-                  | 'music.playlist'
-                  | 'music.radio_station'
-                  | 'video.movie'
-                  | 'video.episode'
-                  | 'video.tv_show'
-                  | 'video.other';
+                  | "website"
+                  | "article"
+                  | "book"
+                  | "profile"
+                  | "music.song"
+                  | "music.album"
+                  | "music.playlist"
+                  | "music.radio_station"
+                  | "video.movie"
+                  | "video.episode"
+                  | "video.tv_show"
+                  | "video.other";
                 url?: string;
                 /** @enum {unknown} */
-                determiner?: '' | 'a' | 'an' | 'the' | 'auto';
+                determiner?: "" | "a" | "an" | "the" | "auto";
                 image?: {
                   url: string;
                   alt?: string;
@@ -406,7 +406,7 @@ export type operations = {
                 title?: string;
                 description?: string;
                 /** @enum {unknown} */
-                card?: 'summary' | 'summary_large_image';
+                card?: "summary" | "summary_large_image";
                 image?: {
                   url: string;
                   alt?: string;
@@ -426,4 +426,4 @@ export type operations = {
       };
     };
   };
-};
+}

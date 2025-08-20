@@ -1,18 +1,16 @@
-import { type Context, Hono } from 'hono';
-import { logger } from 'hono/logger';
-import { validator } from 'hono/validator';
-import type { Client } from 'openapi-fetch';
-import type { operations, paths, webhooks } from './__generated__/api';
-import { getApi } from './utils/api';
-import { verifyHmacSignature } from './utils/crypto';
-import createDebug, { type DebugFunction } from './utils/debug';
-import { normalizePathname } from './utils/normalize-pathname';
-
-const bearerTokenRegex = /^Bearer (.+)$/;
+import createDebug, { type DebugFunction } from "./utils/debug";
+import { Hono, type Context } from "hono";
+import { logger } from "hono/logger";
+import { validator } from "hono/validator";
+import type { operations, paths, webhooks } from "./__generated__/api";
+import type { Client } from "openapi-fetch";
+import { getApi } from "./utils/api";
+import { normalizePathname } from "./utils/normalize-pathname";
+import { verifyHmacSignature } from "./utils/crypto";
 
 // Extract the metadata response type from the generated API types
 export type MetadataApiResponse =
-  operations['v1.metadata.getLatest']['responses']['200']['content']['application/json'];
+  operations["v1.metadata.getLatest"]["responses"]["200"]["content"]["application/json"];
 
 export type GenerateMetadataOptions = {
   path: string;
@@ -20,9 +18,9 @@ export type GenerateMetadataOptions = {
 };
 
 type WebhookResponse = {
-  200: webhooks['webhook']['post']['responses']['200']['content']['application/json'];
-  401: webhooks['webhook']['post']['responses']['401']['content']['application/json'];
-  500: webhooks['webhook']['post']['responses']['500']['content']['application/json'];
+  200: webhooks["webhook"]["post"]["responses"]["200"]["content"]["application/json"];
+  401: webhooks["webhook"]["post"]["responses"]["401"]["content"]["application/json"];
+  500: webhooks["webhook"]["post"]["responses"]["500"]["content"]["application/json"];
 };
 
 export type GenerateMetadataClientBaseOptions = {
@@ -45,31 +43,31 @@ export abstract class GenerateMetadataClientBase {
 
     this.dsn = dsn;
     this.apiKey = apiKey;
-    this.debug = createDebug('generate-metadata', debugEnabled);
+    this.debug = createDebug("generate-metadata", debugEnabled);
     this.cache = {
       latestMetadata: new Map(),
     };
     this.api = getApi(this.getFrameworkName());
 
     this.debug(
-      'Initialized client with DSN:',
+      "Initialized client with DSN:",
       dsn,
-      'API key:',
-      apiKey ? 'provided' : 'not provided'
+      "API key:",
+      apiKey ? "provided" : "not provided",
     );
   }
-  protected abstract getFrameworkName(): 'next' | 'tanstack-start';
+  protected abstract getFrameworkName(): "next" | "tanstack-start";
 
   protected async fetchMetadata(
-    opts: GenerateMetadataOptions
+    opts: GenerateMetadataOptions,
   ): Promise<MetadataApiResponse | null> {
     const normalizedPath = normalizePathname(opts.path);
-    this.debug('fetchMetadata called with path:', normalizedPath);
+    this.debug("fetchMetadata called with path:", normalizedPath);
 
     // If DSN is undefined, return empty metadata structure (development mode)
     if (this.dsn === undefined) {
       this.debug(
-        'DSN is undefined, returning empty metadata (development mode)'
+        "DSN is undefined, returning empty metadata (development mode)",
       );
       return {
         metadata: {},
@@ -80,16 +78,16 @@ export abstract class GenerateMetadataClientBase {
 
     const cached = this.cache.latestMetadata.get(normalizedPath);
     if (cached) {
-      this.debug('Found cached metadata for path:', normalizedPath);
+      this.debug("Found cached metadata for path:", normalizedPath);
       return cached;
     }
 
     this.debug(
-      'No cached metadata found, fetching from API for path:',
-      normalizedPath
+      "No cached metadata found, fetching from API for path:",
+      normalizedPath,
     );
     try {
-      const res = await this.api.GET('/v1/{dsn}/metadata/get-latest', {
+      const res = await this.api.GET("/v1/{dsn}/metadata/get-latest", {
         params: {
           path: {
             dsn: this.dsn,
@@ -106,24 +104,25 @@ export abstract class GenerateMetadataClientBase {
       });
 
       if (!res.data) {
-        this.debug('API returned no data, error:', res.error);
+        this.debug("API returned no data, error:", res.error);
         throw res.error;
       }
 
       this.debug(
-        'Successfully fetched metadata from API for path:',
-        normalizedPath
+        "Successfully fetched metadata from API for path:",
+        normalizedPath,
       );
       this.cache.latestMetadata.set(normalizedPath, res.data);
 
       return res.data;
     } catch (err) {
       this.debug(
-        'Failed to fetch metadata for path:',
+        "Failed to fetch metadata for path:",
         normalizedPath,
-        'Error:',
-        err
+        "Error:",
+        err,
       );
+      console.warn(`Failed to fetch metadata for ${normalizedPath}:`, err);
       return null;
     }
   }
@@ -131,10 +130,10 @@ export abstract class GenerateMetadataClientBase {
   protected clearCache(path: string | null): void {
     const normalizedPath = normalizePathname(path);
     if (normalizedPath !== null) {
-      this.debug('Clearing cache for path:', normalizedPath);
+      this.debug("Clearing cache for path:", normalizedPath);
       this.cache.latestMetadata.delete(normalizedPath);
     } else {
-      this.debug('Clearing entire cache');
+      this.debug("Clearing entire cache");
       // If path is null, clear entire cache
       this.cache.latestMetadata.clear();
     }
@@ -148,41 +147,41 @@ export abstract class GenerateMetadataClientBase {
     secret: string,
     signature: string,
     timestamp: string,
-    rawBody: string
+    rawBody: string,
   ): Promise<boolean> {
-    this.debug('Verifying HMAC signature');
+    this.debug("Verifying HMAC signature");
 
     const isValid = await verifyHmacSignature(
       secret,
       signature,
       timestamp,
-      rawBody
+      rawBody,
     );
 
     this.debug(
-      'HMAC signature verification result:',
-      isValid ? 'valid' : 'invalid'
+      "HMAC signature verification result:",
+      isValid ? "valid" : "invalid",
     );
     return isValid;
   }
 
   protected createWebhookApp(options: {
     webhookHandler: (
-      data: webhooks['webhook']['post']['requestBody']['content']['application/json']
-    ) => Promise<undefined | Record<string, any>>;
+      data: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"],
+    ) => Promise<void | Record<string, any>>;
     webhookSecret: string | undefined;
   }): Hono<any> {
     const { webhookSecret, webhookHandler } = options;
 
     this.debug(
-      'Creating webhook app with secret:',
-      webhookSecret ? 'provided' : 'not provided'
+      "Creating webhook app with secret:",
+      webhookSecret ? "provided" : "not provided",
     );
 
     function respond<StatusCode extends 200 | 401 | 500>(
       c: Context,
       statusCode: StatusCode,
-      body: WebhookResponse[StatusCode]
+      body: WebhookResponse[StatusCode],
     ) {
       return c.json(body, statusCode);
     }
@@ -192,37 +191,35 @@ export abstract class GenerateMetadataClientBase {
 
     // If webhookSecret is undefined, return error for all routes
     if (webhookSecret === undefined) {
-      this.debug('Webhook secret not configured, returning error handler');
-      // biome-ignore lint/suspicious/useAwait: required
-      app.use('*', async (c) => {
+      this.debug("Webhook secret not configured, returning error handler");
+      app.use("*", async (c) => {
         return respond(c, 500, {
-          error: 'Webhook secret is not configured',
           ok: false,
+          error: "Webhook secret is not configured",
         });
       });
       return app;
     }
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: easy
-    app.use('*', async (c, next) => {
+    app.use("*", async (c, next) => {
       // Check for HMAC signature verification
       const hmacSignature = c.req.header(
-        'X-Webhook-Signature'
-      ) as webhooks['webhook']['post']['parameters']['header']['X-Webhook-Signature'];
+        "X-Webhook-Signature",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["X-Webhook-Signature"];
       const hmacTimestamp = c.req.header(
-        'X-Webhook-Timestamp'
-      ) as webhooks['webhook']['post']['parameters']['header']['X-Webhook-Timestamp'];
+        "X-Webhook-Timestamp",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["X-Webhook-Timestamp"];
       const bearerToken = c.req.header(
-        'Authorization'
-      ) as webhooks['webhook']['post']['parameters']['header']['Authorization'];
+        "Authorization",
+      ) as webhooks["webhook"]["post"]["parameters"]["header"]["Authorization"];
 
       let isAuthenticated = false;
 
       this.debug(
-        'Webhook auth check - HMAC:',
-        hmacSignature ? 'present' : 'absent',
-        'Bearer:',
-        bearerToken ? 'present' : 'absent'
+        "Webhook auth check - HMAC:",
+        hmacSignature ? "present" : "absent",
+        "Bearer:",
+        bearerToken ? "present" : "absent",
       );
 
       // Always try HMAC verification first if headers are present
@@ -236,60 +233,63 @@ export abstract class GenerateMetadataClientBase {
             webhookSecret,
             hmacSignature,
             hmacTimestamp,
-            rawBodyText
+            rawBodyText,
           );
 
           // If HMAC headers are present and valid, we're done
           if (!isAuthenticated) {
-            this.debug('HMAC verification failed, checking bearer token');
+            this.debug("HMAC verification failed, checking bearer token");
             // HMAC headers present but invalid - still check bearer token as fallback
             if (bearerToken) {
-              const tokenMatch = bearerToken.match(bearerTokenRegex);
+              const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
               if (tokenMatch && tokenMatch[1] === webhookSecret) {
-                this.debug('Bearer token authentication successful');
+                this.debug("Bearer token authentication successful");
                 isAuthenticated = true;
               }
             }
           }
         } catch (error) {
-          this.debug('HMAC verification error:', error);
+          console.error("Failed to verify HMAC:", error);
+          this.debug("HMAC verification error:", error);
           // Fall back to bearer token if HMAC verification fails
           if (bearerToken) {
-            const tokenMatch = bearerToken.match(bearerTokenRegex);
+            const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
             if (tokenMatch && tokenMatch[1] === webhookSecret) {
               this.debug(
-                'Bearer token authentication successful (after HMAC error)'
+                "Bearer token authentication successful (after HMAC error)",
               );
               isAuthenticated = true;
             }
           }
         }
-      } else if (bearerToken) {
+      } else {
         // No HMAC headers, fall back to bearer auth only
-        const tokenMatch = bearerToken.match(bearerTokenRegex);
-        if (tokenMatch && tokenMatch[1] === webhookSecret) {
-          this.debug(
-            'Bearer token authentication successful (no HMAC headers)'
-          );
-          isAuthenticated = true;
+        if (bearerToken) {
+          const tokenMatch = bearerToken.match(/^Bearer (.+)$/);
+          if (tokenMatch && tokenMatch[1] === webhookSecret) {
+            this.debug(
+              "Bearer token authentication successful (no HMAC headers)",
+            );
+            isAuthenticated = true;
+          }
         }
       }
 
       // If neither authentication method succeeds, return 401
       if (!isAuthenticated) {
-        this.debug('Authentication failed, returning 401');
-        return respond(c, 401, { error: 'Unauthorized', ok: false });
+        this.debug("Authentication failed, returning 401");
+        return respond(c, 401, { ok: false, error: "Unauthorized" });
       }
 
-      this.debug('Authentication successful');
+      this.debug("Authentication successful");
 
       await next();
     });
 
     // Add POST route with validator
     app.post(
-      '*',
-      validator('json', (value) => {
+      "*",
+      validator("json", (value) => {
         // Pass-through validator that just returns the value
         // This allows us to access both c.req.text() and the parsed JSON
         return value;
@@ -297,31 +297,32 @@ export abstract class GenerateMetadataClientBase {
       async (c) => {
         try {
           // Get the validated JSON body
-          const body: webhooks['webhook']['post']['requestBody']['content']['application/json'] =
-            c.req.valid('json');
+          const body: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
+            c.req.valid("json");
 
-          this.debug('Webhook received with type:', body._type);
+          this.debug("Webhook received with type:", body._type);
 
           const metadata = await webhookHandler(body);
 
-          this.debug('Webhook handler completed successfully');
+          this.debug("Webhook handler completed successfully");
 
           return respond(c, 200, {
-            metadata: metadata ?? {},
             ok: true,
+            metadata: metadata ?? {},
           });
         } catch (error) {
-          this.debug('Webhook handler error:', error);
+          console.error("[webhook handler] Error handling webhook:", error);
+          this.debug("Webhook handler error:", error);
 
           return respond(c, 500, {
-            error: 'Failed to run webhook handler',
-            metadata: {
-              message: error instanceof Error ? error.message : 'Unknown error',
-            },
             ok: false,
+            error: "Failed to run webhook handler",
+            metadata: {
+              message: error instanceof Error ? error.message : "Unknown error",
+            },
           });
         }
-      }
+      },
     );
 
     return app;
@@ -335,31 +336,31 @@ export abstract class GenerateMetadataClientBase {
     basePath?: string;
     revalidatePath?: (path: string | null) => void | Promise<void>;
   }): Hono<any> {
-    this.debug('Creating revalidate app (deprecated)');
+    this.debug("Creating revalidate app (deprecated)");
     return this.createWebhookApp({
+      webhookSecret: options.revalidateSecret,
       webhookHandler: async (data) => {
-        if (data._type !== 'metadata_update') {
-          this.debug('Ignoring webhook type:', data._type);
+        if (data._type !== "metadata_update") {
+          this.debug("Ignoring webhook type:", data._type);
           // Ignore other webhook types
           return;
         }
 
         const { path: originalPath } = data;
         const path = normalizePathname(originalPath);
-        this.debug('Processing metadata_update for path:', path);
+        this.debug("Processing metadata_update for path:", path);
 
         this.clearCache(path);
         if (options.revalidatePath) {
-          this.debug('Using custom revalidatePath function');
+          this.debug("Using custom revalidatePath function");
           await options.revalidatePath(path);
         } else {
-          this.debug('Using framework revalidate method');
+          this.debug("Using framework revalidate method");
           await this.revalidate(path);
         }
 
-        return { path, revalidated: true };
+        return { revalidated: true, path };
       },
-      webhookSecret: options.revalidateSecret,
     });
   }
 }

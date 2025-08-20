@@ -1,4 +1,14 @@
 {
+  "name": "docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3001",
+    "postinstall": "fumadocs-mdx",
+    "start": "next start"
+  },
   "dependencies": {
     "@t3-oss/env-nextjs": "^0.13.8",
     "fumadocs-core": "15.2.10",
@@ -21,15 +31,5 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3"
-  },
-  "name": "docs",
-  "private": true,
-  "scripts": {
-    "build": "next build",
-    "dev": "next dev --port 3001",
-    "postinstall": "fumadocs-mdx",
-    "start": "next start"
-  },
-  "type": "module",
-  "version": "0.0.0"
+  }
 }

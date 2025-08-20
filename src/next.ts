@@ -1,43 +1,51 @@
-import { merge } from 'es-toolkit/compat';
-import { handle } from 'hono/vercel';
-import type { Metadata, ResolvingMetadata } from 'next';
-import { revalidatePath } from 'next/cache';
-import { match } from 'ts-pattern';
+import { handle } from "hono/vercel";
+import type { Metadata, ResolvingMetadata } from "next";
+import { revalidatePath } from "next/cache";
+import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
+  type GenerateMetadataClientBaseOptions,
   type GenerateMetadataOptions,
   type MetadataApiResponse,
-} from '.';
-import { normalizePathname } from './utils/normalize-pathname';
-import type { FlattenUnion } from './utils/types';
+} from ".";
+import { normalizePathname } from "./utils/normalize-pathname";
+import { merge } from "es-toolkit/compat";
 
+type GenerateMetadataClientNextOptions = GenerateMetadataClientBaseOptions & {
+  apiKey: string | undefined;
+};
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  protected getFrameworkName(): 'next' {
-    return 'next';
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor(props: GenerateMetadataClientNextOptions) {
+    super(props);
+  }
+
+  protected getFrameworkName(): "next" {
+    return "next";
   }
 
   private mergeMetadata(
     fallback: Metadata | undefined,
     generated: Metadata,
-    override: Metadata | undefined
+    override: Metadata | undefined,
   ): Metadata {
     this.debug(
-      'Merging metadata - fallback:',
-      fallback ? 'present' : 'absent',
-      'generated:',
-      generated ? 'present' : 'absent',
-      'override:',
-      override ? 'present' : 'absent'
+      "Merging metadata - fallback:",
+      fallback ? "present" : "absent",
+      "generated:",
+      generated ? "present" : "absent",
+      "override:",
+      override ? "present" : "absent",
     );
     // Deep merge: override > generated > fallback
     return merge({}, fallback || {}, generated, override || {});
   }
 
   private convertToNextMetadata(response: MetadataApiResponse): Metadata {
-    this.debug('Converting API response to Next.js metadata');
+    this.debug("Converting API response to Next.js metadata");
 
     if (!response.metadata) {
-      this.debug('No metadata in response');
+      this.debug("No metadata in response");
       return {};
     }
 
@@ -45,172 +53,172 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const nextMetadata: Metadata = {};
 
     const keys: (keyof typeof metadata)[] = Object.keys(
-      metadata
+      metadata,
     ) as (keyof typeof metadata)[];
 
-    this.debug('Processing metadata keys:', keys);
+    this.debug("Processing metadata keys:", keys);
 
-    for (const key of keys) {
+    keys.forEach((key) => {
       match(key)
-        .with('title', () => {
+        .with("title", () => {
           nextMetadata.title = metadata.title;
         })
-        .with('description', () => {
+        .with("description", () => {
           nextMetadata.description = metadata.description;
         })
-        .with('appleTouchIcon', () => {
+        .with("appleTouchIcon", () => {
           if (!nextMetadata.icons) {
             nextMetadata.icons = [];
           }
 
-          if (!(Array.isArray(nextMetadata.icons) && metadata.appleTouchIcon)) {
+          if (!Array.isArray(nextMetadata.icons) || !metadata.appleTouchIcon) {
             return;
           }
 
           for (const icon of metadata.appleTouchIcon) {
             nextMetadata.icons.push({
-              rel: 'apple-touch-icon',
-              sizes: `${icon.width}x${icon.height}`,
-              type: icon.mimeType,
+              rel: "apple-touch-icon",
               url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
             });
           }
         })
-        .with('icon', () => {
+        .with("icon", () => {
           if (!nextMetadata.icons) {
             nextMetadata.icons = [];
           }
 
-          if (!(Array.isArray(nextMetadata.icons) && metadata.icon)) {
+          if (!Array.isArray(nextMetadata.icons) || !metadata.icon) {
             return;
           }
 
           for (const icon of metadata.icon) {
             nextMetadata.icons.push({
-              rel: 'icon',
-              sizes: `${icon.width}x${icon.height}`,
-              type: icon.mimeType,
+              rel: "icon",
               url: icon.url,
+              type: icon.mimeType,
+              sizes: `${icon.width}x${icon.height}`,
             });
           }
         })
-        .with('openGraph', () => {
+        .with("openGraph", () => {
           const { openGraph } = metadata;
           if (!openGraph) {
             return;
           }
           const ogKeys: (keyof typeof openGraph)[] = Object.keys(
-            openGraph
+            openGraph,
           ) as (keyof typeof openGraph)[];
 
-          const result: Metadata['openGraph'] & { type?: string } = {};
+          const result: Metadata["openGraph"] & { type?: string } = {};
 
-          for (const ogKey of ogKeys) {
+          ogKeys.forEach((ogKey) => {
             match(ogKey)
-              .with('title', () => {
+              .with("title", () => {
                 result.title = openGraph.title;
               })
-              .with('description', () => {
-                result.description = openGraph?.description;
+              .with("description", () => {
+                result.description = openGraph!.description;
               })
-              .with('images', () => {
+              .with("images", () => {
                 if (openGraph.images) {
                   result.images = openGraph.images.map((img) => ({
-                    alt: img.alt || undefined,
-                    height: img.height || undefined,
                     url: img.url,
+                    alt: img.alt || undefined,
                     width: img.width || undefined,
+                    height: img.height || undefined,
                   }));
                 }
               })
-              .with('locale', () => {
+              .with("locale", () => {
                 result.locale = openGraph.locale;
               })
-              .with('siteName', () => {
+              .with("siteName", () => {
                 result.siteName = openGraph.siteName;
               })
-              .with('type', () => {
+              .with("type", () => {
                 result.type = openGraph.type;
               })
-              .with('image', () => {
+              .with("image", () => {
                 const ogImage = openGraph.image;
                 if (ogImage) {
-                  if (!(result.images && Array.isArray(result.images))) {
+                  if (!result.images || !Array.isArray(result.images)) {
                     result.images = [];
                   }
                   result.images.push({
-                    alt: ogImage.alt || undefined,
-                    height: ogImage.height || undefined,
                     url: ogImage.url,
+                    alt: ogImage.alt || undefined,
                     width: ogImage.width || undefined,
+                    height: ogImage.height || undefined,
                   });
                 }
               })
-              .with('url', () => {
+              .with("url", () => {
                 result.url = openGraph.url;
               })
-              .with('determiner', () => {
+              .with("determiner", () => {
                 result.determiner = openGraph.determiner;
               })
-              .with('localeAlternate', () => {
+              .with("localeAlternate", () => {
                 result.alternateLocale = openGraph.localeAlternate;
               })
               .exhaustive(() => {});
-          }
+          });
 
           nextMetadata.openGraph = result;
         })
-        .with('twitter', () => {
+        .with("twitter", () => {
           if (!metadata.twitter) {
             return;
           }
 
           const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
-            metadata.twitter
+            metadata.twitter,
           ) as (keyof typeof metadata.twitter)[];
 
-          const twitter: FlattenUnion<Metadata['twitter']> = {};
+          const twitter: any = {};
 
-          for (const twitterKey of twitterKeys) {
+          twitterKeys.forEach((twitterKey) => {
             match(twitterKey)
-              .with('title', () => {
-                twitter.title = metadata.twitter?.title;
+              .with("title", () => {
+                twitter.title = metadata.twitter!.title;
               })
-              .with('description', () => {
-                twitter.description = metadata.twitter?.description;
+              .with("description", () => {
+                twitter.description = metadata.twitter!.description;
               })
-              .with('card', () => {
-                if (metadata.twitter?.card) {
-                  twitter.card = metadata.twitter?.card;
+              .with("card", () => {
+                if (metadata.twitter!.card) {
+                  twitter.card = metadata.twitter!.card;
                 }
               })
-              .with('image', () => {
-                const twitterImage = metadata.twitter?.image;
+              .with("image", () => {
+                const twitterImage = metadata.twitter!.image;
                 if (twitterImage) {
                   twitter.images = [
                     {
-                      alt: twitterImage.alt || undefined,
-                      height: twitterImage.height || undefined,
                       url: twitterImage.url,
+                      alt: twitterImage.alt || undefined,
                       width: twitterImage.width || undefined,
+                      height: twitterImage.height || undefined,
                     },
                   ];
                 }
               })
               .exhaustive(() => {});
-          }
+          });
 
           nextMetadata.twitter = twitter;
         })
-        .with('noindex', () => {
-          nextMetadata.robots = 'noindex,nofollow';
+        .with("noindex", () => {
+          nextMetadata.robots = "noindex,nofollow";
         })
-        .with('customTags', () => {
+        .with("customTags", () => {
           if (!metadata.customTags) {
             return;
           }
 
-          this.debug('Processing custom tags:', metadata.customTags.length);
+          this.debug("Processing custom tags:", metadata.customTags.length);
 
           // Handle custom tags - convert to Next.js metadata format
           for (const tag of metadata.customTags) {
@@ -223,7 +231,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           }
         })
         .exhaustive(() => {});
-    }
+    });
 
     return nextMetadata;
   }
@@ -231,22 +239,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public getMetadata<Props>(
     factory: (
       props: Props,
-      parent: ResolvingMetadata
+      parent: ResolvingMetadata,
     ) =>
       | (GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata })
       | Promise<
           GenerateMetadataOptions & { override?: Metadata; fallback?: Metadata }
-        >
+        >,
   ) {
     return async (
       props: Props,
-      parent: ResolvingMetadata
+      parent: ResolvingMetadata,
     ): Promise<Metadata> => {
-      this.debug('getMetadata called');
+      this.debug("getMetadata called");
       const opts = await factory(props, parent);
       const { path: originalPath, fallback, override } = opts;
       const path = normalizePathname(originalPath);
-      this.debug('Factory returned options with path:', path);
+      this.debug("Factory returned options with path:", path);
 
       try {
         const metadata = await this.fetchMetadata(opts);
@@ -257,29 +265,28 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
         // Deep merge: override > generated > fallback
         const result = this.mergeMetadata(fallback, nextMetadata, override);
-        this.debug('Returning merged metadata');
+        this.debug("Returning merged metadata");
         return result;
       } catch (error) {
-        this.debug('Error generating metadata:', error);
+        this.debug("Error generating metadata:", error);
+        console.warn("Failed to generate metadata:", error);
         return fallback || {};
       }
     };
   }
 
-  // biome-ignore lint/complexity/noBannedTypes: type
   public getRootMetadata<Props = {}>(
     factory?: (
       props: Props,
-      parent: ResolvingMetadata
+      parent: ResolvingMetadata,
     ) =>
       | { override?: Metadata; fallback?: Metadata }
-      | Promise<{ override?: Metadata; fallback?: Metadata }>
+      | Promise<{ override?: Metadata; fallback?: Metadata }>,
   ) {
     return async (
       props: Props,
-      parent: ResolvingMetadata
+      parent: ResolvingMetadata,
     ): Promise<Metadata> => {
-      // biome-ignore lint/nursery/noUnnecessaryConditions: biome is wrong
       const opts = factory ? await factory(props, parent) : {};
       // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, {}, opts.override);
@@ -289,12 +296,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   protected async revalidate(path: string | null): Promise<void> {
     const normalizedPath = normalizePathname(path);
     if (normalizedPath !== null) {
-      this.debug('Revalidating path:', normalizedPath);
+      this.debug("Revalidating path:", normalizedPath);
       await revalidatePath(normalizedPath);
     } else {
-      this.debug('Revalidating all paths (root layout)');
+      this.debug("Revalidating all paths (root layout)");
       // Revalidate all paths by revalidating the root layout
-      await revalidatePath('/', 'layout');
+      await revalidatePath("/", "layout");
     }
   }
 
@@ -313,13 +320,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const handler = handle(app);
 
     return {
-      DELETE: handler,
       GET: handler,
-      HEAD: handler,
-      OPTIONS: handler,
-      PATCH: handler,
       POST: handler,
       PUT: handler,
+      PATCH: handler,
+      DELETE: handler,
+      OPTIONS: handler,
+      HEAD: handler,
     };
   }
 
@@ -329,13 +336,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string | null;
     };
   }) {
-    this.debug('Creating revalidate webhook handler');
+    this.debug("Creating revalidate webhook handler");
 
     // Get the Hono app from base class
     const app = this.createWebhookApp({
+      webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
-        if (data._type !== 'metadata_update') {
-          this.debug('Ignoring webhook type:', data._type);
+        if (data._type !== "metadata_update") {
+          this.debug("Ignoring webhook type:", data._type);
           // Ignore other webhook types
           return;
         }
@@ -343,37 +351,36 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         const { path: originalPath } = data;
         const normalizedPath = normalizePathname(originalPath);
         this.debug(
-          'Processing metadata_update webhook for path:',
-          originalPath
+          "Processing metadata_update webhook for path:",
+          originalPath,
         );
 
         const path = normalizePathname(
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
         );
 
         if (path !== normalizedPath) {
-          this.debug('Path rewritten from', normalizedPath, 'to', path);
+          this.debug("Path rewritten from", normalizedPath, "to", path);
         }
 
         this.clearCache(path);
         await this.revalidate(path);
 
-        return { path, revalidated: true };
+        return { revalidated: true, path };
       },
-      webhookSecret: options.webhookSecret,
     });
 
     // Return Next.js compatible handlers using Hono's Vercel adapter
     const handler = handle(app);
 
     return {
-      DELETE: handler,
       GET: handler,
-      HEAD: handler,
-      OPTIONS: handler,
-      PATCH: handler,
       POST: handler,
       PUT: handler,
+      PATCH: handler,
+      DELETE: handler,
+      OPTIONS: handler,
+      HEAD: handler,
     };
   }
 }

@@ -1,13 +1,13 @@
-import type { OptionalFetcher } from '@tanstack/react-start';
-import _, { merge } from 'es-toolkit/compat';
-import { match } from 'ts-pattern';
+import _, { merge } from "es-toolkit/compat";
+import { match } from "ts-pattern";
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
   type GenerateMetadataOptions,
   type MetadataApiResponse,
-} from '.';
-import { normalizePathname } from './utils/normalize-pathname';
+} from ".";
+import { normalizePathname } from "./utils/normalize-pathname";
+import type { OptionalFetcher } from "@tanstack/react-start";
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -40,23 +40,22 @@ type TanstackHead = {
 export type GenerateMetadataClientOptions = GenerateMetadataClientBaseOptions;
 
 export class GenerateMetadataClient extends GenerateMetadataClientBase {
-  protected getFrameworkName(): 'tanstack-start' {
-    return 'tanstack-start';
+  protected getFrameworkName(): "tanstack-start" {
+    return "tanstack-start";
   }
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: easy
   private mergeMetadata(
     fallback: TanstackHead | undefined,
     generated: TanstackHead,
-    override: TanstackHead | undefined
+    override: TanstackHead | undefined,
   ): TanstackHead {
     this.debug(
-      'Merging metadata - fallback:',
-      fallback ? 'present' : 'absent',
-      'generated:',
-      'present',
-      'override:',
-      override ? 'present' : 'absent'
+      "Merging metadata - fallback:",
+      fallback ? "present" : "absent",
+      "generated:",
+      generated ? "present" : "absent",
+      "override:",
+      override ? "present" : "absent",
     );
 
     // Merge non-meta properties (destructure to exclude meta)
@@ -68,20 +67,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       {},
       fallbackBase,
       generatedBase,
-      overrideBase
+      overrideBase,
     );
 
     // Helper function to get meta key for deduplication
     const getMetaKey = (metaItem: any): string | null => {
-      if (metaItem.name) {
-        return `name:${metaItem.name}`;
-      }
-      if (metaItem.property) {
-        return `property:${metaItem.property}`;
-      }
-      if (metaItem.title) {
-        return 'title';
-      }
+      if (metaItem.name) return `name:${metaItem.name}`;
+      if (metaItem.property) return `property:${metaItem.property}`;
+      if (metaItem.title) return "title";
       return null;
     };
 
@@ -89,7 +82,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const removeByKeys = (items: any[], keysToRemove: Set<string>): any[] => {
       return items.filter((item) => {
         const key = getMetaKey(item);
-        return !(key && keysToRemove.has(key));
+        return !key || !keysToRemove.has(key);
       });
     };
 
@@ -101,9 +94,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const generatedKeys = new Set<string>();
       for (const metaItem of generated.meta) {
         const key = getMetaKey(metaItem);
-        if (key) {
-          generatedKeys.add(key);
-        }
+        if (key) generatedKeys.add(key);
       }
       finalMeta = removeByKeys(finalMeta, generatedKeys);
       finalMeta.push(...generated.meta);
@@ -114,9 +105,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const overrideKeys = new Set<string>();
       for (const metaItem of override.meta) {
         const key = getMetaKey(metaItem);
-        if (key) {
-          overrideKeys.add(key);
-        }
+        if (key) overrideKeys.add(key);
       }
       finalMeta = removeByKeys(finalMeta, overrideKeys);
       finalMeta.push(...override.meta);
@@ -126,228 +115,227 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       result.meta = finalMeta;
     }
 
-    this.debug('Merged metadata has', finalMeta.length, 'meta tags');
+    this.debug("Merged metadata has", finalMeta.length, "meta tags");
 
     return result;
   }
 
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
-    this.debug('Converting API response to TanStack Start head');
+    this.debug("Converting API response to TanStack Start head");
 
     if (!response.metadata) {
-      this.debug('No metadata in response');
+      this.debug("No metadata in response");
       return {};
     }
 
     const { metadata } = response;
-    const meta: TanstackHead['meta'] = [];
-    const links: TanstackHead['links'] = [];
+    const meta: TanstackHead["meta"] = [];
+    const links: TanstackHead["links"] = [];
 
     const keys: (keyof typeof metadata)[] = Object.keys(
-      metadata
+      metadata,
     ) as (keyof typeof metadata)[];
 
-    this.debug('Processing metadata keys:', keys);
+    this.debug("Processing metadata keys:", keys);
 
-    for (const key of keys) {
+    keys.forEach((key) => {
       match(key)
-        .with('title', () => {
+        .with("title", () => {
           if (metadata.title) {
-            meta.push({ content: metadata.title, name: 'title' });
+            meta.push({ name: "title", content: metadata.title });
             meta.push({ title: metadata.title });
           }
         })
-        .with('description', () => {
+        .with("description", () => {
           if (metadata.description) {
-            meta.push({ content: metadata.description, name: 'description' });
+            meta.push({ name: "description", content: metadata.description });
           }
         })
-        .with('icon', () => {
+        .with("icon", () => {
           if (metadata.icon) {
             for (const icon of metadata.icon) {
               links.push({
+                rel: "icon",
                 href: icon.url,
-                rel: 'icon',
-                sizes: `${icon.width}x${icon.height}`,
                 type: icon.mimeType,
+                sizes: `${icon.width}x${icon.height}`,
               });
             }
           }
         })
-        .with('appleTouchIcon', () => {
+        .with("appleTouchIcon", () => {
           if (metadata.appleTouchIcon) {
             for (const icon of metadata.appleTouchIcon) {
               links.push({
+                rel: "apple-touch-icon",
                 href: icon.url,
-                rel: 'apple-touch-icon',
-                sizes: `${icon.width}x${icon.height}`,
                 type: icon.mimeType,
+                sizes: `${icon.width}x${icon.height}`,
               });
             }
           }
         })
-        .with('openGraph', () => {
+        .with("openGraph", () => {
           if (!metadata.openGraph) {
             return;
           }
 
           const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
-            metadata.openGraph
+            metadata.openGraph,
           ) as (keyof typeof metadata.openGraph)[];
 
           const openGraph = metadata.openGraph;
 
-          for (const ogKey of ogKeys) {
+          ogKeys.forEach((ogKey) => {
             match(ogKey)
-              .with('title', () => {
+              .with("title", () => {
                 if (openGraph.title) {
                   meta.push({
+                    property: "og:title",
                     content: openGraph.title,
-                    property: 'og:title',
                   });
                 }
               })
-              .with('description', () => {
+              .with("description", () => {
                 if (openGraph.description) {
                   meta.push({
+                    property: "og:description",
                     content: openGraph.description,
-                    property: 'og:description',
                   });
                 }
               })
-              .with('locale', () => {
+              .with("locale", () => {
                 if (openGraph.locale) {
                   meta.push({
+                    property: "og:locale",
                     content: openGraph.locale,
-                    property: 'og:locale',
                   });
                 }
               })
-              .with('siteName', () => {
+              .with("siteName", () => {
                 if (openGraph.siteName) {
                   meta.push({
+                    property: "og:site_name",
                     content: openGraph.siteName,
-                    property: 'og:site_name',
                   });
                 }
               })
-              .with('type', () => {
+              .with("type", () => {
                 if (openGraph.type) {
                   meta.push({
+                    property: "og:type",
                     content: openGraph.type,
-                    property: 'og:type',
                   });
                 }
               })
-              .with('image', () => {
+              .with("image", () => {
                 const ogImage = openGraph.image;
                 if (ogImage) {
                   meta.push({
+                    property: "og:image",
                     content: ogImage.url,
-                    property: 'og:image',
                   });
                   if (ogImage.alt) {
                     meta.push({
+                      property: "og:image:alt",
                       content: ogImage.alt,
-                      property: 'og:image:alt',
                     });
                   }
                 }
               })
-              // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: easy
-              .with('images', () => {
+              .with("images", () => {
                 if (openGraph.images) {
-                  for (const img of openGraph.images) {
-                    meta.push({ content: img.url, property: 'og:image' });
+                  openGraph.images.forEach((img) => {
+                    meta.push({ property: "og:image", content: img.url });
                     if (img.alt) {
-                      meta.push({ content: img.alt, property: 'og:image:alt' });
+                      meta.push({ property: "og:image:alt", content: img.alt });
                     }
-                  }
+                  });
                 }
               })
-              .with('url', () => {})
-              .with('determiner', () => {})
-              .with('localeAlternate', () => {})
+              .with("url", () => {})
+              .with("determiner", () => {})
+              .with("localeAlternate", () => {})
               .exhaustive(() => {});
-          }
+          });
         })
-        .with('twitter', () => {
+        .with("twitter", () => {
           if (!metadata.twitter) {
             return;
           }
 
           const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
-            metadata.twitter
+            metadata.twitter,
           ) as (keyof typeof metadata.twitter)[];
 
           const twitter = metadata.twitter;
 
-          for (const twitterKey of twitterKeys) {
+          twitterKeys.forEach((twitterKey) => {
             match(twitterKey)
-              .with('title', () => {
+              .with("title", () => {
                 if (twitter.title) {
                   meta.push({
+                    name: "twitter:title",
                     content: twitter.title,
-                    name: 'twitter:title',
                   });
                 }
               })
-              .with('description', () => {
+              .with("description", () => {
                 if (twitter.description) {
                   meta.push({
+                    name: "twitter:description",
                     content: twitter.description,
-                    name: 'twitter:description',
                   });
                 }
               })
-              .with('card', () => {
+              .with("card", () => {
                 if (twitter.card) {
                   meta.push({
+                    name: "twitter:card",
                     content: twitter.card,
-                    name: 'twitter:card',
                   });
                 }
               })
-              .with('image', () => {
+              .with("image", () => {
                 const twitterImage = twitter.image;
                 if (twitterImage) {
                   meta.push({
+                    name: "twitter:image",
                     content: twitterImage.url,
-                    name: 'twitter:image',
                   });
                   if (twitterImage.alt) {
                     meta.push({
+                      name: "twitter:image:alt",
                       content: twitterImage.alt,
-                      name: 'twitter:image:alt',
                     });
                   }
                 }
               })
               .exhaustive(() => {});
-          }
+          });
         })
-        .with('noindex', () => {
+        .with("noindex", () => {
           if (metadata.noindex) {
-            meta.push({ content: 'noindex,nofollow', name: 'robots' });
+            meta.push({ name: "robots", content: "noindex,nofollow" });
           }
         })
-        .with('customTags', () => {
+        .with("customTags", () => {
           if (!metadata.customTags) {
             return;
           }
 
-          this.debug('Processing custom tags:', metadata.customTags.length);
+          this.debug("Processing custom tags:", metadata.customTags.length);
 
           // Handle custom tags - convert to TanStack Start format
           for (const tag of metadata.customTags) {
             meta.push({
-              content: tag.content,
               name: tag.name,
+              content: tag.content,
             });
           }
         })
         .exhaustive(() => {});
-    }
+    });
 
     return {
       meta,
@@ -356,7 +344,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   public async getHead(
-    opts: Omit<GenerateMetadataOptions, 'path'> & {
+    opts: Omit<GenerateMetadataOptions, "path"> & {
       ctx: {
         match: {
           pathname: string;
@@ -372,16 +360,16 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         undefined,
         (data: unknown) => unknown,
         MetadataApiResponse | null,
-        'data'
+        "data"
       >;
-    }
+    },
   ) {
-    this.debug('getHead called');
+    this.debug("getHead called");
     const { path: originalPath, fallback, override, ctx } = opts;
     const path = normalizePathname(
-      originalPath ?? _.last(ctx.matches)?.pathname ?? ctx.match.pathname
+      originalPath ?? _.last(ctx.matches)?.pathname ?? ctx.match.pathname,
     );
-    this.debug('Factory returned options with path:', path);
+    this.debug("Factory returned options with path:", path);
 
     const data: GenerateMetadataOptions = {
       path,
@@ -396,10 +384,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
       // Deep merge: override > generated > fallback
       const result = this.mergeMetadata(fallback, tanstackHead, override);
-      this.debug('Returning merged head metadata');
+      this.debug("Returning merged head metadata");
       return result;
     } catch (error) {
-      this.debug('Error getting head metadata:', error);
+      this.debug("Error getting head metadata:", error);
+      console.warn("Failed to get head metadata:", error);
       return fallback || {};
     }
   }
@@ -410,7 +399,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
   public async getMetadataHandler(
     { data }: { data: unknown },
-    { apiKey }: { apiKey: string | undefined }
+    { apiKey }: { apiKey: string | undefined },
   ) {
     const metadata = await this.fetchMetadata({
       ...(data as GenerateMetadataOptions),
@@ -422,13 +411,12 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public getMetadata() {
     return async ({ data }: { data: unknown }) => {
       const metadata = await this.fetchMetadata(
-        data as GenerateMetadataOptions
+        data as GenerateMetadataOptions,
       );
       return metadata ?? {};
     };
   }
 
-  // biome-ignore lint/complexity/noBannedTypes: ok
   public getRootHead<Ctx = {}>(
     factory?: (ctx: Ctx) =>
       | {
@@ -438,22 +426,20 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       | Promise<{
           override?: TanstackHead;
           fallback?: TanstackHead;
-        }>
+        }>,
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
-      // biome-ignore lint/nursery/noUnnecessaryConditions: biome is wrong
       const opts = factory ? await factory(ctx) : {};
       // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
 
-  // biome-ignore lint/suspicious/useAwait: might need await in the future
   protected async revalidate(_path: string | null): Promise<void> {
     this.debug(
-      'Revalidate called with path:',
+      "Revalidate called with path:",
       _path,
-      '(no-op for TanStack Start)'
+      "(no-op for TanStack Start)",
     );
     // TanStack Start doesn't have a built-in revalidation mechanism
     // So we just return void
@@ -465,13 +451,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string | null;
     };
   }) {
-    this.debug('Creating revalidate webhook handler');
+    this.debug("Creating revalidate webhook handler");
 
     // Get the Hono app from base class
     const app = this.createWebhookApp({
+      webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
-        if (data._type !== 'metadata_update') {
-          this.debug('Ignoring webhook type:', data._type);
+        if (data._type !== "metadata_update") {
+          this.debug("Ignoring webhook type:", data._type);
           // Ignore other webhook types
           return;
         }
@@ -479,24 +466,23 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         const { path: originalPath } = data;
         const normalizedPath = normalizePathname(originalPath);
         this.debug(
-          'Processing metadata_update webhook for path:',
-          normalizedPath
+          "Processing metadata_update webhook for path:",
+          normalizedPath,
         );
 
         const path = normalizePathname(
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
         );
 
         if (path !== normalizedPath) {
-          this.debug('Path rewritten from', normalizedPath, 'to', path);
+          this.debug("Path rewritten from", normalizedPath, "to", path);
         }
 
         this.clearCache(path);
         await this.revalidate(path);
 
-        return { path, revalidated: true };
+        return { revalidated: true, path };
       },
-      webhookSecret: options.webhookSecret,
     });
 
     // Return the Hono app directly for TanStack Start

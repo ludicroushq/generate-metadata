@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { webhooks } from '../__generated__/api';
-import type { MetadataApiResponse } from '../index';
-import { GenerateMetadataClient } from '../tanstack-start';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MetadataApiResponse } from "../index";
+import { GenerateMetadataClient } from "../tanstack-start";
 
-const validMetadataUpdateBody: webhooks['webhook']['post']['requestBody']['content']['application/json'] =
+import type { webhooks } from "../__generated__/api";
+
+const validMetadataUpdateBody: webhooks["webhook"]["post"]["requestBody"]["content"]["application/json"] =
   {
-    _type: 'metadata_update',
+    _type: "metadata_update",
+    path: "/test-path",
+    metadataRevisionId: "rev-123",
     metadata: {},
-    metadataRevisionId: 'rev-123',
-    path: '/test-path',
-    site: { dsn: 'dsn-123', hostname: 'example.com' },
+    site: { hostname: "example.com", dsn: "dsn-123" },
     timestamp: new Date().toISOString(),
   };
 
@@ -19,115 +20,138 @@ const mockApiClient = {
 };
 
 // Mock the API module
-vi.mock('../utils/api', () => ({
+vi.mock("../utils/api", () => ({
   getApi: vi.fn(() => mockApiClient),
 }));
 
 const mockApiResponse: MetadataApiResponse = {
   metadata: {
-    appleTouchIcon: [
-      {
-        height: 180,
-        mimeType: 'image/png',
-        url: 'https://example.com/apple-touch-icon.png',
-        width: 180,
-      },
-    ],
-    description: 'Test page description',
+    title: "Test Page Title",
+    description: "Test page description",
     icon: [
       {
-        height: 32,
-        mimeType: 'image/png',
-        url: 'https://example.com/icon.png',
+        url: "https://example.com/icon.png",
+        mimeType: "image/png",
         width: 32,
+        height: 32,
+      },
+    ],
+    appleTouchIcon: [
+      {
+        url: "https://example.com/apple-touch-icon.png",
+        mimeType: "image/png",
+        width: 180,
+        height: 180,
       },
     ],
     openGraph: {
-      description: 'OG Test Description',
+      title: "OG Test Title",
+      description: "OG Test Description",
+      locale: "en_US",
+      siteName: "Test Site",
+      type: "website",
       image: {
-        alt: 'OG Image Alt Text',
-        height: 630,
-        mimeType: 'image/jpeg',
-        url: 'https://example.com/og-image.jpg',
+        url: "https://example.com/og-image.jpg",
+        alt: "OG Image Alt Text",
         width: 1200,
+        height: 630,
+        mimeType: "image/jpeg",
       },
       images: [
         {
-          alt: 'OG Image 1 Alt',
-          height: 600,
-          mimeType: 'image/jpeg',
-          url: 'https://example.com/og-image-1.jpg',
+          url: "https://example.com/og-image-1.jpg",
+          alt: "OG Image 1 Alt",
           width: 800,
+          height: 600,
+          mimeType: "image/jpeg",
         },
       ],
-      locale: 'en_US',
-      siteName: 'Test Site',
-      title: 'OG Test Title',
-      type: 'website',
     },
-    title: 'Test Page Title',
     twitter: {
-      card: 'summary_large_image',
-      description: 'Twitter Test Description',
+      card: "summary_large_image",
+      title: "Twitter Test Title",
+      description: "Twitter Test Description",
       image: {
-        alt: 'Twitter Image Alt',
-        height: 630,
-        mimeType: 'image/jpeg',
-        url: 'https://example.com/twitter-image.jpg',
+        url: "https://example.com/twitter-image.jpg",
+        alt: "Twitter Image Alt",
         width: 1200,
+        height: 630,
+        mimeType: "image/jpeg",
       },
-      title: 'Twitter Test Title',
     },
   },
 };
 
-describe('GenerateMetadataClient (TanStack Start)', () => {
+describe("GenerateMetadataClient (TanStack Start)", () => {
   let client: GenerateMetadataClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
     client = new GenerateMetadataClient({
-      apiKey: 'test-api-key',
-      dsn: 'test-dsn',
+      dsn: "test-dsn",
+      apiKey: "test-api-key",
     });
   });
 
   const getMetadataServerFn: any = async ({ data }: { data: unknown }) => {
     return await client.getMetadataHandler(
       { data },
-      { apiKey: 'test-api-key' }
+      { apiKey: "test-api-key" },
     );
   };
 
   const mockCtx = {
     match: {
-      pathname: '/test',
+      pathname: "/test",
     },
-    matches: [{ pathname: '/test' }],
+    matches: [{ pathname: "/test" }],
   };
 
-  describe('getHead', () => {
-    it('should return generated metadata when API call succeeds', async () => {
+  describe("getHead", () => {
+    it("should return generated metadata when API call succeeds", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result.meta).toMatchInlineSnapshot(`
         [
           {
+            "content": "Test Page Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Page Title",
+          },
+          {
             "content": "Test page description",
             "name": "description",
           },
           {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
             "content": "OG Test Description",
             "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
           },
           {
             "content": "https://example.com/og-image.jpg",
@@ -146,31 +170,12 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "property": "og:image:alt",
           },
           {
-            "content": "en_US",
-            "property": "og:locale",
-          },
-          {
-            "content": "Test Site",
-            "property": "og:site_name",
-          },
-          {
-            "content": "OG Test Title",
-            "property": "og:title",
-          },
-          {
-            "content": "website",
-            "property": "og:type",
-          },
-          {
-            "content": "Test Page Title",
-            "name": "title",
-          },
-          {
-            "title": "Test Page Title",
-          },
-          {
             "content": "summary_large_image",
             "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
           },
           {
             "content": "Twitter Test Description",
@@ -184,47 +189,41 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "content": "Twitter Image Alt",
             "name": "twitter:image:alt",
           },
-          {
-            "content": "Twitter Test Title",
-            "name": "twitter:title",
-          },
         ]
       `);
 
-      expect(result.links).toMatchInlineSnapshot(`
-        [
-          {
-            "href": "https://example.com/apple-touch-icon.png",
-            "rel": "apple-touch-icon",
-            "sizes": "180x180",
-            "type": "image/png",
-          },
-          {
-            "href": "https://example.com/icon.png",
-            "rel": "icon",
-            "sizes": "32x32",
-            "type": "image/png",
-          },
-        ]
-      `);
+      expect(result.links).toEqual([
+        {
+          rel: "icon",
+          href: "https://example.com/icon.png",
+          type: "image/png",
+          sizes: "32x32",
+        },
+        {
+          rel: "apple-touch-icon",
+          href: "https://example.com/apple-touch-icon.png",
+          type: "image/png",
+          sizes: "180x180",
+        },
+      ]);
     });
 
-    it('should merge override head with generated metadata (override takes priority)', async () => {
+    it("should merge override head with generated metadata (override takes priority)", async () => {
       const mockApiResponseNoIcons: MetadataApiResponse = {
         metadata: {
-          description: 'Test page description',
+          title: "Test Page Title",
+          description: "Test page description",
           openGraph: {
-            description: 'OG Test Description',
+            title: "OG Test Title",
+            description: "OG Test Description",
             image: undefined,
             images: [],
-            title: 'OG Test Title',
           },
-          title: 'Test Page Title',
           twitter: {
-            card: 'summary_large_image',
-            description: 'Twitter Test Description',
+            card: "summary_large_image",
+            title: "Twitter Test Title",
+            description: "Twitter Test Description",
             image: undefined,
-            title: 'Twitter Test Title',
           },
         },
       };
@@ -235,49 +234,49 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const overrideHead = {
-        links: [{ href: 'https://example.com/canonical', rel: 'canonical' }],
         meta: [
-          { content: 'Override Title', name: 'title' }, // Should override generated
-          { content: 'Override Custom Meta', name: 'custom' }, // Should be kept
+          { name: "title", content: "Override Title" }, // Should override generated
+          { name: "custom", content: "Override Custom Meta" }, // Should be kept
         ],
+        links: [{ rel: "canonical", href: "https://example.com/canonical" }],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
         getMetadataServerFn,
+        path: "/test",
         override: overrideHead,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Override meta should take priority
       expect(result.meta).toMatchInlineSnapshot(`
         [
           {
-            "content": "Test page description",
-            "name": "description",
+            "title": "Test Page Title",
           },
           {
-            "content": "OG Test Description",
-            "property": "og:description",
+            "content": "Test page description",
+            "name": "description",
           },
           {
             "content": "OG Test Title",
             "property": "og:title",
           },
           {
-            "title": "Test Page Title",
+            "content": "OG Test Description",
+            "property": "og:description",
           },
           {
             "content": "summary_large_image",
             "name": "twitter:card",
           },
           {
-            "content": "Twitter Test Description",
-            "name": "twitter:description",
-          },
-          {
             "content": "Twitter Test Title",
             "name": "twitter:title",
+          },
+          {
+            "content": "Twitter Test Description",
+            "name": "twitter:description",
           },
           {
             "content": "Override Title",
@@ -291,60 +290,81 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       `);
 
       // Override links should be preserved
-      expect(result.links).toMatchInlineSnapshot(`
-        [
-          {
-            "href": "https://example.com/canonical",
-            "rel": "canonical",
-          },
-        ]
-      `);
+      expect(result.links).toEqual([
+        {
+          rel: "canonical",
+          href: "https://example.com/canonical",
+        },
+      ]);
     });
 
-    it('should handle fallback metadata when API call fails', async () => {
-      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error('API Error'));
+    it("should handle fallback metadata when API call fails", async () => {
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const fallbackHead = {
-        meta: [{ content: 'Fallback Meta', name: 'fallback' }],
+        meta: [{ name: "fallback", content: "Fallback Meta" }],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
-        path: '/test',
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
       });
 
       expect(result).toEqual(fallbackHead);
     });
 
-    it('should merge override metadata with generated metadata', async () => {
+    it("should merge override metadata with generated metadata", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const overrideHead = {
-        meta: [{ content: 'Override Meta', name: 'custom' }],
+        meta: [{ name: "custom", content: "Override Meta" }],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
         getMetadataServerFn,
+        path: "/test",
         override: overrideHead,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Should have both generated and override metadata
       expect(result.meta).toMatchInlineSnapshot(`
         [
           {
+            "content": "Test Page Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Page Title",
+          },
+          {
             "content": "Test page description",
             "name": "description",
           },
           {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
             "content": "OG Test Description",
             "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
           },
           {
             "content": "https://example.com/og-image.jpg",
@@ -363,31 +383,12 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "property": "og:image:alt",
           },
           {
-            "content": "en_US",
-            "property": "og:locale",
-          },
-          {
-            "content": "Test Site",
-            "property": "og:site_name",
-          },
-          {
-            "content": "OG Test Title",
-            "property": "og:title",
-          },
-          {
-            "content": "website",
-            "property": "og:type",
-          },
-          {
-            "content": "Test Page Title",
-            "name": "title",
-          },
-          {
-            "title": "Test Page Title",
-          },
-          {
             "content": "summary_large_image",
             "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
           },
           {
             "content": "Twitter Test Description",
@@ -402,10 +403,6 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "name": "twitter:image:alt",
           },
           {
-            "content": "Twitter Test Title",
-            "name": "twitter:title",
-          },
-          {
             "content": "Override Meta",
             "name": "custom",
           },
@@ -413,36 +410,36 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       `);
     });
 
-    it('should return fallback head when API call fails', async () => {
-      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error('API Error'));
+    it("should return fallback head when API call fails", async () => {
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const fallbackHead = {
-        meta: [{ content: 'Fallback Meta', name: 'fallback' }],
+        meta: [{ name: "fallback", content: "Fallback Meta" }],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
-        path: '/test',
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
       });
 
       expect(result).toEqual(fallbackHead);
     });
 
-    it('should return empty object when API fails and no fallback head provided', async () => {
-      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error('API Error'));
+    it("should return empty object when API fails and no fallback head provided", async () => {
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result).toEqual({});
     });
 
-    it('should use fallback, generated, and override in correct priority order', async () => {
+    it("should use fallback, generated, and override in correct priority order", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -450,24 +447,24 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const fallbackHead = {
         meta: [
-          { content: 'Fallback Only', name: 'fallback-only' },
-          { content: 'Fallback Title', name: 'title' },
+          { name: "fallback-only", content: "Fallback Only" },
+          { name: "title", content: "Fallback Title" },
         ],
       };
 
       const overrideHead = {
         meta: [
-          { content: 'Override Only', name: 'override-only' },
-          { content: 'Override Title', name: 'title' },
+          { name: "override-only", content: "Override Only" },
+          { name: "title", content: "Override Title" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
+        path: "/test",
+        fallback: fallbackHead,
         override: overrideHead,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Should have override title, generated description, fallback-only meta
@@ -478,12 +475,31 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "name": "fallback-only",
           },
           {
+            "title": "Test Page Title",
+          },
+          {
             "content": "Test page description",
             "name": "description",
           },
           {
+            "content": "OG Test Title",
+            "property": "og:title",
+          },
+          {
             "content": "OG Test Description",
             "property": "og:description",
+          },
+          {
+            "content": "en_US",
+            "property": "og:locale",
+          },
+          {
+            "content": "Test Site",
+            "property": "og:site_name",
+          },
+          {
+            "content": "website",
+            "property": "og:type",
           },
           {
             "content": "https://example.com/og-image.jpg",
@@ -502,27 +518,12 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "property": "og:image:alt",
           },
           {
-            "content": "en_US",
-            "property": "og:locale",
-          },
-          {
-            "content": "Test Site",
-            "property": "og:site_name",
-          },
-          {
-            "content": "OG Test Title",
-            "property": "og:title",
-          },
-          {
-            "content": "website",
-            "property": "og:type",
-          },
-          {
-            "title": "Test Page Title",
-          },
-          {
             "content": "summary_large_image",
             "name": "twitter:card",
+          },
+          {
+            "content": "Twitter Test Title",
+            "name": "twitter:title",
           },
           {
             "content": "Twitter Test Description",
@@ -535,10 +536,6 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
           {
             "content": "Twitter Image Alt",
             "name": "twitter:image:alt",
-          },
-          {
-            "content": "Twitter Test Title",
-            "name": "twitter:title",
           },
           {
             "content": "Override Only",
@@ -552,22 +549,22 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       `);
     });
 
-    it('should handle empty API response gracefully', async () => {
+    it("should handle empty API response gracefully", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result).toEqual({});
     });
 
-    it('should cache API responses', async () => {
+    it("should cache API responses", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -575,51 +572,51 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       // First call
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
       // Second call
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // API should only be called once due to caching
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle different paths separately in cache', async () => {
+    it("should handle different paths separately in cache", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test1' },
-          matches: [{ pathname: '/test1' }],
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
         },
-        getMetadataServerFn,
-        path: '/test1',
       });
       await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test2' },
-          matches: [{ pathname: '/test2' }],
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
         },
-        getMetadataServerFn,
-        path: '/test2',
       });
 
       // API should be called twice for different paths
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2);
     });
 
-    it('should return empty metadata when DSN is undefined (development mode)', async () => {
+    it("should return empty metadata when DSN is undefined (development mode)", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
       });
@@ -631,21 +628,21 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       }) => {
         return await devClient.getMetadataHandler(
           { data },
-          { apiKey: undefined }
+          { apiKey: undefined },
         );
       };
 
       const result = await devClient.getHead({
-        ctx: mockCtx,
         getMetadataServerFn: getMetadataServerFnDev,
-        path: '/test',
+        path: "/test",
+        ctx: mockCtx,
       });
 
       expect(result).toEqual({});
       expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
-    it('should use fallback metadata when DSN is undefined', async () => {
+    it("should use fallback metadata when DSN is undefined", async () => {
       const devClient = new GenerateMetadataClient({
         dsn: undefined,
       });
@@ -657,49 +654,49 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       }) => {
         return await devClient.getMetadataHandler(
           { data },
-          { apiKey: undefined }
+          { apiKey: undefined },
         );
       };
 
       const fallbackHead = {
         meta: [
-          { content: 'Development Title', name: 'title' },
-          { content: 'Development Description', name: 'description' },
+          { name: "title", content: "Development Title" },
+          { name: "description", content: "Development Description" },
         ],
       };
 
       const result = await devClient.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn: getMetadataServerFnDev,
-        path: '/test',
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
       });
 
       expect(result).toEqual(fallbackHead);
       expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
-    it('should handle null values gracefully', async () => {
+    it("should handle null values gracefully", async () => {
       const responseWithNulls: MetadataApiResponse = {
         metadata: {
-          appleTouchIcon: undefined,
+          title: undefined,
           description: undefined,
           icon: undefined,
+          appleTouchIcon: undefined,
           openGraph: {
+            title: undefined,
             description: undefined,
-            image: undefined,
-            images: [],
             locale: undefined,
             siteName: undefined,
-            title: undefined,
             type: undefined,
-          },
-          title: undefined,
-          twitter: {
-            card: undefined,
-            description: undefined,
             image: undefined,
+            images: [],
+          },
+          twitter: {
             title: undefined,
+            description: undefined,
+            card: undefined,
+            image: undefined,
           },
         },
       };
@@ -710,50 +707,50 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result).toEqual({});
     });
 
-    it('should handle twitter and openGraph images without alt text', async () => {
+    it("should handle twitter and openGraph images without alt text", async () => {
       const responseWithoutAlt: MetadataApiResponse = {
         metadata: {
+          title: "Test Title",
           description: undefined,
           openGraph: {
+            title: undefined,
             description: undefined,
             image: {
+              url: "https://example.com/og-image.jpg",
               alt: undefined,
-              height: 630,
-              mimeType: 'image/jpeg',
-              url: 'https://example.com/og-image.jpg',
               width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
             },
             images: [
               {
+                url: "https://example.com/og-image-1.jpg",
                 alt: undefined,
-                height: 600,
-                mimeType: 'image/jpeg',
-                url: 'https://example.com/og-image-1.jpg',
                 width: 800,
+                height: 600,
+                mimeType: "image/jpeg",
               },
             ],
-            title: undefined,
           },
-          title: 'Test Title',
           twitter: {
-            card: undefined,
-            description: undefined,
-            image: {
-              alt: undefined,
-              height: 630,
-              mimeType: 'image/jpeg',
-              url: 'https://example.com/twitter-image.jpg',
-              width: 1200,
-            },
             title: undefined,
+            description: undefined,
+            card: undefined,
+            image: {
+              url: "https://example.com/twitter-image.jpg",
+              alt: undefined,
+              width: 1200,
+              height: 630,
+              mimeType: "image/jpeg",
+            },
           },
         },
       };
@@ -764,13 +761,20 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result.meta).toMatchInlineSnapshot(`
         [
+          {
+            "content": "Test Title",
+            "name": "title",
+          },
+          {
+            "title": "Test Title",
+          },
           {
             "content": "https://example.com/og-image.jpg",
             "property": "og:image",
@@ -780,13 +784,6 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "property": "og:image",
           },
           {
-            "content": "Test Title",
-            "name": "title",
-          },
-          {
-            "title": "Test Title",
-          },
-          {
             "content": "https://example.com/twitter-image.jpg",
             "name": "twitter:image",
           },
@@ -794,7 +791,7 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       `);
     });
 
-    it('should handle meta without name property', async () => {
+    it("should handle meta without name property", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
@@ -802,37 +799,28 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const fallbackHead = {
         meta: [
-          { content: 'Property Title', property: 'og:title' },
-          { title: 'Title Tag' },
-          { 'data-custom': 'custom-value' },
+          { property: "og:title", content: "Property Title" },
+          { title: "Title Tag" },
+          { "data-custom": "custom-value" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
-        path: '/test',
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
       });
 
       // Non-name meta should be preserved as is
-      expect(result.meta).toMatchInlineSnapshot(`
-        [
-          {
-            "content": "Property Title",
-            "property": "og:title",
-          },
-          {
-            "title": "Title Tag",
-          },
-          {
-            "data-custom": "custom-value",
-          },
-        ]
-      `);
+      expect(result.meta).toEqual([
+        { property: "og:title", content: "Property Title" },
+        { title: "Title Tag" },
+        { "data-custom": "custom-value" },
+      ]);
     });
 
-    it('should handle empty meta map and nonNameMeta', async () => {
+    it("should handle empty meta map and nonNameMeta", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
@@ -843,20 +831,20 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
-        path: '/test',
+        path: "/test",
+        fallback: fallbackHead,
+        ctx: mockCtx,
       });
 
       // Result should not have meta property if no meta items
       expect(result.meta).toBeUndefined();
     });
 
-    it('should include apiKey as bearer token when provided', async () => {
-      const testClient = new GenerateMetadataClient({
-        apiKey: 'test-api-key',
-        dsn: 'test-dsn',
+    it("should include apiKey as bearer token when provided", async () => {
+      const client = new GenerateMetadataClient({
+        dsn: "test-dsn",
+        apiKey: "test-api-key",
       });
 
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -864,30 +852,30 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
         error: undefined,
       });
 
-      await testClient.getHead({
-        ctx: mockCtx,
+      await client.getHead({
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' },
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should not include authorization header when apiKey is not provided', async () => {
+    it("should not include authorization header when apiKey is not provided", async () => {
       const clientWithoutApiKey = new GenerateMetadataClient({
+        dsn: "test-dsn",
         apiKey: undefined,
-        dsn: 'test-dsn',
       });
 
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -902,41 +890,41 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       }) => {
         return await clientWithoutApiKey.getMetadataHandler(
           { data },
-          { apiKey: undefined }
+          { apiKey: undefined },
         );
       };
 
       await clientWithoutApiKey.getHead({
-        ctx: mockCtx,
         getMetadataServerFn: getMetadataServerFnWithoutApiKey,
-        path: '/test',
+        path: "/test",
+        ctx: mockCtx,
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' },
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" },
           },
-        }
+        },
       );
     });
 
-    it('should handle custom meta tags', async () => {
+    it("should handle custom meta tags", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
+          title: "Test Title",
           customTags: [
             {
-              content: 'John Doe',
-              name: 'author',
+              name: "author",
+              content: "John Doe",
             },
             {
-              content: 'test,metadata,seo',
-              name: 'keywords',
+              name: "keywords",
+              content: "test,metadata,seo",
             },
           ],
-          title: 'Test Title',
         },
       };
 
@@ -946,39 +934,26 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
-      expect(result).toMatchInlineSnapshot(`
-        {
-          "meta": [
-            {
-              "content": "John Doe",
-              "name": "author",
-            },
-            {
-              "content": "test,metadata,seo",
-              "name": "keywords",
-            },
-            {
-              "content": "Test Title",
-              "name": "title",
-            },
-            {
-              "title": "Test Title",
-            },
-          ],
-        }
-      `);
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "author", content: "John Doe" },
+          { name: "keywords", content: "test,metadata,seo" },
+        ],
+      });
     });
 
-    it('should handle noindex metadata', async () => {
+    it("should handle noindex metadata", async () => {
       const noindexApiResponse: MetadataApiResponse = {
         metadata: {
+          title: "Test Title",
           noindex: true,
-          title: 'Test Title',
         },
       };
 
@@ -988,35 +963,25 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
-      expect(result).toMatchInlineSnapshot(`
-        {
-          "meta": [
-            {
-              "content": "noindex,nofollow",
-              "name": "robots",
-            },
-            {
-              "content": "Test Title",
-              "name": "title",
-            },
-            {
-              "title": "Test Title",
-            },
-          ],
-        }
-      `);
+      expect(result).toEqual({
+        meta: [
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
+          { name: "robots", content: "noindex,nofollow" },
+        ],
+      });
     });
 
-    it('should handle empty customTags array', async () => {
+    it("should handle empty customTags array", async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
+          title: "Test Title",
           customTags: [],
-          title: 'Test Title',
         },
       };
 
@@ -1026,22 +991,22 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       const result = await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       expect(result).toEqual({
         meta: [
-          { content: 'Test Title', name: 'title' },
-          { title: 'Test Title' },
+          { name: "title", content: "Test Title" },
+          { title: "Test Title" },
         ],
       });
     });
   });
 
-  describe('path inference from context', () => {
-    it('should use last match from matches array when path is not defined', async () => {
+  describe("path inference from context", () => {
+    it("should use last match from matches array when path is not defined", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1049,39 +1014,39 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/should-not-use-this',
+          pathname: "/should-not-use-this",
         },
         matches: [
-          { pathname: '/root' },
-          { pathname: '/products' },
-          { pathname: '/products/123' },
+          { pathname: "/root" },
+          { pathname: "/products" },
+          { pathname: "/products/123" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         // path is not defined, should use last match from matches array
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Verify it used the last match pathname
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/products/123' }, // Should use last match
+            path: { dsn: "test-dsn" },
+            query: { path: "/products/123" }, // Should use last match
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should fall back to match.pathname when matches array is empty and path is not defined', async () => {
+    it("should fall back to match.pathname when matches array is empty and path is not defined", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1089,35 +1054,35 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/fallback-path',
+          pathname: "/fallback-path",
         },
         matches: [], // Empty matches array
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         // path is not defined, should use match.pathname as fallback
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Verify it used match.pathname as fallback
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/fallback-path' }, // Should use match.pathname
+            path: { dsn: "test-dsn" },
+            query: { path: "/fallback-path" }, // Should use match.pathname
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should prioritize explicit path over matches array', async () => {
+    it("should prioritize explicit path over matches array", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1125,39 +1090,39 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/match-path',
+          pathname: "/match-path",
         },
         matches: [
-          { pathname: '/root' },
-          { pathname: '/products' },
-          { pathname: '/products/456' },
+          { pathname: "/root" },
+          { pathname: "/products" },
+          { pathname: "/products/456" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
+        path: "/explicit-path", // Explicitly defined path
         getMetadataServerFn,
-        path: '/explicit-path', // Explicitly defined path
+        ctx: customCtx,
       });
 
       // Verify it used the explicit path
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/explicit-path' }, // Should use explicit path
+            path: { dsn: "test-dsn" },
+            query: { path: "/explicit-path" }, // Should use explicit path
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should handle nested route matches correctly', async () => {
+    it("should handle nested route matches correctly", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1165,40 +1130,40 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/admin',
+          pathname: "/admin",
         },
         matches: [
-          { pathname: '/' },
-          { pathname: '/admin' },
-          { pathname: '/admin/users' },
-          { pathname: '/admin/users/123' },
-          { pathname: '/admin/users/123/edit' },
+          { pathname: "/" },
+          { pathname: "/admin" },
+          { pathname: "/admin/users" },
+          { pathname: "/admin/users/123" },
+          { pathname: "/admin/users/123/edit" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Should use the last (most specific) match
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/admin/users/123/edit' },
+            path: { dsn: "test-dsn" },
+            query: { path: "/admin/users/123/edit" },
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should normalize paths from matches array', async () => {
+    it("should normalize paths from matches array", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1206,39 +1171,39 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/test/',
+          pathname: "/test/",
         },
         matches: [
-          { pathname: '/root/' },
-          { pathname: 'products/' }, // Missing leading slash
-          { pathname: '/items//' }, // Double slashes
-          { pathname: 'final/path/' }, // Missing leading slash and trailing slash
+          { pathname: "/root/" },
+          { pathname: "products/" }, // Missing leading slash
+          { pathname: "/items//" }, // Double slashes
+          { pathname: "final/path/" }, // Missing leading slash and trailing slash
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Should normalize the last match
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/final/path' }, // Normalized
+            path: { dsn: "test-dsn" },
+            query: { path: "/final/path" }, // Normalized
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should handle single match in matches array', async () => {
+    it("should handle single match in matches array", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1246,36 +1211,36 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/different',
+          pathname: "/different",
         },
         matches: [
-          { pathname: '/single-match' }, // Only one match
+          { pathname: "/single-match" }, // Only one match
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Should use the single match
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/single-match' },
+            path: { dsn: "test-dsn" },
+            query: { path: "/single-match" },
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should handle undefined matches array', async () => {
+    it("should handle undefined matches array", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1283,34 +1248,34 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/only-match-path',
+          pathname: "/only-match-path",
         },
         matches: undefined as any, // Matches might be undefined
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Should fallback to match.pathname
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/only-match-path' },
+            path: { dsn: "test-dsn" },
+            query: { path: "/only-match-path" },
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
 
-    it('should handle matches with query strings and hashes', async () => {
+    it("should handle matches with query strings and hashes", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1318,59 +1283,59 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const customCtx = {
         match: {
-          pathname: '/test',
+          pathname: "/test",
         },
         matches: [
-          { pathname: '/root' },
-          { pathname: '/products?category=electronics' }, // With query string
-          { pathname: '/items#section' }, // With hash
-          { pathname: '/final?query=test#hash' }, // With both
+          { pathname: "/root" },
+          { pathname: "/products?category=electronics" }, // With query string
+          { pathname: "/items#section" }, // With hash
+          { pathname: "/final?query=test#hash" }, // With both
         ],
       };
 
       const result = await client.getHead({
-        ctx: customCtx,
         getMetadataServerFn,
+        ctx: customCtx,
       });
 
       // Should normalize and strip query/hash from the last match
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/final' }, // Normalized without query and hash
+            path: { dsn: "test-dsn" },
+            query: { path: "/final" }, // Normalized without query and hash
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
 
       expect(result.meta).toBeDefined();
     });
   });
 
-  describe('getRootHead', () => {
-    it('should return empty head metadata when no factory provided', async () => {
+  describe("getRootHead", () => {
+    it("should return empty head metadata when no factory provided", async () => {
       const rootHeadFn = client.getRootHead();
       const result = await rootHeadFn({});
 
       expect(result).toEqual({});
     });
 
-    it('should return empty head metadata when factory returns empty object', async () => {
+    it("should return empty head metadata when factory returns empty object", async () => {
       const rootHeadFn = client.getRootHead(() => ({}));
       const result = await rootHeadFn({});
 
       expect(result).toEqual({});
     });
 
-    it('should return fallback metadata when provided', async () => {
+    it("should return fallback metadata when provided", async () => {
       const fallbackHead = {
         meta: [
-          { content: 'Root Fallback Title', name: 'title' },
-          { content: 'Root Fallback Description', name: 'description' },
+          { name: "title", content: "Root Fallback Title" },
+          { name: "description", content: "Root Fallback Description" },
         ],
       };
 
@@ -1382,20 +1347,20 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       expect(result).toEqual(fallbackHead);
     });
 
-    it('should merge override metadata properly', async () => {
+    it("should merge override metadata properly", async () => {
       const fallbackHead = {
         meta: [
-          { content: 'Root Fallback Title', name: 'title' },
-          { content: 'Root Fallback Description', name: 'description' },
+          { name: "title", content: "Root Fallback Title" },
+          { name: "description", content: "Root Fallback Description" },
         ],
       };
 
       const overrideHead = {
-        links: [{ href: 'https://example.com/root', rel: 'canonical' }],
         meta: [
-          { content: 'Root Override Title', name: 'title' },
-          { content: 'root,override', name: 'keywords' },
+          { name: "title", content: "Root Override Title" },
+          { name: "keywords", content: "root,override" },
         ],
+        links: [{ rel: "canonical", href: "https://example.com/root" }],
       };
 
       const rootHeadFn = client.getRootHead(() => ({
@@ -1422,24 +1387,19 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
         ]
       `);
 
-      expect(result.links).toMatchInlineSnapshot(`
-        [
-          {
-            "href": "https://example.com/root",
-            "rel": "canonical",
-          },
-        ]
-      `);
+      expect(result.links).toEqual([
+        { rel: "canonical", href: "https://example.com/root" },
+      ]);
     });
 
-    it('should handle async factory functions', async () => {
+    it("should handle async factory functions", async () => {
       const asyncFactory = async () => {
         await new Promise((resolve) => setTimeout(resolve, 1));
         return {
           fallback: {
             meta: [
-              { content: 'Async Root Title', name: 'title' },
-              { content: 'Async Root Description', name: 'description' },
+              { name: "title", content: "Async Root Title" },
+              { name: "description", content: "Async Root Description" },
             ],
           },
         };
@@ -1450,17 +1410,17 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       expect(result).toEqual({
         meta: [
-          { content: 'Async Root Title', name: 'title' },
-          { content: 'Async Root Description', name: 'description' },
+          { name: "title", content: "Async Root Title" },
+          { name: "description", content: "Async Root Description" },
         ],
       });
     });
 
-    it('should pass context to factory function', async () => {
+    it("should pass context to factory function", async () => {
       const mockFactory = vi.fn().mockReturnValue({
-        fallback: { meta: [{ content: 'Test Title', name: 'title' }] },
+        fallback: { meta: [{ name: "title", content: "Test Title" }] },
       });
-      const mockContext = { test: 'context' };
+      const mockContext = { test: "context" };
 
       const rootHeadFn = client.getRootHead(mockFactory);
       await rootHeadFn(mockContext);
@@ -1468,23 +1428,23 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       expect(mockFactory).toHaveBeenCalledWith(mockContext);
     });
 
-    it('should handle meta deduplication with priority: override > generated > fallback', async () => {
+    it("should handle meta deduplication with priority: override > generated > fallback", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: {
           metadata: {
-            description: 'Generated Description',
+            title: "Generated Title",
+            description: "Generated Description",
             openGraph: {
+              title: undefined,
               description: undefined,
               image: undefined,
               images: [],
-              title: undefined,
             },
-            title: 'Generated Title',
             twitter: {
-              card: undefined,
-              description: undefined,
-              image: undefined,
               title: undefined,
+              description: undefined,
+              card: undefined,
+              image: undefined,
             },
           },
         },
@@ -1493,25 +1453,25 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       const fallbackHead = {
         meta: [
-          { content: 'Fallback Title', name: 'title' },
-          { content: 'Fallback Description', name: 'description' },
-          { content: 'Fallback Author', name: 'author' },
+          { name: "title", content: "Fallback Title" },
+          { name: "description", content: "Fallback Description" },
+          { name: "author", content: "Fallback Author" },
         ],
       };
 
       const overrideHead = {
         meta: [
-          { content: 'Override Title', name: 'title' },
-          { content: 'override,test', name: 'keywords' },
+          { name: "title", content: "Override Title" },
+          { name: "keywords", content: "override,test" },
         ],
       };
 
       const result = await client.getHead({
-        ctx: mockCtx,
-        fallback: fallbackHead,
         getMetadataServerFn,
+        path: "/test",
+        fallback: fallbackHead,
         override: overrideHead,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Expected priority:
@@ -1527,11 +1487,11 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
             "name": "author",
           },
           {
-            "content": "Generated Description",
-            "name": "description",
+            "title": "Generated Title",
           },
           {
-            "title": "Generated Title",
+            "content": "Generated Description",
+            "name": "description",
           },
           {
             "content": "Override Title",
@@ -1546,8 +1506,8 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
     });
   });
 
-  describe('revalidate', () => {
-    it('should clear cache for specific path', async () => {
+  describe("revalidate", () => {
+    it("should clear cache for specific path", async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
@@ -1555,27 +1515,27 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
       // Call clearCache (which is what revalidateWebhookHandler calls)
-      (client as any).clearCache('/test');
+      (client as any).clearCache("/test");
 
       // Verify cache was cleared by fetching again
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
-    it('should clear entire cache when path is null', async () => {
+    it("should clear entire cache when path is null", async () => {
       // Populate cache with multiple paths
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
@@ -1583,22 +1543,22 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test1' },
-          matches: [{ pathname: '/test1' }],
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
         },
-        getMetadataServerFn,
-        path: '/test1',
       });
       await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test2' },
-          matches: [{ pathname: '/test2' }],
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
         },
-        getMetadataServerFn,
-        path: '/test2',
       });
 
       // Clear mocks
@@ -1609,212 +1569,212 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       // Both paths should fetch again
       await client.getHead({
+        path: "/test1",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test1' },
-          matches: [{ pathname: '/test1' }],
+          match: { pathname: "/test1" },
+          matches: [{ pathname: "/test1" }],
         },
-        getMetadataServerFn,
-        path: '/test1',
       });
       await client.getHead({
+        path: "/test2",
+        getMetadataServerFn,
         ctx: {
           ...mockCtx,
-          match: { pathname: '/test2' },
-          matches: [{ pathname: '/test2' }],
+          match: { pathname: "/test2" },
+          matches: [{ pathname: "/test2" }],
         },
-        getMetadataServerFn,
-        path: '/test2',
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Both should fetch again
     });
   });
 
-  describe('path normalization', () => {
-    it('should normalize paths with trailing slashes', async () => {
+  describe("path normalization", () => {
+    it("should normalize paths with trailing slashes", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/test/' } },
+        path: "/test/",
         getMetadataServerFn,
-        path: '/test/',
+        ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' }, // Normalized without trailing slash
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized without trailing slash
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should normalize paths without leading slashes', async () => {
+    it("should normalize paths without leading slashes", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: 'test' } },
+        path: "test",
         getMetadataServerFn,
-        path: 'test',
+        ctx: { ...mockCtx, match: { pathname: "test" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' }, // Normalized with leading slash
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Normalized with leading slash
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should normalize paths with both missing leading and trailing slashes', async () => {
+    it("should normalize paths with both missing leading and trailing slashes", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: 'test/page/' } },
         getMetadataServerFn,
-        path: 'test/page/',
+        path: "test/page/",
+        ctx: { ...mockCtx, match: { pathname: "test/page/" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test/page' }, // Normalized with leading slash, without trailing
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // Normalized with leading slash, without trailing
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should handle root path correctly', async () => {
+    it("should handle root path correctly", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/' } },
+        path: "/",
         getMetadataServerFn,
-        path: '/',
+        ctx: { ...mockCtx, match: { pathname: "/" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/' }, // Root path remains as "/"
+            path: { dsn: "test-dsn" },
+            query: { path: "/" }, // Root path remains as "/"
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should normalize paths with query strings', async () => {
+    it("should normalize paths with query strings", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/test?query=param' } },
         getMetadataServerFn,
-        path: '/test?query=param',
+        path: "/test?query=param",
+        ctx: { ...mockCtx, match: { pathname: "/test?query=param" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' }, // Query string removed
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Query string removed
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should normalize paths with hash fragments', async () => {
+    it("should normalize paths with hash fragments", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/test#section' } },
         getMetadataServerFn,
-        path: '/test#section',
+        path: "/test#section",
+        ctx: { ...mockCtx, match: { pathname: "/test#section" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test' }, // Hash fragment removed
+            path: { dsn: "test-dsn" },
+            query: { path: "/test" }, // Hash fragment removed
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should normalize paths with multiple trailing slashes', async () => {
+    it("should normalize paths with multiple trailing slashes", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/test/page///' } },
         getMetadataServerFn,
-        path: '/test/page///',
+        path: "/test/page///",
+        ctx: { ...mockCtx, match: { pathname: "/test/page///" } },
       });
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        '/v1/{dsn}/metadata/get-latest',
+        "/v1/{dsn}/metadata/get-latest",
         {
-          headers: {
-            Authorization: 'Bearer test-api-key',
-          },
           params: {
-            path: { dsn: 'test-dsn' },
-            query: { path: '/test/page' }, // All trailing slashes removed correctly
+            path: { dsn: "test-dsn" },
+            query: { path: "/test/page" }, // All trailing slashes removed correctly
           },
-        }
+          headers: {
+            Authorization: "Bearer test-api-key",
+          },
+        },
       );
     });
 
-    it('should cache using normalized paths', async () => {
+    it("should cache using normalized paths", async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -1822,28 +1782,28 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       // First call
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: '/test/' } },
+        path: "/test/",
         getMetadataServerFn,
-        path: '/test/',
+        ctx: { ...mockCtx, match: { pathname: "/test/" } },
       });
       // Second call with different format but same normalized path
       await client.getHead({
-        ctx: { ...mockCtx, match: { pathname: 'test' } },
+        path: "test",
         getMetadataServerFn,
-        path: 'test',
+        ctx: { ...mockCtx, match: { pathname: "test" } },
       });
       // Third call with normalized format
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // API should only be called once due to cache normalization
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it('should normalize path in clearCache', async () => {
+    it("should normalize path in clearCache", async () => {
       // First populate cache with different path formats
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
@@ -1851,267 +1811,267 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       });
 
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
 
       // Clear cache with unnormalized path
-      (client as any).clearCache('/test/');
+      (client as any).clearCache("/test/");
 
       // Verify cache was cleared by fetching again
       await client.getHead({
-        ctx: mockCtx,
+        path: "/test",
         getMetadataServerFn,
-        path: '/test',
+        ctx: mockCtx,
       });
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
     });
 
-    it('should normalize path in webhook handler', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+    it("should normalize path in webhook handler", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
 
       const app = client.revalidateWebhookHandler({
-        webhookSecret: 'test-secret',
+        webhookSecret: "test-secret",
       });
 
       // Test with trailing slash
-      const mockRequest1 = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: '/test/',
-        }),
+      const mockRequest1 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test/",
+        }),
       });
 
       await app.fetch(mockRequest1);
-      expect(clearCacheSpy).toHaveBeenCalledWith('/test');
-      expect(revalidateSpy).toHaveBeenCalledWith('/test');
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
       // Test without leading slash
-      const mockRequest2 = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: 'test',
-        }),
+      const mockRequest2 = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "test",
+        }),
       });
 
       await app.fetch(mockRequest2);
-      expect(clearCacheSpy).toHaveBeenCalledWith('/test');
-      expect(revalidateSpy).toHaveBeenCalledWith('/test');
+      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
+      expect(revalidateSpy).toHaveBeenCalledWith("/test");
 
       revalidateSpy.mockRestore();
     });
 
-    it('should normalize path before applying pathRewrite', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+    it("should normalize path before applying pathRewrite", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
-      const pathRewriteSpy = vi.fn((path) => (path === '/old' ? '/new' : path));
+      const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
-        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: 'old/', // Unnormalized path
-        }),
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "old/", // Unnormalized path
+        }),
       });
 
       await app.fetch(mockRequest);
 
       // pathRewrite should receive normalized path
-      expect(pathRewriteSpy).toHaveBeenCalledWith('/old');
-      expect(clearCacheSpy).toHaveBeenCalledWith('/new');
-      expect(revalidateSpy).toHaveBeenCalledWith('/new');
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
+      expect(revalidateSpy).toHaveBeenCalledWith("/new");
 
       revalidateSpy.mockRestore();
     });
   });
 
-  describe('pathRewrite normalization', () => {
-    it('should normalize the result of pathRewrite', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+  describe("pathRewrite normalization", () => {
+    it("should normalize the result of pathRewrite", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return unnormalized path
-        return path === '/old' ? '/new/path/' : path;
+        return path === "/old" ? "/new/path/" : path;
       });
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
-        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: '/old',
-        }),
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/old",
+        }),
       });
 
       await app.fetch(mockRequest);
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
-      expect(pathRewriteSpy).toHaveBeenCalledWith('/old');
-      expect(clearCacheSpy).toHaveBeenCalledWith('/new/path'); // Normalized
-      expect(revalidateSpy).toHaveBeenCalledWith('/new/path'); // Normalized
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/new/path"); // Normalized
+      expect(revalidateSpy).toHaveBeenCalledWith("/new/path"); // Normalized
 
       revalidateSpy.mockRestore();
     });
 
-    it('should handle pathRewrite returning null (falls back to original path)', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+    it("should handle pathRewrite returning null (falls back to original path)", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return null for certain paths
-        return path === '/skip' ? null : path;
+        return path === "/skip" ? null : path;
       });
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
-        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: '/skip',
-        }),
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/skip",
+        }),
       });
 
       await app.fetch(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith('/skip');
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/skip");
       // When pathRewrite returns null, it falls back to the original normalized path
-      expect(clearCacheSpy).toHaveBeenCalledWith('/skip');
-      expect(revalidateSpy).toHaveBeenCalledWith('/skip');
+      expect(clearCacheSpy).toHaveBeenCalledWith("/skip");
+      expect(revalidateSpy).toHaveBeenCalledWith("/skip");
 
       revalidateSpy.mockRestore();
     });
 
-    it('should normalize pathRewrite result with multiple trailing slashes', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+    it("should normalize pathRewrite result with multiple trailing slashes", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path with multiple trailing slashes
-        return path === '/test' ? '/rewritten///' : path;
+        return path === "/test" ? "/rewritten///" : path;
       });
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
-        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: '/test',
-        }),
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test",
+        }),
       });
 
       await app.fetch(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith('/test');
-      expect(clearCacheSpy).toHaveBeenCalledWith('/rewritten'); // All trailing slashes removed
-      expect(revalidateSpy).toHaveBeenCalledWith('/rewritten');
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
+      expect(revalidateSpy).toHaveBeenCalledWith("/rewritten");
 
       revalidateSpy.mockRestore();
     });
 
-    it('should handle pathRewrite returning path without leading slash', async () => {
-      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+    it("should handle pathRewrite returning path without leading slash", async () => {
+      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
       const pathRewriteSpy = vi.fn((path) => {
         // Return path without leading slash
-        return path === '/test' ? 'rewritten/path' : path;
+        return path === "/test" ? "rewritten/path" : path;
       });
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
-        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request('http://localhost:3000/api/webhook', {
-        body: JSON.stringify({
-          _type: 'metadata_update',
-          path: '/test',
-        }),
+      const mockRequest = new Request("http://localhost:3000/api/webhook", {
+        method: "POST",
         headers: {
-          authorization: 'Bearer test-secret',
-          'content-type': 'application/json',
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
         },
-        method: 'POST',
+        body: JSON.stringify({
+          _type: "metadata_update",
+          path: "/test",
+        }),
       });
 
       await app.fetch(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith('/test');
-      expect(clearCacheSpy).toHaveBeenCalledWith('/rewritten/path'); // Leading slash added
-      expect(revalidateSpy).toHaveBeenCalledWith('/rewritten/path');
+      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
+      expect(revalidateSpy).toHaveBeenCalledWith("/rewritten/path");
 
       revalidateSpy.mockRestore();
     });
   });
 
-  describe('revalidateWebhookHandler', () => {
-    it('should return a Hono app instance', () => {
+  describe("revalidateWebhookHandler", () => {
+    it("should return a Hono app instance", () => {
       const app = client.revalidateWebhookHandler({
-        webhookSecret: 'test-secret',
+        webhookSecret: "test-secret",
       });
 
       // Check that it returns a Hono instance
@@ -2119,27 +2079,27 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       expect(app.fetch).toBeDefined(); // Hono apps have a fetch method
     });
 
-    it('should handle POST /revalidate request', async () => {
+    it("should handle POST /revalidate request", async () => {
       const app = client.revalidateWebhookHandler({
-        webhookSecret: 'test-secret',
+        webhookSecret: "test-secret",
       });
 
       // Mock request for Hono
       const mockRequest = new Request(
-        'http://localhost:3000/api/generate-metadata/revalidate',
+        "http://localhost:3000/api/generate-metadata/revalidate",
         {
-          body: JSON.stringify(validMetadataUpdateBody),
+          method: "POST",
           headers: {
-            authorization: 'Bearer test-secret',
-            'content-type': 'application/json',
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
           },
-          method: 'POST',
-        }
+          body: JSON.stringify(validMetadataUpdateBody),
+        },
       );
 
       // Spy on the revalidate method
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
 
       const response = await app.fetch(mockRequest);
@@ -2147,32 +2107,32 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       expect(response.status).toBe(200);
       expect(responseBody).toEqual({
-        metadata: {
-          path: '/test-path',
-          revalidated: true,
-        },
         ok: true,
+        metadata: {
+          revalidated: true,
+          path: "/test-path",
+        },
       });
-      expect(revalidateSpy).toHaveBeenCalledWith('/test-path');
+      expect(revalidateSpy).toHaveBeenCalledWith("/test-path");
 
       revalidateSpy.mockRestore();
     });
 
-    it('should reject request with invalid auth', async () => {
+    it("should reject request with invalid auth", async () => {
       const app = client.revalidateWebhookHandler({
-        webhookSecret: 'test-secret',
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
-        'http://localhost:3000/api/generate-metadata/revalidate',
+        "http://localhost:3000/api/generate-metadata/revalidate",
         {
-          body: JSON.stringify({ path: '/test-path' }),
+          method: "POST",
           headers: {
-            authorization: 'Bearer wrong-secret',
-            'content-type': 'application/json',
+            authorization: "Bearer wrong-secret",
+            "content-type": "application/json",
           },
-          method: 'POST',
-        }
+          body: JSON.stringify({ path: "/test-path" }),
+        },
       );
 
       const response = await app.fetch(mockRequest);
@@ -2180,29 +2140,29 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
       expect(response.status).toBe(401);
       // Our custom auth middleware returns JSON for unauthorized
       const responseData = await response.json();
-      expect(responseData).toEqual({ error: 'Unauthorized', ok: false });
+      expect(responseData).toEqual({ ok: false, error: "Unauthorized" });
     });
 
-    it('should handle request with null path', async () => {
+    it("should handle request with null path", async () => {
       const app = client.revalidateWebhookHandler({
-        webhookSecret: 'test-secret',
+        webhookSecret: "test-secret",
       });
 
       const mockRequest = new Request(
-        'http://localhost:3000/api/generate-metadata/revalidate',
+        "http://localhost:3000/api/generate-metadata/revalidate",
         {
-          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
+          method: "POST",
           headers: {
-            authorization: 'Bearer test-secret',
-            'content-type': 'application/json',
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
           },
-          method: 'POST',
-        }
+          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
+        },
       );
 
       // Spy on the revalidate method
       const revalidateSpy = vi
-        .spyOn(client as any, 'revalidate')
+        .spyOn(client as any, "revalidate")
         .mockImplementation(() => {});
 
       const response = await app.fetch(mockRequest);
@@ -2210,65 +2170,65 @@ describe('GenerateMetadataClient (TanStack Start)', () => {
 
       expect(response.status).toBe(200);
       expect(responseBody).toEqual({
-        metadata: {
-          path: null,
-          revalidated: true,
-        },
         ok: true,
+        metadata: {
+          revalidated: true,
+          path: null,
+        },
       });
       expect(revalidateSpy).toHaveBeenCalledWith(null);
 
       revalidateSpy.mockRestore();
     });
 
-    it('should use custom revalidatePath function when provided', async () => {
+    it("should use custom revalidatePath function when provided", async () => {
       const customRevalidatePath = vi.fn();
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: customRevalidatePath,
         },
-        webhookSecret: 'test-secret',
       });
 
       const mockRequest = new Request(
-        'http://localhost:3000/api/generate-metadata/revalidate',
+        "http://localhost:3000/api/generate-metadata/revalidate",
         {
-          body: JSON.stringify(validMetadataUpdateBody),
+          method: "POST",
           headers: {
-            authorization: 'Bearer test-secret',
-            'content-type': 'application/json',
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
           },
-          method: 'POST',
-        }
+          body: JSON.stringify(validMetadataUpdateBody),
+        },
       );
 
       const response = await app.fetch(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(customRevalidatePath).toHaveBeenCalledWith('/test-path');
+      expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
     });
 
-    it('should use custom revalidatePath function with null path', async () => {
+    it("should use custom revalidatePath function with null path", async () => {
       const customRevalidatePath = vi.fn();
 
       const app = client.revalidateWebhookHandler({
+        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: customRevalidatePath,
         },
-        webhookSecret: 'test-secret',
       });
 
       const mockRequest = new Request(
-        'http://localhost:3000/api/generate-metadata/revalidate',
+        "http://localhost:3000/api/generate-metadata/revalidate",
         {
-          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
+          method: "POST",
           headers: {
-            authorization: 'Bearer test-secret',
-            'content-type': 'application/json',
+            authorization: "Bearer test-secret",
+            "content-type": "application/json",
           },
-          method: 'POST',
-        }
+          body: JSON.stringify({ ...validMetadataUpdateBody, path: null }),
+        },
       );
 
       const response = await app.fetch(mockRequest);

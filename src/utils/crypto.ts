@@ -11,7 +11,7 @@
  */
 export async function createHmacSha256(
   secret: string,
-  message: string
+  message: string,
 ): Promise<string> {
   // Convert strings to Uint8Array
   const encoder = new TextEncoder();
@@ -20,26 +20,24 @@ export async function createHmacSha256(
 
   // Import the secret key
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     keyData,
-    { hash: 'SHA-256', name: 'HMAC' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign']
+    ["sign"],
   );
 
   // Sign the message
-  const signature = await crypto.subtle.sign('HMAC', key, messageData);
+  const signature = await crypto.subtle.sign("HMAC", key, messageData);
 
   // Convert to hex string
   const hashArray = Array.from(new Uint8Array(signature));
   const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 
   return hashHex;
 }
-
-const sha256Regex = /^sha256=(.+)$/;
 
 /**
  * Verify HMAC-SHA256 signature
@@ -53,10 +51,10 @@ export async function verifyHmacSignature(
   secret: string,
   signature: string,
   timestamp: string,
-  rawBody: string
+  rawBody: string,
 ): Promise<boolean> {
   // Extract the actual signature from the sha256={signature} format
-  const signatureMatch = signature.match(sha256Regex);
+  const signatureMatch = signature.match(/^sha256=(.+)$/);
   if (!signatureMatch) {
     return false;
   }

@@ -1,16 +1,16 @@
-import 'dotenv/config';
-import { defineConfig } from 'tsup';
+import "dotenv/config";
+import { defineConfig } from "tsup";
 
 export default defineConfig({
-  clean: true,
+  entry: ["src", "!src/**/*.test.ts"],
+  format: ["cjs", "esm"],
   dts: true,
-  entry: ['src', '!src/**/*.test.ts'],
+  splitting: false,
+  sourcemap: true,
+  clean: true,
+  outDir: "dist",
   env: {
     GENERATE_METADATA_NODE_ENV:
-      process.env.GENERATE_METADATA_NODE_ENV || 'production',
+      process.env.GENERATE_METADATA_NODE_ENV || "production",
   },
-  format: ['cjs', 'esm'],
-  outDir: 'dist',
-  sourcemap: true,
-  splitting: false,
 });

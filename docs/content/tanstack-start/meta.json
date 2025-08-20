@@ -1,4 +1,4 @@
 {
-  "pages": ["setup", "functions"],
-  "title": "TanStack Start"
+  "title": "TanStack Start",
+  "pages": ["setup", "functions"]
 }

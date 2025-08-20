@@ -1,8 +1,8 @@
-import { metadataClient } from '@/generate-metadata';
+import { metadataClient } from "@/generate-metadata";
 
 export const generateMetadata = metadataClient.getMetadata(() => {
   return {
-    path: '/contact',
+    path: "/contact",
   };
 });
 
