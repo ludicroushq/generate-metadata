@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { FetchApiClient } from "../utils/api/fetch";
-import createClient from "openapi-fetch";
+import createClient from 'openapi-fetch';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FetchApiClient } from '../utils/api/fetch';
 
 // Mock openapi-fetch
-vi.mock("openapi-fetch", () => ({
+vi.mock('openapi-fetch', () => ({
   default: vi.fn(),
 }));
 
-describe("FetchApiClient", () => {
+describe('FetchApiClient', () => {
   let mockClient: any;
   let fetchApiClient: FetchApiClient;
 
@@ -15,35 +15,35 @@ describe("FetchApiClient", () => {
     vi.clearAllMocks();
 
     mockClient = {
+      DELETE: vi.fn(),
       GET: vi.fn(),
       POST: vi.fn(),
       PUT: vi.fn(),
-      DELETE: vi.fn(),
     };
 
     vi.mocked(createClient).mockReturnValue(mockClient);
     fetchApiClient = new FetchApiClient();
   });
 
-  describe("constructor", () => {
-    it("should create client with correct configuration", () => {
+  describe('constructor', () => {
+    it('should create client with correct configuration', () => {
       expect(createClient).toHaveBeenCalledWith({
-        baseUrl: "https://www.generate-metadata.com/api/openapi",
+        baseUrl: 'https://www.generate-metadata.com/api/openapi',
       });
     });
 
-    it("should store the client instance", () => {
+    it('should store the client instance', () => {
       expect(fetchApiClient.client).toBe(mockClient);
     });
   });
 
-  describe("metadataGetLatest", () => {
-    it("should call GET with correct endpoint and args", async () => {
+  describe('metadataGetLatest', () => {
+    it('should call GET with correct endpoint and args', async () => {
       const mockResponse = {
         data: {
           metadata: {
-            title: "Test Title",
-            description: "Test Description",
+            description: 'Test Description',
+            title: 'Test Title',
           },
         },
         error: undefined,
@@ -52,30 +52,30 @@ describe("FetchApiClient", () => {
       mockClient.GET.mockResolvedValue(mockResponse);
 
       const args = {
-        params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test-path" },
-        },
         headers: {
-          Authorization: "Bearer test-api-key",
+          Authorization: 'Bearer test-api-key',
+        },
+        params: {
+          path: { dsn: 'test-dsn' },
+          query: { path: '/test-path' },
         },
       };
 
       const result = await fetchApiClient.metadataGetLatest(args);
 
       expect(mockClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
-        args,
+        '/v1/{dsn}/metadata/get-latest',
+        args
       );
       expect(result).toEqual(mockResponse);
     });
 
-    it("should handle API errors", async () => {
+    it('should handle API errors', async () => {
       const mockError = {
         data: undefined,
         error: {
-          message: "Not found",
-          code: "NOT_FOUND",
+          code: 'NOT_FOUND',
+          message: 'Not found',
           status: 404,
         },
       };
@@ -84,8 +84,8 @@ describe("FetchApiClient", () => {
 
       const args = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test-path" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/test-path' },
         },
       };
 
@@ -94,23 +94,23 @@ describe("FetchApiClient", () => {
       expect(result).toEqual(mockError);
     });
 
-    it("should handle network errors", async () => {
-      const networkError = new Error("Network error");
+    it('should handle network errors', async () => {
+      const networkError = new Error('Network error');
       mockClient.GET.mockRejectedValue(networkError);
 
       const args = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test-path" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/test-path' },
         },
       };
 
       await expect(fetchApiClient.metadataGetLatest(args)).rejects.toThrow(
-        "Network error",
+        'Network error'
       );
     });
 
-    it("should pass through all request options", async () => {
+    it('should pass through all request options', async () => {
       const mockResponse = {
         data: { metadata: {} },
         error: undefined,
@@ -119,28 +119,28 @@ describe("FetchApiClient", () => {
       mockClient.GET.mockResolvedValue(mockResponse);
 
       const args = {
-        params: {
-          path: { dsn: "custom-dsn" },
-          query: { path: "/custom/path" },
-        },
-        headers: {
-          Authorization: "Bearer custom-key",
-          "X-Custom-Header": "custom-value",
-        },
+        baseUrl: 'https://custom.api.com',
         body: undefined,
-        baseUrl: "https://custom.api.com",
-        cache: "force-cache" as const,
+        cache: 'force-cache' as const,
+        headers: {
+          Authorization: 'Bearer custom-key',
+          'X-Custom-Header': 'custom-value',
+        },
+        params: {
+          path: { dsn: 'custom-dsn' },
+          query: { path: '/custom/path' },
+        },
       };
 
       await fetchApiClient.metadataGetLatest(args);
 
       expect(mockClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
-        args,
+        '/v1/{dsn}/metadata/get-latest',
+        args
       );
     });
 
-    it("should handle empty response", async () => {
+    it('should handle empty response', async () => {
       const mockResponse = {
         data: null,
         error: undefined,
@@ -150,8 +150,8 @@ describe("FetchApiClient", () => {
 
       const args = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test-path" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/test-path' },
         },
       };
 
@@ -160,11 +160,11 @@ describe("FetchApiClient", () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it("should handle response with partial metadata", async () => {
+    it('should handle response with partial metadata', async () => {
       const mockResponse = {
         data: {
           metadata: {
-            title: "Only Title",
+            title: 'Only Title',
             // description is missing
           },
         },
@@ -175,8 +175,8 @@ describe("FetchApiClient", () => {
 
       const args = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/test-path" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/test-path' },
         },
       };
 
@@ -185,30 +185,30 @@ describe("FetchApiClient", () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it("should handle concurrent requests", async () => {
+    it('should handle concurrent requests', async () => {
       const mockResponse1 = {
-        data: { metadata: { title: "Title 1" } },
+        data: { metadata: { title: 'Title 1' } },
         error: undefined,
       };
       const mockResponse2 = {
-        data: { metadata: { title: "Title 2" } },
+        data: { metadata: { title: 'Title 2' } },
         error: undefined,
       };
 
       mockClient.GET.mockResolvedValueOnce(mockResponse1).mockResolvedValueOnce(
-        mockResponse2,
+        mockResponse2
       );
 
       const args1 = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/path1" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/path1' },
         },
       };
       const args2 = {
         params: {
-          path: { dsn: "test-dsn" },
-          query: { path: "/path2" },
+          path: { dsn: 'test-dsn' },
+          query: { path: '/path2' },
         },
       };
 
@@ -223,18 +223,18 @@ describe("FetchApiClient", () => {
     });
   });
 
-  describe("environment variable support", () => {
-    it("should use production URL by default", () => {
+  describe('environment variable support', () => {
+    it('should use production URL by default', () => {
       // The mock already uses the production URL
       const client = new FetchApiClient();
 
       expect(createClient).toHaveBeenCalledWith({
-        baseUrl: "https://www.generate-metadata.com/api/openapi",
+        baseUrl: 'https://www.generate-metadata.com/api/openapi',
       });
       expect(client.client).toBeDefined();
     });
 
-    it("should handle different base URLs via constructor config", () => {
+    it('should handle different base URLs via constructor config', () => {
       // Since baseUrl is set at import time, we can't easily test the env var
       // But we can verify the client is created with the expected config
       const client = new FetchApiClient();

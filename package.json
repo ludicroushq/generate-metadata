@@ -47,16 +47,10 @@
     "dev:local": "wireit",
     "generate:local": "wireit",
     "generate:production": "wireit",
-    "prepare": "husky",
+    "prepare": "wireit",
     "release": "wireit",
     "test": "wireit",
     "test:ci": "wireit"
-  },
-  "lint-staged": {
-    "*": [
-      "eslint --max-warnings 0 --no-warn-ignored --fix",
-      "prettier --ignore-unknown --write"
-    ]
   },
   "dependencies": {
     "debug": "^4.4.1",
@@ -71,6 +65,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.0",
     "@changesets/cli": "^2.29.5",
     "@types/debug": "^4.1.12",
     "@types/node": "^24.0.10",
@@ -78,16 +73,12 @@
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.0",
     "dotenv": "^17.1.0",
-    "eslint": "^9.30.1",
-    "eslint-plugin-package-json": "^0.42.1",
-    "husky": "^9.1.7",
     "jiti": "^2.4.2",
-    "lint-staged": "^16.1.2",
-    "neostandard": "^0.12.1",
+    "lefthook": "^1.12.3",
     "openapi-typescript": "^7.8.0",
-    "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
+    "ultracite": "5.2.2",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
@@ -106,6 +97,9 @@
     "access": "public"
   },
   "wireit": {
+    "prepare": {
+      "command": "git rev-parse --git-dir > /dev/null 2>&1 && lefthook install || true"
+    },
     "build": {
       "dependencies": [
         "pkg:build"
@@ -120,12 +114,6 @@
       "dependencies": [
         "pkg:dev:local"
       ]
-    },
-    "eslint:check": {
-      "command": "eslint --max-warnings 0 --no-warn-ignored ."
-    },
-    "eslint:fix": {
-      "command": "eslint --fix --max-warnings 0 --no-warn-ignored ."
     },
     "generate:local": {
       "command": "openapi-typescript http://localhost:3000/api/openapi/spec.json -o ./src/__generated__/api.ts"
@@ -153,12 +141,6 @@
       },
       "service": true
     },
-    "prettier:check": {
-      "command": "prettier --check ."
-    },
-    "prettier:write": {
-      "command": "prettier --write ."
-    },
     "release": {
       "command": "changeset publish",
       "dependencies": [
@@ -167,22 +149,26 @@
     },
     "test": {
       "dependencies": [
-        "eslint:fix",
-        "prettier:write",
+        "ultracite:format",
         "typescript:check",
         "vitest:run"
       ]
     },
     "test:ci": {
       "dependencies": [
-        "eslint:check",
-        "prettier:check",
+        "ultracite:lint",
         "typescript:check",
         "vitest:run"
       ]
     },
     "typescript:check": {
       "command": "tsc --noEmit"
+    },
+    "ultracite:format": {
+      "command": "ultracite format --unsafe"
+    },
+    "ultracite:lint": {
+      "command": "ultracite lint"
     },
     "vitest:run": {
       "command": "vitest"

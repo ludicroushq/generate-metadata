@@ -1,20 +1,20 @@
-import { handle } from "hono/vercel";
-import type { ServerFnCtx } from "@tanstack/react-start";
-import _ from "es-toolkit/compat";
-import { match } from "ts-pattern";
+import type { ServerFnCtx } from '@tanstack/react-start';
+import _ from 'es-toolkit/compat';
+import { handle } from 'hono/vercel';
+import { match } from 'ts-pattern';
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
   type GenerateMetadataOptions,
   type MetadataApiResponse,
-} from ".";
-import { FetchApiClient } from "./utils/api/fetch";
+} from '.';
+import { FetchApiClient } from './utils/api/fetch';
 import {
+  type ServerFnType,
   TanstackStartApiClient,
   validator,
-  type ServerFnType,
-} from "./utils/api/tanstack-start";
-import { normalizePathname } from "./utils/normalize-pathname";
+} from './utils/api/tanstack-start';
+import { normalizePathname } from './utils/normalize-pathname';
 
 // TanStack Start's head function return type
 type TanstackHead = {
@@ -56,22 +56,23 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       this.api = new TanstackStartApiClient(props.serverFn);
     }
   }
-  protected getFrameworkName(): "tanstack-start" {
-    return "tanstack-start";
+  protected getFrameworkName(): 'tanstack-start' {
+    return 'tanstack-start';
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok
   private mergeMetadata(
     fallback: TanstackHead | undefined,
     generated: TanstackHead,
-    override: TanstackHead | undefined,
+    override: TanstackHead | undefined
   ): TanstackHead {
     this.debug(
-      "Merging metadata - fallback:",
-      fallback ? "present" : "absent",
-      "generated:",
-      generated ? "present" : "absent",
-      "override:",
-      override ? "present" : "absent",
+      'Merging metadata - fallback:',
+      fallback ? 'present' : 'absent',
+      'generated:',
+      'present',
+      'override:',
+      override ? 'present' : 'absent'
     );
 
     // Merge non-meta properties (destructure to exclude meta)
@@ -83,14 +84,20 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       {},
       fallbackBase,
       generatedBase,
-      overrideBase,
+      overrideBase
     );
 
     // Helper function to get meta key for deduplication
     const getMetaKey = (metaItem: any): string | null => {
-      if (metaItem.name) return `name:${metaItem.name}`;
-      if (metaItem.property) return `property:${metaItem.property}`;
-      if (metaItem.title) return "title";
+      if (metaItem.name) {
+        return `name:${metaItem.name}`;
+      }
+      if (metaItem.property) {
+        return `property:${metaItem.property}`;
+      }
+      if (metaItem.title) {
+        return 'title';
+      }
       return null;
     };
 
@@ -98,7 +105,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const removeByKeys = (items: any[], keysToRemove: Set<string>): any[] => {
       return items.filter((item) => {
         const key = getMetaKey(item);
-        return !key || !keysToRemove.has(key);
+        return !(key && keysToRemove.has(key));
       });
     };
 
@@ -110,7 +117,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const generatedKeys = new Set<string>();
       for (const metaItem of generated.meta) {
         const key = getMetaKey(metaItem);
-        if (key) generatedKeys.add(key);
+        if (key) {
+          generatedKeys.add(key);
+        }
       }
       finalMeta = removeByKeys(finalMeta, generatedKeys);
       finalMeta.push(...generated.meta);
@@ -121,7 +130,9 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       const overrideKeys = new Set<string>();
       for (const metaItem of override.meta) {
         const key = getMetaKey(metaItem);
-        if (key) overrideKeys.add(key);
+        if (key) {
+          overrideKeys.add(key);
+        }
       }
       finalMeta = removeByKeys(finalMeta, overrideKeys);
       finalMeta.push(...override.meta);
@@ -131,227 +142,228 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       result.meta = finalMeta;
     }
 
-    this.debug("Merged metadata has", finalMeta.length, "meta tags");
+    this.debug('Merged metadata has', finalMeta.length, 'meta tags');
 
     return result;
   }
 
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
-    this.debug("Converting API response to TanStack Start head");
+    this.debug('Converting API response to TanStack Start head');
 
     if (!response.metadata) {
-      this.debug("No metadata in response");
+      this.debug('No metadata in response');
       return {};
     }
 
     const { metadata } = response;
-    const meta: TanstackHead["meta"] = [];
-    const links: TanstackHead["links"] = [];
+    const meta: TanstackHead['meta'] = [];
+    const links: TanstackHead['links'] = [];
 
     const keys: (keyof typeof metadata)[] = Object.keys(
-      metadata,
+      metadata
     ) as (keyof typeof metadata)[];
 
-    this.debug("Processing metadata keys:", keys);
+    this.debug('Processing metadata keys:', keys);
 
-    keys.forEach((key) => {
+    for (const key of keys) {
       match(key)
-        .with("title", () => {
+        .with('title', () => {
           if (metadata.title) {
-            meta.push({ name: "title", content: metadata.title });
+            meta.push({ content: metadata.title, name: 'title' });
             meta.push({ title: metadata.title });
           }
         })
-        .with("description", () => {
+        .with('description', () => {
           if (metadata.description) {
-            meta.push({ name: "description", content: metadata.description });
+            meta.push({ content: metadata.description, name: 'description' });
           }
         })
-        .with("icon", () => {
+        .with('icon', () => {
           if (metadata.icon) {
             for (const icon of metadata.icon) {
               links.push({
-                rel: "icon",
                 href: icon.url,
-                type: icon.mimeType,
+                rel: 'icon',
                 sizes: `${icon.width}x${icon.height}`,
+                type: icon.mimeType,
               });
             }
           }
         })
-        .with("appleTouchIcon", () => {
+        .with('appleTouchIcon', () => {
           if (metadata.appleTouchIcon) {
             for (const icon of metadata.appleTouchIcon) {
               links.push({
-                rel: "apple-touch-icon",
                 href: icon.url,
-                type: icon.mimeType,
+                rel: 'apple-touch-icon',
                 sizes: `${icon.width}x${icon.height}`,
+                type: icon.mimeType,
               });
             }
           }
         })
-        .with("openGraph", () => {
+        .with('openGraph', () => {
           if (!metadata.openGraph) {
             return;
           }
 
           const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
-            metadata.openGraph,
+            metadata.openGraph
           ) as (keyof typeof metadata.openGraph)[];
 
           const openGraph = metadata.openGraph;
 
-          ogKeys.forEach((ogKey) => {
+          for (const ogKey of ogKeys) {
             match(ogKey)
-              .with("title", () => {
+              .with('title', () => {
                 if (openGraph.title) {
                   meta.push({
-                    property: "og:title",
                     content: openGraph.title,
+                    property: 'og:title',
                   });
                 }
               })
-              .with("description", () => {
+              .with('description', () => {
                 if (openGraph.description) {
                   meta.push({
-                    property: "og:description",
                     content: openGraph.description,
+                    property: 'og:description',
                   });
                 }
               })
-              .with("locale", () => {
+              .with('locale', () => {
                 if (openGraph.locale) {
                   meta.push({
-                    property: "og:locale",
                     content: openGraph.locale,
+                    property: 'og:locale',
                   });
                 }
               })
-              .with("siteName", () => {
+              .with('siteName', () => {
                 if (openGraph.siteName) {
                   meta.push({
-                    property: "og:site_name",
                     content: openGraph.siteName,
+                    property: 'og:site_name',
                   });
                 }
               })
-              .with("type", () => {
+              .with('type', () => {
                 if (openGraph.type) {
                   meta.push({
-                    property: "og:type",
                     content: openGraph.type,
+                    property: 'og:type',
                   });
                 }
               })
-              .with("image", () => {
+              .with('image', () => {
                 const ogImage = openGraph.image;
                 if (ogImage) {
                   meta.push({
-                    property: "og:image",
                     content: ogImage.url,
+                    property: 'og:image',
                   });
                   if (ogImage.alt) {
                     meta.push({
-                      property: "og:image:alt",
                       content: ogImage.alt,
+                      property: 'og:image:alt',
                     });
                   }
                 }
               })
-              .with("images", () => {
+              // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok
+              .with('images', () => {
                 if (openGraph.images) {
-                  openGraph.images.forEach((img) => {
-                    meta.push({ property: "og:image", content: img.url });
+                  for (const img of openGraph.images) {
+                    meta.push({ content: img.url, property: 'og:image' });
                     if (img.alt) {
-                      meta.push({ property: "og:image:alt", content: img.alt });
+                      meta.push({ content: img.alt, property: 'og:image:alt' });
                     }
-                  });
+                  }
                 }
               })
-              .with("url", () => {})
-              .with("determiner", () => {})
-              .with("localeAlternate", () => {})
+              .with('url', () => {})
+              .with('determiner', () => {})
+              .with('localeAlternate', () => {})
               .exhaustive(() => {});
-          });
+          }
         })
-        .with("twitter", () => {
+        .with('twitter', () => {
           if (!metadata.twitter) {
             return;
           }
 
           const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
-            metadata.twitter,
+            metadata.twitter
           ) as (keyof typeof metadata.twitter)[];
 
           const twitter = metadata.twitter;
 
-          twitterKeys.forEach((twitterKey) => {
+          for (const twitterKey of twitterKeys) {
             match(twitterKey)
-              .with("title", () => {
+              .with('title', () => {
                 if (twitter.title) {
                   meta.push({
-                    name: "twitter:title",
                     content: twitter.title,
+                    name: 'twitter:title',
                   });
                 }
               })
-              .with("description", () => {
+              .with('description', () => {
                 if (twitter.description) {
                   meta.push({
-                    name: "twitter:description",
                     content: twitter.description,
+                    name: 'twitter:description',
                   });
                 }
               })
-              .with("card", () => {
+              .with('card', () => {
                 if (twitter.card) {
                   meta.push({
-                    name: "twitter:card",
                     content: twitter.card,
+                    name: 'twitter:card',
                   });
                 }
               })
-              .with("image", () => {
+              .with('image', () => {
                 const twitterImage = twitter.image;
                 if (twitterImage) {
                   meta.push({
-                    name: "twitter:image",
                     content: twitterImage.url,
+                    name: 'twitter:image',
                   });
                   if (twitterImage.alt) {
                     meta.push({
-                      name: "twitter:image:alt",
                       content: twitterImage.alt,
+                      name: 'twitter:image:alt',
                     });
                   }
                 }
               })
               .exhaustive(() => {});
-          });
-        })
-        .with("noindex", () => {
-          if (metadata.noindex) {
-            meta.push({ name: "robots", content: "noindex,nofollow" });
           }
         })
-        .with("customTags", () => {
+        .with('noindex', () => {
+          if (metadata.noindex) {
+            meta.push({ content: 'noindex,nofollow', name: 'robots' });
+          }
+        })
+        .with('customTags', () => {
           if (!metadata.customTags) {
             return;
           }
 
-          this.debug("Processing custom tags:", metadata.customTags.length);
+          this.debug('Processing custom tags:', metadata.customTags.length);
 
           // Handle custom tags - convert to TanStack Start format
           for (const tag of metadata.customTags) {
             meta.push({
-              name: tag.name,
               content: tag.content,
+              name: tag.name,
             });
           }
         })
         .exhaustive(() => {});
-    });
+    }
 
     return {
       meta,
@@ -360,7 +372,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }
 
   public async getHead(
-    opts: Omit<GenerateMetadataOptions, "path"> & {
+    opts: Omit<GenerateMetadataOptions, 'path'> & {
       ctx: {
         match: {
           pathname: string;
@@ -372,14 +384,14 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       path?: string;
       override?: TanstackHead;
       fallback?: TanstackHead;
-    },
+    }
   ) {
-    this.debug("getHead called");
+    this.debug('getHead called');
     const { path: originalPath, fallback, override, ctx } = opts;
     const path = normalizePathname(
-      originalPath ?? _.last(ctx.matches)?.pathname ?? ctx.match.pathname,
+      originalPath ?? _.last(ctx.matches)?.pathname ?? ctx.match.pathname
     );
-    this.debug("Factory returned options with path:", path);
+    this.debug('Factory returned options with path:', path);
 
     const data: GenerateMetadataOptions = {
       path,
@@ -394,11 +406,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
       // Deep merge: override > generated > fallback
       const result = this.mergeMetadata(fallback, tanstackHead, override);
-      this.debug("Returning merged head metadata");
+      this.debug('Returning merged head metadata');
       return result;
     } catch (error) {
-      this.debug("Error getting head metadata:", error);
-      console.warn("Failed to get head metadata:", error);
+      this.debug('Error getting head metadata:', error);
       return fallback || {};
     }
   }
@@ -407,13 +418,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   public static serverFnValidator = validator;
 
   public static async serverFnHandler(
-    ctx: ServerFnCtx<unknown, "data", undefined, typeof validator>,
-    options: { apiKey: string | undefined },
+    ctx: ServerFnCtx<unknown, 'data', undefined, typeof validator>,
+    options: { apiKey: string | undefined }
   ) {
     const { apiKey } = options;
     const fetchApiClient = new FetchApiClient();
 
-    if (ctx.data.type === "metadataGetLatest") {
+    if (ctx.data.type === 'metadataGetLatest') {
       const response = await fetchApiClient.metadataGetLatest({
         ...ctx.data.args,
         headers: {
@@ -421,11 +432,11 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
           Authorization: `Bearer ${apiKey}`,
         },
       });
-      return _.omit(response, "response");
+      return _.omit(response, 'response');
     }
 
     throw new Error(
-      `generate metadata server function called with unknown type ${ctx.data.type}`,
+      `generate metadata server function called with unknown type ${ctx.data.type}`
     );
   }
 
@@ -438,20 +449,22 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       | Promise<{
           override?: TanstackHead;
           fallback?: TanstackHead;
-        }>,
+        }>
   ) {
     return async (ctx: Ctx): Promise<TanstackHead> => {
+      // biome-ignore lint/nursery/noUnnecessaryConditions: wrong
       const opts = factory ? await factory(ctx) : {};
       // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
 
+  // biome-ignore lint/suspicious/useAwait: might need to be async
   protected async triggerRevalidation(_path: string | null): Promise<void> {
     this.debug(
-      "Revalidate called with path:",
+      'Revalidate called with path:',
       _path,
-      "(no-op for TanStack Start)",
+      '(no-op for TanStack Start)'
     );
     // TanStack Start doesn't have a built-in revalidation mechanism
     // So we just return void
@@ -463,14 +476,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       pathRewrite?: (path: string | null) => string | null;
     };
   }) {
-    this.debug("Creating revalidate webhook handler");
+    this.debug('Creating revalidate webhook handler');
 
     // Get the Hono app from base class
     const app = this.createWebhookApp({
-      webhookSecret: options.webhookSecret,
       webhookHandler: async (data) => {
-        if (data._type !== "metadata_update") {
-          this.debug("Ignoring webhook type:", data._type);
+        if (data._type !== 'metadata_update') {
+          this.debug('Ignoring webhook type:', data._type);
           // Ignore other webhook types
           return;
         }
@@ -478,23 +490,24 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
         const { path: originalPath } = data;
         const normalizedPath = normalizePathname(originalPath);
         this.debug(
-          "Processing metadata_update webhook for path:",
-          normalizedPath,
+          'Processing metadata_update webhook for path:',
+          normalizedPath
         );
 
         const path = normalizePathname(
-          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath,
+          options.revalidate?.pathRewrite?.(normalizedPath) ?? normalizedPath
         );
 
         if (path !== normalizedPath) {
-          this.debug("Path rewritten from", normalizedPath, "to", path);
+          this.debug('Path rewritten from', normalizedPath, 'to', path);
         }
 
         this.clearCache(path);
         await this.triggerRevalidation(path);
 
-        return { revalidated: true, path };
+        return { path, revalidated: true };
       },
+      webhookSecret: options.webhookSecret,
     });
 
     const handler = handle(app);
@@ -503,13 +516,13 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
 
     return {
+      DELETE: handlerWrapper,
       GET: handlerWrapper,
+      HEAD: handlerWrapper,
+      OPTIONS: handlerWrapper,
+      PATCH: handlerWrapper,
       POST: handlerWrapper,
       PUT: handlerWrapper,
-      PATCH: handlerWrapper,
-      DELETE: handlerWrapper,
-      OPTIONS: handlerWrapper,
-      HEAD: handlerWrapper,
     };
   }
 }

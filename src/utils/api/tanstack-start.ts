@@ -1,20 +1,20 @@
-import type { OptionalFetcher } from "@tanstack/react-start";
+import type { OptionalFetcher } from '@tanstack/react-start';
+import { z } from 'zod';
 import type {
   BaseApiClient,
   MetadataGetLatestArgs,
   MetadataGetLatestResponse,
-} from ".";
-import { z } from "zod";
+} from '.';
 
 export type ApiMethod = keyof BaseApiClient;
 
 const schema = z.union([
   z.object({
-    type: z.literal("metadataGetLatest"),
     args: z.any() as z.ZodType<MetadataGetLatestArgs>,
+    type: z.literal('metadataGetLatest'),
   }),
   z.object({
-    type: z.literal("placeholder"),
+    type: z.literal('placeholder'),
   }),
 ]);
 export const validator = (data: unknown) => schema.parse(data);
@@ -23,11 +23,11 @@ export type ServerFnType = OptionalFetcher<
   undefined,
   typeof validator,
   MetadataGetLatestResponse,
-  "data"
+  'data'
 >;
 
 export class TanstackStartApiClient implements BaseApiClient {
-  private serverFn: ServerFnType;
+  private readonly serverFn: ServerFnType;
 
   constructor(serverFn: ServerFnType) {
     this.serverFn = serverFn;
@@ -36,8 +36,8 @@ export class TanstackStartApiClient implements BaseApiClient {
   async metadataGetLatest(args: MetadataGetLatestArgs) {
     const result = await this.serverFn({
       data: {
-        type: "metadataGetLatest",
         args,
+        type: 'metadataGetLatest',
       },
     });
     return result as MetadataGetLatestResponse;

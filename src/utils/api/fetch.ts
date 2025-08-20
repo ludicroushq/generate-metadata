@@ -1,6 +1,6 @@
-import createClient, { type Client } from "openapi-fetch";
-import { type BaseApiClient, baseUrl, type MetadataGetLatestArgs } from ".";
-import type { paths } from "../../__generated__/api";
+import createClient, { type Client } from 'openapi-fetch';
+import type { paths } from '../../__generated__/api';
+import { type BaseApiClient, baseUrl, type MetadataGetLatestArgs } from '.';
 
 export class FetchApiClient implements BaseApiClient {
   client: Client<paths>;
@@ -11,7 +11,7 @@ export class FetchApiClient implements BaseApiClient {
     });
   }
 
-  async metadataGetLatest(args: MetadataGetLatestArgs) {
-    return this.client.GET("/v1/{dsn}/metadata/get-latest", args);
+  metadataGetLatest(args: MetadataGetLatestArgs) {
+    return this.client.GET('/v1/{dsn}/metadata/get-latest', args);
   }
 }
