@@ -1,21 +1,21 @@
-import createClient from "openapi-fetch";
-import type { paths } from "../__generated__/api";
-import { match } from "ts-pattern";
+import createClient from 'openapi-fetch';
+import { match } from 'ts-pattern';
+import type { paths } from '../__generated__/api';
 
 const baseUrl =
-  process.env.GENERATE_METADATA_NODE_ENV === "local"
-    ? "http://localhost:3000/api/openapi"
-    : "https://www.generate-metadata.com/api/openapi";
+  process.env.GENERATE_METADATA_NODE_ENV === 'local'
+    ? 'http://localhost:3000/api/openapi'
+    : 'https://www.generate-metadata.com/api/openapi';
 
-export function getApi(framework: "next" | "tanstack-start") {
+export function getApi(framework: 'next' | 'tanstack-start') {
   return match(framework)
-    .with("next", () =>
+    .with('next', () =>
       createClient<paths>({
         baseUrl,
-        cache: "no-cache",
+        cache: 'no-cache',
         next: { revalidate: 0 },
-      }),
+      })
     )
-    .with("tanstack-start", () => createClient<paths>({ baseUrl }))
+    .with('tanstack-start', () => createClient<paths>({ baseUrl }))
     .exhaustive();
 }

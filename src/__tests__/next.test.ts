@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GenerateMetadataClient } from "../next";
-import type { MetadataApiResponse } from "../index";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from 'next/cache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MetadataApiResponse } from '../index';
+import { GenerateMetadataClient } from '../next';
 
 // Create a mock API client
 const mockApiClient = {
@@ -9,20 +9,20 @@ const mockApiClient = {
 };
 
 // Mock the API module
-vi.mock("../utils/api", () => ({
+vi.mock('../utils/api', () => ({
   getApi: vi.fn(() => mockApiClient),
 }));
 
 // Mock Next.js cache module
-vi.mock("next/cache", () => ({
+vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
 // Mock hono/vercel
-vi.mock("hono/vercel", () => ({
+vi.mock('hono/vercel', () => ({
   handle: vi.fn((app) => {
     // Return a mock handler that simulates the Hono app behavior
-    return async (req: any) => {
+    return (req: any) => {
       // Simulate calling the Hono app
       return app.fetch(req);
     };
@@ -31,132 +31,134 @@ vi.mock("hono/vercel", () => ({
 
 const mockApiResponse: MetadataApiResponse = {
   metadata: {
-    title: "Test Page Title",
-    description: "Test page description",
-    icon: [
-      {
-        url: "https://example.com/icon.png",
-        mimeType: "image/png",
-        width: 32,
-        height: 32,
-      },
-    ],
     appleTouchIcon: [
       {
-        url: "https://example.com/apple-touch-icon.png",
-        mimeType: "image/png",
-        width: 180,
         height: 180,
+        mimeType: 'image/png',
+        url: 'https://example.com/apple-touch-icon.png',
+        width: 180,
+      },
+    ],
+    description: 'Test page description',
+    icon: [
+      {
+        height: 32,
+        mimeType: 'image/png',
+        url: 'https://example.com/icon.png',
+        width: 32,
       },
     ],
     openGraph: {
-      title: "OG Test Title",
-      description: "OG Test Description",
-      locale: "en_US",
-      siteName: "Test Site",
-      type: "website",
+      description: 'OG Test Description',
       image: {
-        url: "https://example.com/og-image.jpg",
-        alt: "OG Image Alt Text",
-        width: 1200,
+        alt: 'OG Image Alt Text',
         height: 630,
-        mimeType: "image/jpeg",
+        mimeType: 'image/jpeg',
+        url: 'https://example.com/og-image.jpg',
+        width: 1200,
       },
       images: [
         {
-          url: "https://example.com/og-image-1.jpg",
-          alt: "OG Image 1 Alt",
-          width: 800,
+          alt: 'OG Image 1 Alt',
           height: 600,
-          mimeType: "image/jpeg",
+          mimeType: 'image/jpeg',
+          url: 'https://example.com/og-image-1.jpg',
+          width: 800,
         },
       ],
+      locale: 'en_US',
+      siteName: 'Test Site',
+      title: 'OG Test Title',
+      type: 'website',
     },
+    title: 'Test Page Title',
     twitter: {
-      card: "summary_large_image",
-      title: "Twitter Test Title",
-      description: "Twitter Test Description",
+      card: 'summary_large_image',
+      description: 'Twitter Test Description',
       image: {
-        url: "https://example.com/twitter-image.jpg",
-        alt: "Twitter Image Alt",
-        width: 1200,
+        alt: 'Twitter Image Alt',
         height: 630,
-        mimeType: "image/jpeg",
+        mimeType: 'image/jpeg',
+        url: 'https://example.com/twitter-image.jpg',
+        width: 1200,
       },
+      title: 'Twitter Test Title',
     },
   },
 };
 
-describe("GenerateMetadataClient (Next.js)", () => {
+describe('GenerateMetadataClient (Next.js)', () => {
   let client: GenerateMetadataClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
     client = new GenerateMetadataClient({
-      dsn: "test-dsn",
-      apiKey: "test-api-key",
+      apiKey: 'test-api-key',
+      dsn: 'test-dsn',
     });
   });
 
-  describe("getMetadata", () => {
-    it("should return Next.js metadata when API call succeeds", async () => {
+  describe('getMetadata', () => {
+    it('should return Next.js metadata when API call succeeds', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
-      expect(result).toEqual({
-        title: "Test Page Title",
-        description: "Test page description",
-        icons: [
-          {
-            rel: "icon",
-            url: "https://example.com/icon.png",
-            type: "image/png",
-            sizes: "32x32",
-          },
-          {
-            rel: "apple-touch-icon",
-            url: "https://example.com/apple-touch-icon.png",
-            type: "image/png",
-            sizes: "180x180",
-          },
-        ],
-        openGraph: {
-          title: "OG Test Title",
-          description: "OG Test Description",
-          locale: "en_US",
-          siteName: "Test Site",
-          type: "website",
-          images: [
+      expect(result).toMatchInlineSnapshot(`
+        {
+          "description": "Test page description",
+          "icons": [
             {
-              url: "https://example.com/og-image-1.jpg",
-              alt: "OG Image 1 Alt",
-              width: 800,
-              height: 600,
+              "rel": "apple-touch-icon",
+              "sizes": "180x180",
+              "type": "image/png",
+              "url": "https://example.com/apple-touch-icon.png",
+            },
+            {
+              "rel": "icon",
+              "sizes": "32x32",
+              "type": "image/png",
+              "url": "https://example.com/icon.png",
             },
           ],
-        },
-        twitter: {
-          card: "summary_large_image",
-          title: "Twitter Test Title",
-          description: "Twitter Test Description",
-          images: [
-            {
-              url: "https://example.com/twitter-image.jpg",
-              alt: "Twitter Image Alt",
-              width: 1200,
-              height: 630,
-            },
-          ],
-        },
-      });
+          "openGraph": {
+            "description": "OG Test Description",
+            "images": [
+              {
+                "alt": "OG Image 1 Alt",
+                "height": 600,
+                "url": "https://example.com/og-image-1.jpg",
+                "width": 800,
+              },
+            ],
+            "locale": "en_US",
+            "siteName": "Test Site",
+            "title": "OG Test Title",
+            "type": "website",
+          },
+          "title": "Test Page Title",
+          "twitter": {
+            "card": "summary_large_image",
+            "description": "Twitter Test Description",
+            "images": [
+              {
+                "alt": "Twitter Image Alt",
+                "height": 630,
+                "url": "https://example.com/twitter-image.jpg",
+                "width": 1200,
+              },
+            ],
+            "title": "Twitter Test Title",
+          },
+        }
+      `);
     });
 
-    it("should work with extra keys", async () => {
+    it('should work with extra keys', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: {
           ...mockApiResponse,
@@ -164,139 +166,141 @@ describe("GenerateMetadataClient (Next.js)", () => {
             ...mockApiResponse.metadata,
             openGraph: {
               ...mockApiResponse.metadata.openGraph,
-              extraKey: "extraValue",
+              extraKey: 'extraValue',
             },
           },
         },
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
-      expect(result).toEqual({
-        title: "Test Page Title",
-        description: "Test page description",
-        icons: [
-          {
-            rel: "icon",
-            url: "https://example.com/icon.png",
-            type: "image/png",
-            sizes: "32x32",
-          },
-          {
-            rel: "apple-touch-icon",
-            url: "https://example.com/apple-touch-icon.png",
-            type: "image/png",
-            sizes: "180x180",
-          },
-        ],
-        openGraph: {
-          title: "OG Test Title",
-          description: "OG Test Description",
-          locale: "en_US",
-          siteName: "Test Site",
-          type: "website",
-          images: [
+      expect(result).toMatchInlineSnapshot(`
+        {
+          "description": "Test page description",
+          "icons": [
             {
-              url: "https://example.com/og-image-1.jpg",
-              alt: "OG Image 1 Alt",
-              width: 800,
-              height: 600,
+              "rel": "apple-touch-icon",
+              "sizes": "180x180",
+              "type": "image/png",
+              "url": "https://example.com/apple-touch-icon.png",
+            },
+            {
+              "rel": "icon",
+              "sizes": "32x32",
+              "type": "image/png",
+              "url": "https://example.com/icon.png",
             },
           ],
-        },
-        twitter: {
-          card: "summary_large_image",
-          title: "Twitter Test Title",
-          description: "Twitter Test Description",
-          images: [
-            {
-              url: "https://example.com/twitter-image.jpg",
-              alt: "Twitter Image Alt",
-              width: 1200,
-              height: 630,
-            },
-          ],
-        },
-      });
+          "openGraph": {
+            "description": "OG Test Description",
+            "images": [
+              {
+                "alt": "OG Image 1 Alt",
+                "height": 600,
+                "url": "https://example.com/og-image-1.jpg",
+                "width": 800,
+              },
+            ],
+            "locale": "en_US",
+            "siteName": "Test Site",
+            "title": "OG Test Title",
+            "type": "website",
+          },
+          "title": "Test Page Title",
+          "twitter": {
+            "card": "summary_large_image",
+            "description": "Twitter Test Description",
+            "images": [
+              {
+                "alt": "Twitter Image Alt",
+                "height": 630,
+                "url": "https://example.com/twitter-image.jpg",
+                "width": 1200,
+              },
+            ],
+            "title": "Twitter Test Title",
+          },
+        }
+      `);
     });
 
-    it("should handle function-based options", async () => {
+    it('should handle function-based options', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const optsFn = vi.fn().mockResolvedValue({ path: "/dynamic-test" });
+      const optsFn = vi.fn().mockResolvedValue({ path: '/dynamic-test' });
       const metadataFn = client.getMetadata(optsFn);
 
       await metadataFn({}, {} as any);
 
       expect(optsFn).toHaveBeenCalled();
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/dynamic-test" },
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/dynamic-test' },
+          },
+        }
       );
     });
 
-    it("should return empty object when API call fails", async () => {
-      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
+    it('should return empty object when API call fails', async () => {
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error('API Error'));
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
 
-    it("should return empty object when API returns null data", async () => {
+    it('should return empty object when API returns null data', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: null,
-        error: { message: "Not found" },
+        error: { message: 'Not found' },
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
 
-    it("should return empty object when metadata is null", async () => {
+    it('should return empty object when metadata is null', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: { metadata: null },
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
 
-    it("should handle partial metadata gracefully", async () => {
+    it('should handle partial metadata gracefully', async () => {
       const partialApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Only Title",
           description: undefined,
           openGraph: {
-            title: "OG Title Only",
             description: undefined,
             image: undefined,
             images: [],
+            title: 'OG Title Only',
           },
+          title: 'Only Title',
           twitter: {
             card: undefined,
-            title: undefined,
             description: undefined,
             image: undefined,
+            title: undefined,
           },
         },
       };
@@ -306,31 +310,31 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Only Title",
         description: undefined,
         openGraph: {
-          title: "OG Title Only",
           description: undefined,
           images: [],
+          title: 'OG Title Only',
         },
+        title: 'Only Title',
         twitter: {
-          title: undefined,
           description: undefined,
+          title: undefined,
         },
       });
     });
 
-    it("should cache API responses", async () => {
+    it('should cache API responses', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
 
       // First call
       await metadataFn({}, {} as any);
@@ -341,14 +345,14 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it("should handle different paths separately in cache", async () => {
+    it('should handle different paths separately in cache', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn1 = client.getMetadata(() => ({ path: "/test1" }));
-      const metadataFn2 = client.getMetadata(() => ({ path: "/test2" }));
+      const metadataFn1 = client.getMetadata(() => ({ path: '/test1' }));
+      const metadataFn2 = client.getMetadata(() => ({ path: '/test2' }));
 
       await metadataFn1({}, {} as any);
       await metadataFn2({}, {} as any);
@@ -357,7 +361,7 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2);
     });
 
-    it("should handle async function-based options", async () => {
+    it('should handle async function-based options', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
@@ -365,123 +369,123 @@ describe("GenerateMetadataClient (Next.js)", () => {
 
       const asyncOptsFn = async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
-        return { path: "/async-test" };
+        return { path: '/async-test' };
       };
 
       const metadataFn = client.getMetadata(asyncOptsFn);
       const result = await metadataFn({}, {} as any);
 
-      expect(result.title).toBe("Test Page Title");
+      expect(result.title).toBe('Test Page Title');
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/async-test" },
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/async-test' },
+          },
+        }
       );
     });
 
-    it("should use fallback metadata when API call fails", async () => {
-      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error("API Error"));
+    it('should use fallback metadata when API call fails', async () => {
+      vi.mocked(mockApiClient.GET).mockRejectedValue(new Error('API Error'));
 
       const fallbackMetadata = {
-        title: "Fallback Title",
-        description: "Fallback Description",
+        description: 'Fallback Description',
+        title: 'Fallback Title',
       };
 
       const metadataFn = client.getMetadata(() => ({
-        path: "/test",
         fallback: fallbackMetadata,
+        path: '/test',
       }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual(fallbackMetadata);
     });
 
-    it("should merge override metadata with generated metadata", async () => {
+    it('should merge override metadata with generated metadata', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const overrideMetadata = {
-        title: "Override Title",
-        keywords: ["override", "test"],
+        keywords: ['override', 'test'],
+        title: 'Override Title',
       };
 
       const metadataFn = client.getMetadata(() => ({
-        path: "/test",
         override: overrideMetadata,
+        path: '/test',
       }));
       const result = await metadataFn({}, {} as any);
 
-      expect(result.title).toBe("Override Title");
-      expect(result.keywords).toEqual(["override", "test"]);
-      expect(result.description).toBe("Test page description");
+      expect(result.title).toBe('Override Title');
+      expect(result.keywords).toEqual(['override', 'test']);
+      expect(result.description).toBe('Test page description');
     });
 
-    it("should use fallback, generated, and override in correct priority order", async () => {
+    it('should use fallback, generated, and override in correct priority order', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const fallbackMetadata = {
-        title: "Fallback Title",
-        description: "Fallback Description",
-        keywords: ["fallback"],
+        description: 'Fallback Description',
+        keywords: ['fallback'],
+        title: 'Fallback Title',
       };
 
       const overrideMetadata = {
-        title: "Override Title",
-        robots: "noindex",
+        robots: 'noindex',
+        title: 'Override Title',
       };
 
       const metadataFn = client.getMetadata(() => ({
-        path: "/test",
         fallback: fallbackMetadata,
         override: overrideMetadata,
+        path: '/test',
       }));
       const result = await metadataFn({}, {} as any);
 
-      expect(result.title).toBe("Override Title");
-      expect(result.description).toBe("Test page description");
-      expect(result.keywords).toEqual(["fallback"]);
-      expect(result.robots).toBe("noindex");
+      expect(result.title).toBe('Override Title');
+      expect(result.description).toBe('Test page description');
+      expect(result.keywords).toEqual(['fallback']);
+      expect(result.robots).toBe('noindex');
     });
 
-    it("should return empty metadata when DSN is undefined (development mode)", async () => {
+    it('should return empty metadata when DSN is undefined (development mode)', async () => {
       const devClient = new GenerateMetadataClient({
+        apiKey: 'test-api-key',
         dsn: undefined,
-        apiKey: "test-api-key",
       });
 
-      const metadataFn = devClient.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = devClient.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({});
       expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
-    it("should use fallback metadata when DSN is undefined", async () => {
+    it('should use fallback metadata when DSN is undefined', async () => {
       const devClient = new GenerateMetadataClient({
+        apiKey: 'test-api-key',
         dsn: undefined,
-        apiKey: "test-api-key",
       });
 
       const fallbackMetadata = {
-        title: "Development Title",
-        description: "Development Description",
+        description: 'Development Description',
+        title: 'Development Title',
       };
 
       const metadataFn = devClient.getMetadata(() => ({
-        path: "/test",
         fallback: fallbackMetadata,
+        path: '/test',
       }));
       const result = await metadataFn({}, {} as any);
 
@@ -489,24 +493,24 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).not.toHaveBeenCalled();
     });
 
-    it("should handle icons that are not arrays", async () => {
+    it('should handle icons that are not arrays', async () => {
       const responseWithBadIcons: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
+          appleTouchIcon: undefined,
           description: undefined,
           icon: undefined,
-          appleTouchIcon: undefined,
           openGraph: {
-            title: undefined,
             description: undefined,
             image: undefined,
             images: [],
-          },
-          twitter: {
             title: undefined,
-            description: undefined,
+          },
+          title: 'Test Title',
+          twitter: {
             card: undefined,
+            description: undefined,
             image: undefined,
+            title: undefined,
           },
         },
       };
@@ -516,41 +520,41 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         description: undefined,
         icons: [],
         openGraph: {
-          title: undefined,
           description: undefined,
           images: [],
-        },
-        twitter: {
           title: undefined,
+        },
+        title: 'Test Title',
+        twitter: {
           description: undefined,
+          title: undefined,
         },
       });
     });
 
-    it("should handle twitter card without value", async () => {
+    it('should handle twitter card without value', async () => {
       const responseWithoutCard: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           description: undefined,
           openGraph: {
-            title: undefined,
             description: undefined,
             image: undefined,
             images: [],
+            title: undefined,
           },
+          title: 'Test Title',
           twitter: {
-            title: "Twitter Title",
-            description: "Twitter Description",
             card: undefined,
+            description: 'Twitter Description',
             image: undefined,
+            title: 'Twitter Title',
           },
         },
       };
@@ -560,51 +564,51 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result.twitter).toEqual({
-        title: "Twitter Title",
-        description: "Twitter Description",
+        description: 'Twitter Description',
+        title: 'Twitter Title',
       });
     });
 
-    it("should handle openGraph images without alt text", async () => {
+    it('should handle openGraph images without alt text', async () => {
       const responseWithoutAlt: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           description: undefined,
           openGraph: {
-            title: undefined,
             description: undefined,
             image: {
-              url: "https://example.com/og-image.jpg",
               alt: undefined,
-              width: 1200,
               height: 630,
-              mimeType: "image/jpeg",
+              mimeType: 'image/jpeg',
+              url: 'https://example.com/og-image.jpg',
+              width: 1200,
             },
             images: [
               {
-                url: "https://example.com/og-image-1.jpg",
                 alt: undefined,
-                width: 800,
                 height: 600,
-                mimeType: "image/jpeg",
+                mimeType: 'image/jpeg',
+                url: 'https://example.com/og-image-1.jpg',
+                width: 800,
               },
             ],
-          },
-          twitter: {
             title: undefined,
-            description: undefined,
+          },
+          title: 'Test Title',
+          twitter: {
             card: undefined,
+            description: undefined,
             image: {
-              url: "https://example.com/twitter-image.jpg",
               alt: undefined,
-              width: 1200,
               height: 630,
-              mimeType: "image/jpeg",
+              mimeType: 'image/jpeg',
+              url: 'https://example.com/twitter-image.jpg',
+              width: 1200,
             },
+            title: undefined,
           },
         },
       };
@@ -614,32 +618,32 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result.openGraph?.images).toEqual([
         {
-          url: "https://example.com/og-image-1.jpg",
           alt: undefined,
-          width: 800,
           height: 600,
+          url: 'https://example.com/og-image-1.jpg',
+          width: 800,
         },
       ]);
 
       expect(result.twitter?.images).toEqual([
         {
-          url: "https://example.com/twitter-image.jpg",
           alt: undefined,
-          width: 1200,
           height: 630,
+          url: 'https://example.com/twitter-image.jpg',
+          width: 1200,
         },
       ]);
     });
 
-    it("should include apiKey as bearer token when provided", async () => {
-      const client = new GenerateMetadataClient({
-        dsn: "test-dsn",
-        apiKey: "test-api-key",
+    it('should include apiKey as bearer token when provided', async () => {
+      const testClient = new GenerateMetadataClient({
+        apiKey: 'test-api-key',
+        dsn: 'test-dsn',
       });
 
       vi.mocked(mockApiClient.GET).mockResolvedValue({
@@ -647,37 +651,37 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = testClient.getMetadata(() => ({ path: '/test' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test" },
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test' },
+          },
+        }
       );
     });
 
-    it("should handle custom meta tags", async () => {
+    it('should handle custom meta tags', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "author",
-              content: "John Doe",
+              content: 'John Doe',
+              name: 'author',
             },
             {
-              name: "keywords",
-              content: "test,metadata,seo",
+              content: 'test,metadata,seo',
+              name: 'keywords',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -686,32 +690,32 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          author: "John Doe",
-          keywords: "test,metadata,seo",
+          author: 'John Doe',
+          keywords: 'test,metadata,seo',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle custom meta tags with property-like names", async () => {
+    it('should handle custom meta tags with property-like names', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "fb:app_id",
-              content: "123456789",
+              content: '123456789',
+              name: 'fb:app_id',
             },
             {
-              name: "article:author",
-              content: "Jane Smith",
+              content: 'Jane Smith',
+              name: 'article:author',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -720,32 +724,32 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          "fb:app_id": "123456789",
-          "article:author": "Jane Smith",
+          'article:author': 'Jane Smith',
+          'fb:app_id': '123456789',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle custom meta tags with http-equiv-like names", async () => {
+    it('should handle custom meta tags with http-equiv-like names', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "refresh",
-              content: "30",
+              content: '30',
+              name: 'refresh',
             },
             {
-              name: "content-security-policy",
               content: "default-src 'self'",
+              name: 'content-security-policy',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -754,28 +758,28 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          refresh: "30",
-          "content-security-policy": "default-src 'self'",
+          'content-security-policy': "default-src 'self'",
+          refresh: '30',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle custom meta tags with charset name", async () => {
+    it('should handle custom meta tags with charset name', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "charset",
-              content: "utf-8",
+              content: 'utf-8',
+              name: 'charset',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -784,31 +788,31 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          charset: "utf-8",
+          charset: 'utf-8',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle custom meta tags with various names", async () => {
+    it('should handle custom meta tags with various names', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "name",
-              content: "Test Article",
+              content: 'Test Article',
+              name: 'name',
             },
             {
-              name: "description",
-              content: "A test article description",
+              content: 'A test article description',
+              name: 'description',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -817,40 +821,40 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          name: "Test Article",
-          description: "A test article description",
+          description: 'A test article description',
+          name: 'Test Article',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle mixed custom meta tags", async () => {
+    it('should handle mixed custom meta tags', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [
             {
-              name: "author",
-              content: "John Doe",
+              content: 'John Doe',
+              name: 'author',
             },
             {
-              name: "fb:app_id",
-              content: "123456789",
+              content: '123456789',
+              name: 'fb:app_id',
             },
             {
-              name: "refresh",
-              content: "30",
+              content: '30',
+              name: 'refresh',
             },
             {
-              name: "price",
-              content: "$29.99",
+              content: '$29.99',
+              name: 'price',
             },
           ],
+          title: 'Test Title',
         },
       };
 
@@ -859,25 +863,25 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
         other: {
-          author: "John Doe",
-          "fb:app_id": "123456789",
-          refresh: "30",
-          price: "$29.99",
+          author: 'John Doe',
+          'fb:app_id': '123456789',
+          price: '$29.99',
+          refresh: '30',
         },
+        title: 'Test Title',
       });
     });
 
-    it("should handle empty customTags array", async () => {
+    it('should handle empty customTags array', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: [],
+          title: 'Test Title',
         },
       };
 
@@ -886,19 +890,19 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
+        title: 'Test Title',
       });
     });
 
-    it("should handle undefined customTags", async () => {
+    it('should handle undefined customTags', async () => {
       const customTagsApiResponse: MetadataApiResponse = {
         metadata: {
-          title: "Test Title",
           customTags: undefined,
+          title: 'Test Title',
         },
       };
 
@@ -907,34 +911,34 @@ describe("GenerateMetadataClient (Next.js)", () => {
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       const result = await metadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Test Title",
+        title: 'Test Title',
       });
     });
   });
 
-  describe("getRootMetadata", () => {
-    it("should return empty metadata when no factory provided", async () => {
+  describe('getRootMetadata', () => {
+    it('should return empty metadata when no factory provided', async () => {
       const rootMetadataFn = client.getRootMetadata();
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
 
-    it("should return empty metadata when factory returns empty object", async () => {
+    it('should return empty metadata when factory returns empty object', async () => {
       const rootMetadataFn = client.getRootMetadata(() => ({}));
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({});
     });
 
-    it("should return fallback metadata when provided", async () => {
+    it('should return fallback metadata when provided', async () => {
       const fallbackMetadata = {
-        title: "Root Fallback Title",
-        description: "Root Fallback Description",
+        description: 'Root Fallback Description',
+        title: 'Root Fallback Title',
       };
 
       const rootMetadataFn = client.getRootMetadata(() => ({
@@ -945,15 +949,15 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(result).toEqual(fallbackMetadata);
     });
 
-    it("should merge override metadata properly", async () => {
+    it('should merge override metadata properly', async () => {
       const fallbackMetadata = {
-        title: "Root Fallback Title",
-        description: "Root Fallback Description",
+        description: 'Root Fallback Description',
+        title: 'Root Fallback Title',
       };
 
       const overrideMetadata = {
-        title: "Root Override Title",
-        keywords: ["root", "override"],
+        keywords: ['root', 'override'],
+        title: 'Root Override Title',
       };
 
       const rootMetadataFn = client.getRootMetadata(() => ({
@@ -963,19 +967,19 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Root Override Title", // Override wins
-        description: "Root Fallback Description", // Fallback preserved
-        keywords: ["root", "override"], // Override added
+        description: 'Root Fallback Description', // Fallback preserved
+        keywords: ['root', 'override'], // Override added
+        title: 'Root Override Title', // Override wins
       });
     });
 
-    it("should handle async factory functions", async () => {
+    it('should handle async factory functions', async () => {
       const asyncFactory = async () => {
         await new Promise((resolve) => setTimeout(resolve, 1));
         return {
           fallback: {
-            title: "Async Root Title",
-            description: "Async Root Description",
+            description: 'Async Root Description',
+            title: 'Async Root Title',
           },
         };
       };
@@ -984,17 +988,17 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const result = await rootMetadataFn({}, {} as any);
 
       expect(result).toEqual({
-        title: "Async Root Title",
-        description: "Async Root Description",
+        description: 'Async Root Description',
+        title: 'Async Root Title',
       });
     });
 
-    it("should pass props and parent to factory function", async () => {
+    it('should pass props and parent to factory function', async () => {
       const mockFactory = vi.fn().mockReturnValue({
-        fallback: { title: "Test Title" },
+        fallback: { title: 'Test Title' },
       });
-      const mockProps = { test: "prop" };
-      const mockParent = { test: "parent" } as any;
+      const mockProps = { test: 'prop' };
+      const mockParent = { test: 'parent' } as any;
 
       const rootMetadataFn = client.getRootMetadata(mockFactory);
       await rootMetadataFn(mockProps, mockParent);
@@ -1003,99 +1007,99 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
-  describe("revalidate", () => {
-    it("should clear cache and call revalidatePath for specific path", async () => {
+  describe('revalidate', () => {
+    it('should clear cache and call revalidatePath for specific path', async () => {
       // First, populate the cache
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       await metadataFn({}, {} as any);
 
       // Clear mocks to verify cache behavior
       vi.clearAllMocks();
 
       // Call clearCache and revalidate (which is what the webhook handler does)
-      (client as any).clearCache("/test");
-      await (client as any).revalidate("/test");
+      (client as any).clearCache('/test');
+      await (client as any).revalidate('/test');
 
       // Verify revalidatePath was called
-      expect(revalidatePath).toHaveBeenCalledWith("/test");
+      expect(revalidatePath).toHaveBeenCalledWith('/test');
 
       // Verify cache was cleared by fetching again
       await metadataFn({}, {} as any);
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1); // Should fetch again since cache was cleared
     });
 
-    it("should clear entire cache and revalidate all paths when path is null", async () => {
+    it('should clear entire cache and revalidate all paths when path is null', async () => {
       // Call clearCache and revalidate with null
       (client as any).clearCache(null);
       await (client as any).revalidate(null);
 
       // Verify revalidatePath was called with layout revalidation
-      expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+      expect(revalidatePath).toHaveBeenCalledWith('/', 'layout');
     });
   });
 
-  describe("revalidateHandler", () => {
-    it("should return route handlers for all HTTP methods", () => {
+  describe('revalidateHandler', () => {
+    it('should return route handlers for all HTTP methods', () => {
       const handlers = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+        revalidateSecret: 'test-secret',
       });
 
-      expect(handlers).toHaveProperty("GET");
-      expect(handlers).toHaveProperty("POST");
-      expect(handlers).toHaveProperty("PUT");
-      expect(handlers).toHaveProperty("PATCH");
-      expect(handlers).toHaveProperty("DELETE");
-      expect(handlers).toHaveProperty("OPTIONS");
-      expect(handlers).toHaveProperty("HEAD");
+      expect(handlers).toHaveProperty('GET');
+      expect(handlers).toHaveProperty('POST');
+      expect(handlers).toHaveProperty('PUT');
+      expect(handlers).toHaveProperty('PATCH');
+      expect(handlers).toHaveProperty('DELETE');
+      expect(handlers).toHaveProperty('OPTIONS');
+      expect(handlers).toHaveProperty('HEAD');
 
       // All handlers should be the same function
       expect(handlers.GET).toBe(handlers.POST);
       expect(handlers.POST).toBe(handlers.PUT);
     });
 
-    it("should create handler with custom basePath", () => {
+    it('should create handler with custom basePath', () => {
       const handlers = client.revalidateHandler({
-        revalidateSecret: "test-secret",
-        basePath: "/custom/api/path",
+        basePath: '/custom/api/path',
+        revalidateSecret: 'test-secret',
       });
 
-      expect(handlers).toHaveProperty("POST");
+      expect(handlers).toHaveProperty('POST');
     });
 
-    it("should have handlers that are functions", async () => {
+    it('should have handlers that are functions', () => {
       const handlers = client.revalidateHandler({
-        revalidateSecret: "test-secret",
+        revalidateSecret: 'test-secret',
       });
 
       // Verify all handlers are functions
-      expect(typeof handlers.POST).toBe("function");
-      expect(typeof handlers.GET).toBe("function");
+      expect(typeof handlers.POST).toBe('function');
+      expect(typeof handlers.GET).toBe('function');
     });
 
-    it("should return error handlers when revalidateSecret is undefined", async () => {
+    it('should return error handlers when revalidateSecret is undefined', async () => {
       const handlers = client.revalidateHandler({
         revalidateSecret: undefined,
       });
 
       // Verify all handlers are functions
-      expect(typeof handlers.POST).toBe("function");
-      expect(typeof handlers.GET).toBe("function");
+      expect(typeof handlers.POST).toBe('function');
+      expect(typeof handlers.GET).toBe('function');
 
       // Create a mock request
       const mockRequest = new Request(
-        "http://localhost/api/generate-metadata/revalidate",
+        'http://localhost/api/generate-metadata/revalidate',
         {
-          method: "POST",
+          body: JSON.stringify({ path: '/test' }),
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ path: "/test" }),
-        },
+          method: 'POST',
+        }
       );
 
       // Call the handler
@@ -1105,22 +1109,22 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(response.status).toBe(500);
       const body = await response.json();
       expect(body).toEqual({
+        error: 'Webhook secret is not configured',
         ok: false,
-        error: "Webhook secret is not configured",
       });
     });
 
-    it("should return the same error handler for all HTTP methods when revalidateSecret is undefined", async () => {
+    it('should return the same error handler for all HTTP methods when revalidateSecret is undefined', async () => {
       const handlers = client.revalidateHandler({
         revalidateSecret: undefined,
       });
 
       // Create a mock request
       const mockRequest = new Request(
-        "http://localhost/api/generate-metadata/revalidate",
+        'http://localhost/api/generate-metadata/revalidate',
         {
-          method: "GET",
-        },
+          method: 'GET',
+        }
       );
 
       // Test all handlers return the same error
@@ -1137,78 +1141,78 @@ describe("GenerateMetadataClient (Next.js)", () => {
       const putBody = await putResponse.json();
 
       expect(getBody).toEqual({
+        error: 'Webhook secret is not configured',
         ok: false,
-        error: "Webhook secret is not configured",
       });
       expect(postBody).toEqual({
+        error: 'Webhook secret is not configured',
         ok: false,
-        error: "Webhook secret is not configured",
       });
       expect(putBody).toEqual({
+        error: 'Webhook secret is not configured',
         ok: false,
-        error: "Webhook secret is not configured",
       });
     });
 
-    it("should use custom revalidatePath function when provided", async () => {
+    it('should use custom revalidatePath function when provided', async () => {
       const customRevalidatePath = vi.fn();
 
       // Spy on clearCache
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateHandler({
-        revalidateSecret: "test-secret",
         revalidatePath: customRevalidatePath,
+        revalidateSecret: 'test-secret',
       });
 
       // Create a mock request with webhook payload
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        'http://localhost:3000/api/generate-metadata/revalidate',
         {
-          method: "POST",
-          headers: {
-            authorization: "Bearer test-secret",
-            "content-type": "application/json",
-          },
           body: JSON.stringify({
-            _type: "metadata_update",
-            path: "/test-path",
+            _type: 'metadata_update',
+            path: '/test-path',
           }),
-        },
+          headers: {
+            authorization: 'Bearer test-secret',
+            'content-type': 'application/json',
+          },
+          method: 'POST',
+        }
       );
 
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/test-path");
-      expect(customRevalidatePath).toHaveBeenCalledWith("/test-path");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/test-path');
+      expect(customRevalidatePath).toHaveBeenCalledWith('/test-path');
     });
 
-    it("should use custom revalidatePath function with null path", async () => {
+    it('should use custom revalidatePath function with null path', async () => {
       const customRevalidatePath = vi.fn();
 
       // Spy on clearCache
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateHandler({
-        revalidateSecret: "test-secret",
         revalidatePath: customRevalidatePath,
+        revalidateSecret: 'test-secret',
       });
 
       // Create a mock request
       const mockRequest = new Request(
-        "http://localhost:3000/api/generate-metadata/revalidate",
+        'http://localhost:3000/api/generate-metadata/revalidate',
         {
-          method: "POST",
-          headers: {
-            authorization: "Bearer test-secret",
-            "content-type": "application/json",
-          },
           body: JSON.stringify({
-            _type: "metadata_update",
+            _type: 'metadata_update',
             path: null,
           }),
-        },
+          headers: {
+            authorization: 'Bearer test-secret',
+            'content-type': 'application/json',
+          },
+          method: 'POST',
+        }
       );
 
       const response = await handlers.POST(mockRequest);
@@ -1219,181 +1223,181 @@ describe("GenerateMetadataClient (Next.js)", () => {
     });
   });
 
-  describe("path normalization", () => {
-    it("should normalize paths with trailing slashes", async () => {
+  describe('path normalization', () => {
+    it('should normalize paths with trailing slashes', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test/" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test/' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test" }, // Normalized without trailing slash
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test' }, // Normalized without trailing slash
+          },
+        }
       );
     });
 
-    it("should normalize paths without leading slashes", async () => {
+    it('should normalize paths without leading slashes', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "test" }));
+      const metadataFn = client.getMetadata(() => ({ path: 'test' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test" }, // Normalized with leading slash
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test' }, // Normalized with leading slash
+          },
+        }
       );
     });
 
-    it("should normalize paths with both missing leading and trailing slashes", async () => {
+    it('should normalize paths with both missing leading and trailing slashes', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "test/page/" }));
+      const metadataFn = client.getMetadata(() => ({ path: 'test/page/' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test/page" }, // Normalized with leading slash, without trailing
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test/page' }, // Normalized with leading slash, without trailing
+          },
+        }
       );
     });
 
-    it("should handle root path correctly", async () => {
+    it('should handle root path correctly', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/" }, // Root path remains as "/"
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/' }, // Root path remains as "/"
+          },
+        }
       );
     });
 
-    it("should normalize paths with query strings", async () => {
+    it('should normalize paths with query strings', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const metadataFn = client.getMetadata(() => ({
-        path: "/test?query=param",
+        path: '/test?query=param',
       }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test" }, // Query string removed
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test' }, // Query string removed
+          },
+        }
       );
     });
 
-    it("should normalize paths with hash fragments", async () => {
+    it('should normalize paths with hash fragments', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test#section" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test#section' }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test" }, // Hash fragment removed
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test' }, // Hash fragment removed
+          },
+        }
       );
     });
 
-    it("should normalize paths with multiple trailing slashes", async () => {
+    it('should normalize paths with multiple trailing slashes', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
       const metadataFn = client.getMetadata(() => ({
-        path: "/test/page///",
+        path: '/test/page///',
       }));
       await metadataFn({}, {} as any);
 
       expect(mockApiClient.GET).toHaveBeenCalledWith(
-        "/v1/{dsn}/metadata/get-latest",
+        '/v1/{dsn}/metadata/get-latest',
         {
-          params: {
-            path: { dsn: "test-dsn" },
-            query: { path: "/test/page" }, // All trailing slashes removed correctly
-          },
           headers: {
-            Authorization: "Bearer test-api-key",
+            Authorization: 'Bearer test-api-key',
           },
-        },
+          params: {
+            path: { dsn: 'test-dsn' },
+            query: { path: '/test/page' }, // All trailing slashes removed correctly
+          },
+        }
       );
     });
 
-    it("should cache using normalized paths", async () => {
+    it('should cache using normalized paths', async () => {
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn1 = client.getMetadata(() => ({ path: "/test/" }));
-      const metadataFn2 = client.getMetadata(() => ({ path: "test" }));
-      const metadataFn3 = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn1 = client.getMetadata(() => ({ path: '/test/' }));
+      const metadataFn2 = client.getMetadata(() => ({ path: 'test' }));
+      const metadataFn3 = client.getMetadata(() => ({ path: '/test' }));
 
       // First call
       await metadataFn1({}, {} as any);
@@ -1406,339 +1410,340 @@ describe("GenerateMetadataClient (Next.js)", () => {
       expect(mockApiClient.GET).toHaveBeenCalledTimes(1);
     });
 
-    it("should normalize path in revalidate", async () => {
-      await (client as any).revalidate("/test/");
-      expect(revalidatePath).toHaveBeenCalledWith("/test");
+    it('should normalize path in revalidate', async () => {
+      await (client as any).revalidate('/test/');
+      expect(revalidatePath).toHaveBeenCalledWith('/test');
 
-      await (client as any).revalidate("test");
-      expect(revalidatePath).toHaveBeenCalledWith("/test");
+      await (client as any).revalidate('test');
+      expect(revalidatePath).toHaveBeenCalledWith('/test');
     });
 
-    it("should normalize path in clearCache", async () => {
+    it('should normalize path in clearCache', async () => {
       // First populate cache with different path formats
       vi.mocked(mockApiClient.GET).mockResolvedValue({
         data: mockApiResponse,
         error: undefined,
       });
 
-      const metadataFn = client.getMetadata(() => ({ path: "/test" }));
+      const metadataFn = client.getMetadata(() => ({ path: '/test' }));
       await metadataFn({}, {} as any);
 
       // Clear cache with unnormalized path
-      (client as any).clearCache("/test/");
+      (client as any).clearCache('/test/');
 
       // Verify cache was cleared by fetching again
       await metadataFn({}, {} as any);
       expect(mockApiClient.GET).toHaveBeenCalledTimes(2); // Should fetch again since cache was cleared
     });
 
-    it("should normalize path in webhook handler", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+    it('should normalize path in webhook handler', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
+        webhookSecret: 'test-secret',
       });
 
       // Test with trailing slash
-      const mockRequest1 = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest1 = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/test/",
+          _type: 'metadata_update',
+          path: '/test/',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest1);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
-      expect(revalidatePath).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/test');
+      expect(revalidatePath).toHaveBeenCalledWith('/test');
 
       // Test without leading slash
-      const mockRequest2 = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest2 = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "test",
+          _type: 'metadata_update',
+          path: 'test',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest2);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/test");
-      expect(revalidatePath).toHaveBeenCalledWith("/test");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/test');
+      expect(revalidatePath).toHaveBeenCalledWith('/test');
     });
 
-    it("should normalize path before applying pathRewrite", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
-      const pathRewriteSpy = vi.fn((path) => (path === "/old" ? "/new" : path));
+    it('should normalize path before applying pathRewrite', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
+      const pathRewriteSpy = vi.fn((path) => (path === '/old' ? '/new' : path));
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
+        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "old/", // Unnormalized path
+          _type: 'metadata_update',
+          path: 'old/', // Unnormalized path
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest);
 
       // pathRewrite should receive normalized path
-      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
-      expect(revalidatePath).toHaveBeenCalledWith("/new");
+      expect(pathRewriteSpy).toHaveBeenCalledWith('/old');
+      expect(clearCacheSpy).toHaveBeenCalledWith('/new');
+      expect(revalidatePath).toHaveBeenCalledWith('/new');
     });
   });
 
-  describe("pathRewrite normalization", () => {
-    it("should normalize the result of pathRewrite", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+  describe('pathRewrite normalization', () => {
+    it('should normalize the result of pathRewrite', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
       const pathRewriteSpy = vi.fn((path) => {
         // Return unnormalized path
-        return path === "/old" ? "/new/path/" : path;
+        return path === '/old' ? '/new/path/' : path;
       });
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
+        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/old",
+          _type: 'metadata_update',
+          path: '/old',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest);
 
       // pathRewrite returns "/new/path/" but it should be normalized to "/new/path"
-      expect(pathRewriteSpy).toHaveBeenCalledWith("/old");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new/path"); // Normalized
-      expect(revalidatePath).toHaveBeenCalledWith("/new/path"); // Normalized
+      expect(pathRewriteSpy).toHaveBeenCalledWith('/old');
+      expect(clearCacheSpy).toHaveBeenCalledWith('/new/path'); // Normalized
+      expect(revalidatePath).toHaveBeenCalledWith('/new/path'); // Normalized
     });
 
-    it("should handle pathRewrite returning null (falls back to original path)", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+    it('should handle pathRewrite returning null (falls back to original path)', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
       const pathRewriteSpy = vi.fn((path) => {
         // Return null for certain paths
-        return path === "/skip" ? null : path;
+        return path === '/skip' ? null : path;
       });
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
+        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/skip",
+          _type: 'metadata_update',
+          path: '/skip',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith("/skip");
+      expect(pathRewriteSpy).toHaveBeenCalledWith('/skip');
       // When pathRewrite returns null, it falls back to the original normalized path
-      expect(clearCacheSpy).toHaveBeenCalledWith("/skip");
-      expect(revalidatePath).toHaveBeenCalledWith("/skip");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/skip');
+      expect(revalidatePath).toHaveBeenCalledWith('/skip');
     });
 
-    it("should normalize pathRewrite result with multiple trailing slashes", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+    it('should normalize pathRewrite result with multiple trailing slashes', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
       const pathRewriteSpy = vi.fn((path) => {
         // Return path with multiple trailing slashes
-        return path === "/test" ? "/rewritten///" : path;
+        return path === '/test' ? '/rewritten///' : path;
       });
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
+        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/test",
+          _type: 'metadata_update',
+          path: '/test',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten"); // All trailing slashes removed
-      expect(revalidatePath).toHaveBeenCalledWith("/rewritten");
+      expect(pathRewriteSpy).toHaveBeenCalledWith('/test');
+      expect(clearCacheSpy).toHaveBeenCalledWith('/rewritten'); // All trailing slashes removed
+      expect(revalidatePath).toHaveBeenCalledWith('/rewritten');
     });
 
-    it("should handle pathRewrite returning path without leading slash", async () => {
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+    it('should handle pathRewrite returning path without leading slash', async () => {
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
       const pathRewriteSpy = vi.fn((path) => {
         // Return path without leading slash
-        return path === "/test" ? "rewritten/path" : path;
+        return path === '/test' ? 'rewritten/path' : path;
       });
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
           pathRewrite: pathRewriteSpy,
         },
+        webhookSecret: 'test-secret',
       });
 
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/test",
+          _type: 'metadata_update',
+          path: '/test',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       await handlers.POST(mockRequest);
 
-      expect(pathRewriteSpy).toHaveBeenCalledWith("/test");
-      expect(clearCacheSpy).toHaveBeenCalledWith("/rewritten/path"); // Leading slash added
-      expect(revalidatePath).toHaveBeenCalledWith("/rewritten/path");
+      expect(pathRewriteSpy).toHaveBeenCalledWith('/test');
+      expect(clearCacheSpy).toHaveBeenCalledWith('/rewritten/path'); // Leading slash added
+      expect(revalidatePath).toHaveBeenCalledWith('/rewritten/path');
     });
   });
 
-  describe("revalidateWebhookHandler", () => {
-    it("should return route handlers for all HTTP methods", () => {
+  describe('revalidateWebhookHandler', () => {
+    it('should return route handlers for all HTTP methods', () => {
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
+        webhookSecret: 'test-secret',
       });
 
-      expect(handlers).toHaveProperty("GET");
-      expect(handlers).toHaveProperty("POST");
-      expect(handlers).toHaveProperty("PUT");
-      expect(handlers).toHaveProperty("PATCH");
-      expect(handlers).toHaveProperty("DELETE");
-      expect(handlers).toHaveProperty("OPTIONS");
-      expect(handlers).toHaveProperty("HEAD");
+      expect(handlers).toHaveProperty('GET');
+      expect(handlers).toHaveProperty('POST');
+      expect(handlers).toHaveProperty('PUT');
+      expect(handlers).toHaveProperty('PATCH');
+      expect(handlers).toHaveProperty('DELETE');
+      expect(handlers).toHaveProperty('OPTIONS');
+      expect(handlers).toHaveProperty('HEAD');
 
       // All handlers should be the same function
       expect(handlers.GET).toBe(handlers.POST);
       expect(handlers.POST).toBe(handlers.PUT);
     });
 
-    it("should clear cache and call revalidatePath when webhook is received", async () => {
+    it('should clear cache and call revalidatePath when webhook is received', async () => {
       // Spy on clearCache
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
+        webhookSecret: 'test-secret',
       });
 
       // Create a mock webhook request
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/test-path",
+          _type: 'metadata_update',
+          path: '/test-path',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/test-path");
-      expect(revalidatePath).toHaveBeenCalledWith("/test-path");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/test-path');
+      expect(revalidatePath).toHaveBeenCalledWith('/test-path');
     });
 
-    it("should apply pathRewrite when provided", async () => {
+    it('should apply pathRewrite when provided', async () => {
       // Spy on clearCache
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
         revalidate: {
-          pathRewrite: (path) => (path === "/old" ? "/new" : path!),
+          // biome-ignore lint/style/noNonNullAssertion: temp
+          pathRewrite: (path) => (path === '/old' ? '/new' : path!),
         },
+        webhookSecret: 'test-secret',
       });
 
       // Create a mock webhook request
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "metadata_update",
-          path: "/old",
+          _type: 'metadata_update',
+          path: '/old',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       const response = await handlers.POST(mockRequest);
 
       expect(response.status).toBe(200);
-      expect(clearCacheSpy).toHaveBeenCalledWith("/new");
-      expect(revalidatePath).toHaveBeenCalledWith("/new");
+      expect(clearCacheSpy).toHaveBeenCalledWith('/new');
+      expect(revalidatePath).toHaveBeenCalledWith('/new');
     });
 
-    it("should ignore non-metadata_update webhook types", async () => {
+    it('should ignore non-metadata_update webhook types', async () => {
       // Spy on clearCache
-      const clearCacheSpy = vi.spyOn(client as any, "clearCache");
+      const clearCacheSpy = vi.spyOn(client as any, 'clearCache');
 
       const handlers = client.revalidateWebhookHandler({
-        webhookSecret: "test-secret",
+        webhookSecret: 'test-secret',
       });
 
       // Create a mock webhook request with different type
-      const mockRequest = new Request("http://localhost:3000/api/webhook", {
-        method: "POST",
-        headers: {
-          authorization: "Bearer test-secret",
-          "content-type": "application/json",
-        },
+      const mockRequest = new Request('http://localhost:3000/api/webhook', {
         body: JSON.stringify({
-          _type: "other_event",
-          path: "/test-path",
+          _type: 'other_event',
+          path: '/test-path',
         }),
+        headers: {
+          authorization: 'Bearer test-secret',
+          'content-type': 'application/json',
+        },
+        method: 'POST',
       });
 
       const response = await handlers.POST(mockRequest);

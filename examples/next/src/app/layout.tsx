@@ -1,15 +1,15 @@
-import { Geist, Geist_Mono as GeistMono } from "next/font/google";
-import "./globals.css";
-import { metadataClient } from "@/generate-metadata";
+import { Geist, Geist_Mono as GeistMono } from 'next/font/google';
+import './globals.css';
+import { metadataClient } from '@/generate-metadata';
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
 });
 
 const geistMono = GeistMono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
 });
 
 export const generateMetadata = metadataClient.getRootMetadata();

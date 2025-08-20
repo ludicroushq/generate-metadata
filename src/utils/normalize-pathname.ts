@@ -1,24 +1,27 @@
-import normalizeUrl from "normalize-url";
+import normalizeUrl from 'normalize-url';
 
 export function normalizePathname(path: string): string;
 export function normalizePathname(path: string | null): string | null;
 export function normalizePathname(path: string | null): string | null {
-  if (!path) return null;
+  if (!path) {
+    return null;
+  }
 
-  if (path.startsWith("//")) {
+  if (path.startsWith('//')) {
+    // biome-ignore lint/style/noParameterAssign: ok
     path = path.substring(1);
   }
 
-  const url = new URL(path, "https://example.com");
+  const url = new URL(path, 'https://example.com');
 
-  url.pathname = url.pathname.split("/").map(decodeURIComponent).join("/");
+  url.pathname = url.pathname.split('/').map(decodeURIComponent).join('/');
 
   // Use normalize-url with options that match our requirements
   const normalized = normalizeUrl(url.href, {
-    stripHash: true,
-    stripWWW: false,
     removeTrailingSlash: true,
     sortQueryParameters: true,
+    stripHash: true,
+    stripWWW: false,
   });
 
   // Extract just the pathname from the normalized URL
