@@ -15,7 +15,7 @@ export type MetadataApiResponse =
   operations['v1.metadata.getLatest']['responses']['200']['content']['application/json'];
 
 export type GenerateMetadataOptions = {
-  path: string;
+  path: string | undefined;
   apiKey?: string;
 };
 
@@ -63,7 +63,7 @@ export abstract class GenerateMetadataClientBase {
   protected async fetchMetadata(
     opts: GenerateMetadataOptions
   ): Promise<MetadataApiResponse | null> {
-    const normalizedPath = normalizePathname(opts.path);
+    const normalizedPath = opts.path ? normalizePathname(opts.path) : undefined;
     this.debug('fetchMetadata called with path:', normalizedPath);
 
     // If DSN is undefined, return empty metadata structure (development mode)
@@ -78,7 +78,7 @@ export abstract class GenerateMetadataClientBase {
 
     const apiKey = opts.apiKey ?? this.apiKey;
 
-    const cached = this.cache.latestMetadata.get(normalizedPath);
+    const cached = this.cache.latestMetadata.get(normalizedPath ?? '__ROOT__');
     if (cached) {
       this.debug('Found cached metadata for path:', normalizedPath);
       return cached;
@@ -95,7 +95,9 @@ export abstract class GenerateMetadataClientBase {
             dsn: this.dsn,
           },
           query: {
-            path: normalizePathname(normalizedPath),
+            path: normalizedPath
+              ? normalizePathname(normalizedPath)
+              : undefined,
           },
         },
         ...(apiKey && {
@@ -114,7 +116,7 @@ export abstract class GenerateMetadataClientBase {
         'Successfully fetched metadata from API for path:',
         normalizedPath
       );
-      this.cache.latestMetadata.set(normalizedPath, res.data);
+      this.cache.latestMetadata.set(normalizedPath ?? '__ROOT__', res.data);
 
       return res.data;
     } catch (err) {

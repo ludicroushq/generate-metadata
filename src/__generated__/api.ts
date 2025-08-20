@@ -4,6 +4,22 @@
  */
 
 export type paths = {
+  '/v1/{dsn}/metadata/get-latest': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['v1.metadata.getLatest'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/{dsn}/sites/get-site': {
     parameters: {
       query?: never;
@@ -30,22 +46,6 @@ export type paths = {
     get?: never;
     put?: never;
     post: operations['v1.sites.registerBuild'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/v1/{dsn}/metadata/get-latest': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations['v1.metadata.getLatest'];
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -99,35 +99,50 @@ export type webhooks = {
                  * @enum {string}
                  */
                 _type: 'metadata_update';
-                /** @description Page path (null for site default) */
-                path: string | null;
-                /** @description ID of the metadata revision */
-                metadataRevisionId: string;
                 /** @description The metadata content */
                 metadata: {
-                  title?: string;
-                  description?: string;
-                  noindex?: boolean;
-                  icon?: {
-                    url: string;
-                    alt?: string;
-                    width: number;
-                    height: number;
-                    mimeType: string;
-                  }[];
                   appleTouchIcon?: {
-                    url: string;
                     alt?: string;
-                    width: number;
                     height: number;
                     mimeType: string;
+                    url: string;
+                    width: number;
                   }[];
+                  customTags?: {
+                    content: string;
+                    name: string;
+                  }[];
+                  description?: string;
+                  icon?: {
+                    alt?: string;
+                    height: number;
+                    mimeType: string;
+                    url: string;
+                    width: number;
+                  }[];
+                  noindex?: boolean;
                   openGraph?: {
-                    title?: string;
                     description?: string;
+                    /** @enum {string} */
+                    determiner?: '' | 'a' | 'an' | 'the' | 'auto';
+                    image?: {
+                      alt?: string;
+                      height: number;
+                      mimeType: string;
+                      url: string;
+                      width: number;
+                    };
+                    images?: {
+                      alt?: string;
+                      height: number;
+                      mimeType: string;
+                      url: string;
+                      width: number;
+                    }[];
                     locale?: string;
                     localeAlternate?: string[];
                     siteName?: string;
+                    title?: string;
                     /** @enum {string} */
                     type?:
                       | 'website'
@@ -143,47 +158,32 @@ export type webhooks = {
                       | 'video.tv_show'
                       | 'video.other';
                     url?: string;
-                    /** @enum {string} */
-                    determiner?: '' | 'a' | 'an' | 'the' | 'auto';
-                    image?: {
-                      url: string;
-                      alt?: string;
-                      width: number;
-                      height: number;
-                      mimeType: string;
-                    };
-                    images?: {
-                      url: string;
-                      alt?: string;
-                      width: number;
-                      height: number;
-                      mimeType: string;
-                    }[];
                   };
+                  title?: string;
                   twitter?: {
-                    title?: string;
-                    description?: string;
                     /** @enum {string} */
                     card?: 'summary' | 'summary_large_image';
+                    description?: string;
                     image?: {
-                      url: string;
                       alt?: string;
-                      width: number;
                       height: number;
                       mimeType: string;
+                      url: string;
+                      width: number;
                     };
+                    title?: string;
                   };
-                  customTags?: {
-                    name: string;
-                    content: string;
-                  }[];
                 };
+                /** @description ID of the metadata revision */
+                metadataRevisionId: string;
+                /** @description Page path (null for site default) */
+                path: string | null;
                 /** @description Site information */
                 site: {
-                  /** @description Site hostname */
-                  hostname: string;
                   /** @description Site DSN identifier */
                   dsn: string;
+                  /** @description Site hostname */
+                  hostname: string;
                 };
                 /** @description ISO 8601 timestamp of the event */
                 timestamp: string;
@@ -198,12 +198,12 @@ export type webhooks = {
           };
           content: {
             'application/json': {
-              /** @example true */
-              ok: boolean;
               /** @description Optional metadata object with any additional information */
               metadata?: {
                 [key: string]: unknown;
               };
+              /** @example true */
+              ok: boolean;
             };
           };
         };
@@ -214,14 +214,14 @@ export type webhooks = {
           };
           content: {
             'application/json': {
-              /** @example false */
-              ok: boolean;
               /** @example Invalid webhook signature */
               error: string;
               /** @description Optional metadata object with any additional information */
               metadata?: {
                 [key: string]: unknown;
               };
+              /** @example false */
+              ok: boolean;
             };
           };
         };
@@ -232,14 +232,14 @@ export type webhooks = {
           };
           content: {
             'application/json': {
-              /** @example false */
-              ok: boolean;
               /** @example Internal server error */
               error: string;
               /** @description Optional metadata object with any additional information */
               metadata?: {
                 [key: string]: unknown;
               };
+              /** @example false */
+              ok: boolean;
             };
           };
         };
@@ -262,6 +262,106 @@ export type components = {
 };
 export type $defs = Record<string, never>;
 export type operations = {
+  'v1.metadata.getLatest': {
+    parameters: {
+      query?: {
+        path?: string;
+      };
+      header?: never;
+      path: {
+        dsn: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            metadata: {
+              appleTouchIcon?: {
+                alt?: string;
+                height: number;
+                mimeType: string;
+                url: string;
+                width: number;
+              }[];
+              customTags?: {
+                content: string;
+                name: string;
+              }[];
+              description?: string;
+              icon?: {
+                alt?: string;
+                height: number;
+                mimeType: string;
+                url: string;
+                width: number;
+              }[];
+              noindex?: boolean;
+              openGraph?: {
+                description?: string;
+                /** @enum {unknown} */
+                determiner?: '' | 'a' | 'an' | 'the' | 'auto';
+                image?: {
+                  alt?: string;
+                  height: number;
+                  mimeType: string;
+                  url: string;
+                  width: number;
+                };
+                images?: {
+                  alt?: string;
+                  height: number;
+                  mimeType: string;
+                  url: string;
+                  width: number;
+                }[];
+                locale?: string;
+                localeAlternate?: string[];
+                siteName?: string;
+                title?: string;
+                /** @enum {unknown} */
+                type?:
+                  | 'website'
+                  | 'article'
+                  | 'book'
+                  | 'profile'
+                  | 'music.song'
+                  | 'music.album'
+                  | 'music.playlist'
+                  | 'music.radio_station'
+                  | 'video.movie'
+                  | 'video.episode'
+                  | 'video.tv_show'
+                  | 'video.other';
+                url?: string;
+              };
+              title?: string;
+              twitter?: {
+                /** @enum {unknown} */
+                card?: 'summary' | 'summary_large_image';
+                description?: string;
+                image?: {
+                  alt?: string;
+                  height: number;
+                  mimeType: string;
+                  url: string;
+                  width: number;
+                };
+                title?: string;
+              };
+            };
+            metadataRevisionId?: string;
+          };
+        };
+      };
+    };
+  };
   'v1.sites.getSite': {
     parameters: {
       query?: never;
@@ -281,12 +381,12 @@ export type operations = {
         content: {
           'application/json': {
             site: {
+              autoAcceptAiSuggestions: boolean;
+              autoScrapeEnabled: boolean;
+              hostname: string;
               id: string;
               name: string;
-              hostname: string;
               titleTemplate: string | null;
-              autoScrapeEnabled: boolean;
-              autoAcceptAiSuggestions: boolean;
             };
           };
         };
@@ -319,108 +419,8 @@ export type operations = {
         };
         content: {
           'application/json': {
-            success: boolean;
             message: string;
-          };
-        };
-      };
-    };
-  };
-  'v1.metadata.getLatest': {
-    parameters: {
-      query: {
-        path: string;
-      };
-      header?: never;
-      path: {
-        dsn: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            metadata: {
-              title?: string;
-              description?: string;
-              noindex?: boolean;
-              icon?: {
-                url: string;
-                alt?: string;
-                width: number;
-                height: number;
-                mimeType: string;
-              }[];
-              appleTouchIcon?: {
-                url: string;
-                alt?: string;
-                width: number;
-                height: number;
-                mimeType: string;
-              }[];
-              openGraph?: {
-                title?: string;
-                description?: string;
-                locale?: string;
-                localeAlternate?: string[];
-                siteName?: string;
-                /** @enum {unknown} */
-                type?:
-                  | 'website'
-                  | 'article'
-                  | 'book'
-                  | 'profile'
-                  | 'music.song'
-                  | 'music.album'
-                  | 'music.playlist'
-                  | 'music.radio_station'
-                  | 'video.movie'
-                  | 'video.episode'
-                  | 'video.tv_show'
-                  | 'video.other';
-                url?: string;
-                /** @enum {unknown} */
-                determiner?: '' | 'a' | 'an' | 'the' | 'auto';
-                image?: {
-                  url: string;
-                  alt?: string;
-                  width: number;
-                  height: number;
-                  mimeType: string;
-                };
-                images?: {
-                  url: string;
-                  alt?: string;
-                  width: number;
-                  height: number;
-                  mimeType: string;
-                }[];
-              };
-              twitter?: {
-                title?: string;
-                description?: string;
-                /** @enum {unknown} */
-                card?: 'summary' | 'summary_large_image';
-                image?: {
-                  url: string;
-                  alt?: string;
-                  width: number;
-                  height: number;
-                  mimeType: string;
-                };
-              };
-              customTags?: {
-                name: string;
-                content: string;
-              }[];
-            };
-            metadataRevisionId?: string;
+            success: boolean;
           };
         };
       };
