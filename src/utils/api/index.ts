@@ -15,7 +15,7 @@ export type MetadataGetLatestResponse = Pick<
     {},
     `${string}/${string}`
   >,
-  'data' | 'error'
+  'data' | 'error' | 'response'
 >;
 
 export type BaseApiClient = {

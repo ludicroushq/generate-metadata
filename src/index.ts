@@ -2,7 +2,7 @@ import { type Context, Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { validator } from 'hono/validator';
 import type { operations, webhooks } from './__generated__/api';
-import type { BaseApiClient } from './utils/api';
+import { type BaseApiClient, baseUrl } from './utils/api';
 import { FetchApiClient } from './utils/api/fetch';
 import { verifyHmacSignature } from './utils/crypto';
 import createDebug, { type DebugFunction } from './utils/debug';
@@ -27,6 +27,8 @@ export type GenerateMetadataClientBaseOptions = {
   dsn: string | undefined;
   apiKey?: string | undefined;
   debug?: boolean;
+  cacheTtlMs?: number;
+  cacheMaxSize?: number;
 };
 
 const bearerTokenRegex = /^Bearer (.+)$/;
@@ -35,8 +37,13 @@ export abstract class GenerateMetadataClientBase {
   protected dsn: string | undefined;
   protected apiKey: string | undefined;
   protected debug: DebugFunction;
+  protected cacheTtlMs: number;
+  protected cacheMaxSize: number;
   protected cache: {
-    latestMetadata: Map<string, MetadataApiResponse>;
+    latestMetadata: Map<
+      string,
+      { data: MetadataApiResponse; etag: string | null; timestamp: number }
+    >;
   };
   protected api: BaseApiClient;
 
@@ -46,6 +53,8 @@ export abstract class GenerateMetadataClientBase {
     this.dsn = dsn;
     this.apiKey = apiKey;
     this.debug = createDebug('generate-metadata', debugEnabled);
+    this.cacheTtlMs = props.cacheTtlMs ?? 300_000;
+    this.cacheMaxSize = props.cacheMaxSize ?? 1000;
     this.cache = {
       latestMetadata: new Map(),
     };
@@ -60,6 +69,7 @@ export abstract class GenerateMetadataClientBase {
   }
   protected abstract getFrameworkName(): 'next' | 'tanstack-start';
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok
   protected async fetchMetadata(
     opts: GenerateMetadataOptions
   ): Promise<MetadataApiResponse | null> {
@@ -78,17 +88,28 @@ export abstract class GenerateMetadataClientBase {
 
     const apiKey = opts.apiKey ?? this.apiKey;
 
-    const cached = this.cache.latestMetadata.get(normalizedPath);
-    if (cached) {
-      this.debug('Found cached metadata for path:', normalizedPath);
-      return cached;
+    const staleEntry = this.cache.latestMetadata.get(normalizedPath);
+    const isStale =
+      staleEntry && Date.now() - staleEntry.timestamp >= this.cacheTtlMs;
+
+    if (staleEntry && !isStale) {
+      this.debug('Found fresh cached metadata for path:', normalizedPath);
+      return staleEntry.data;
     }
 
     this.debug(
-      'No cached metadata found, fetching from API for path:',
+      'No fresh cached metadata found, fetching from API for path:',
       normalizedPath
     );
     try {
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`;
+      }
+      if (staleEntry?.etag) {
+        headers['If-None-Match'] = staleEntry.etag;
+      }
+
       const res = await this.api.metadataGetLatest({
         params: {
           path: {
@@ -98,23 +119,41 @@ export abstract class GenerateMetadataClientBase {
             path: normalizePathname(normalizedPath),
           },
         },
-        ...(apiKey && {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        }),
+        ...(Object.keys(headers).length > 0 && { headers }),
       });
+
+      if (res.response?.status === 304 && staleEntry) {
+        this.debug('Received 304, refreshing cache timestamp');
+        staleEntry.timestamp = Date.now();
+        return staleEntry.data;
+      }
 
       if (!res.data) {
         this.debug('API returned no data, error:', res.error);
         throw res.error;
       }
 
+      const etag = res.response?.headers?.get('etag') ?? null;
+
+      if (
+        !this.cache.latestMetadata.has(normalizedPath) &&
+        this.cache.latestMetadata.size >= this.cacheMaxSize
+      ) {
+        const oldestKey = this.cache.latestMetadata.keys().next().value;
+        if (oldestKey) {
+          this.cache.latestMetadata.delete(oldestKey);
+        }
+      }
+
       this.debug(
         'Successfully fetched metadata from API for path:',
         normalizedPath
       );
-      this.cache.latestMetadata.set(normalizedPath, res.data);
+      this.cache.latestMetadata.set(normalizedPath, {
+        data: res.data,
+        etag,
+        timestamp: Date.now(),
+      });
 
       return res.data;
     } catch (err) {
@@ -329,6 +368,33 @@ export abstract class GenerateMetadataClientBase {
     );
 
     return app;
+  }
+
+  public async registerBuild(
+    buildId: string,
+    framework?: 'next' | 'tanstack-start'
+  ): Promise<void> {
+    if (!this.dsn) {
+      this.debug('Skipping registerBuild: DSN is undefined');
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${baseUrl}/v1/${this.dsn}/sites/register-build`,
+        {
+          body: JSON.stringify({ buildId, framework }),
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+          },
+          method: 'POST',
+        }
+      );
+      this.debug('registerBuild response status:', res.status);
+    } catch (err) {
+      this.debug('registerBuild failed:', err);
+    }
   }
 
   /**

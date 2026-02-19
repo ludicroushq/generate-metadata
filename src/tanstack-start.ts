@@ -1,7 +1,6 @@
 import type { ServerFnCtx } from '@tanstack/react-start';
 import _ from 'es-toolkit/compat';
 import { handle } from 'hono/vercel';
-import { match } from 'ts-pattern';
 import {
   GenerateMetadataClientBase,
   type GenerateMetadataClientBaseOptions,
@@ -16,7 +15,6 @@ import {
 } from './utils/api/tanstack-start';
 import { normalizePathname } from './utils/normalize-pathname';
 
-// TanStack Start's head function return type
 type TanstackHead = {
   links?: Array<{
     href: string;
@@ -75,7 +73,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       override ? 'present' : 'absent'
     );
 
-    // Merge non-meta properties (destructure to exclude meta)
     const { meta: _1, ...fallbackBase } = fallback || {};
     const { meta: _2, ...generatedBase } = generated;
     const { meta: _3, ...overrideBase } = override || {};
@@ -87,7 +84,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       overrideBase
     );
 
-    // Helper function to get meta key for deduplication
     const getMetaKey = (metaItem: any): string | null => {
       if (metaItem.name) {
         return `name:${metaItem.name}`;
@@ -101,7 +97,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       return null;
     };
 
-    // Helper function to remove all occurrences of items with the given keys
     const removeByKeys = (items: any[], keysToRemove: Set<string>): any[] => {
       return items.filter((item) => {
         const key = getMetaKey(item);
@@ -109,10 +104,8 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       });
     };
 
-    // Start with fallback meta
     let finalMeta = [...(fallback?.meta || [])];
 
-    // Add generated meta, removing any duplicates from fallback first
     if (generated.meta) {
       const generatedKeys = new Set<string>();
       for (const metaItem of generated.meta) {
@@ -125,7 +118,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       finalMeta.push(...generated.meta);
     }
 
-    // Add override meta, removing any duplicates from existing meta first
     if (override?.meta) {
       const overrideKeys = new Set<string>();
       for (const metaItem of override.meta) {
@@ -147,6 +139,7 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return result;
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok
   private convertToTanstackHead(response: MetadataApiResponse): TanstackHead {
     this.debug('Converting API response to TanStack Start head');
 
@@ -159,210 +152,186 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     const meta: TanstackHead['meta'] = [];
     const links: TanstackHead['links'] = [];
 
-    const keys: (keyof typeof metadata)[] = Object.keys(
-      metadata
-    ) as (keyof typeof metadata)[];
+    const keys = Object.keys(metadata) as (keyof typeof metadata)[];
 
     this.debug('Processing metadata keys:', keys);
 
     for (const key of keys) {
-      match(key)
-        .with('title', () => {
-          if (metadata.title) {
-            meta.push({ content: metadata.title, name: 'title' });
-            meta.push({ title: metadata.title });
-          }
-        })
-        .with('description', () => {
-          if (metadata.description) {
-            meta.push({ content: metadata.description, name: 'description' });
-          }
-        })
-        .with('icon', () => {
-          if (metadata.icon) {
-            for (const icon of metadata.icon) {
-              links.push({
-                href: icon.url,
-                rel: 'icon',
-                sizes: `${icon.width}x${icon.height}`,
-                type: icon.mimeType,
-              });
-            }
-          }
-        })
-        .with('appleTouchIcon', () => {
-          if (metadata.appleTouchIcon) {
-            for (const icon of metadata.appleTouchIcon) {
-              links.push({
-                href: icon.url,
-                rel: 'apple-touch-icon',
-                sizes: `${icon.width}x${icon.height}`,
-                type: icon.mimeType,
-              });
-            }
-          }
-        })
-        .with('openGraph', () => {
-          if (!metadata.openGraph) {
-            return;
-          }
-
-          const ogKeys: (keyof typeof metadata.openGraph)[] = Object.keys(
-            metadata.openGraph
-          ) as (keyof typeof metadata.openGraph)[];
-
-          const openGraph = metadata.openGraph;
-
-          for (const ogKey of ogKeys) {
-            match(ogKey)
-              .with('title', () => {
-                if (openGraph.title) {
-                  meta.push({
-                    content: openGraph.title,
-                    property: 'og:title',
-                  });
-                }
-              })
-              .with('description', () => {
-                if (openGraph.description) {
-                  meta.push({
-                    content: openGraph.description,
-                    property: 'og:description',
-                  });
-                }
-              })
-              .with('locale', () => {
-                if (openGraph.locale) {
-                  meta.push({
-                    content: openGraph.locale,
-                    property: 'og:locale',
-                  });
-                }
-              })
-              .with('siteName', () => {
-                if (openGraph.siteName) {
-                  meta.push({
-                    content: openGraph.siteName,
-                    property: 'og:site_name',
-                  });
-                }
-              })
-              .with('type', () => {
-                if (openGraph.type) {
-                  meta.push({
-                    content: openGraph.type,
-                    property: 'og:type',
-                  });
-                }
-              })
-              .with('image', () => {
-                const ogImage = openGraph.image;
-                if (ogImage) {
-                  meta.push({
-                    content: ogImage.url,
-                    property: 'og:image',
-                  });
-                  if (ogImage.alt) {
-                    meta.push({
-                      content: ogImage.alt,
-                      property: 'og:image:alt',
-                    });
-                  }
-                }
-              })
-              // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ok
-              .with('images', () => {
-                if (openGraph.images) {
-                  for (const img of openGraph.images) {
-                    meta.push({ content: img.url, property: 'og:image' });
-                    if (img.alt) {
-                      meta.push({ content: img.alt, property: 'og:image:alt' });
-                    }
-                  }
-                }
-              })
-              .with('url', () => {})
-              .with('determiner', () => {})
-              .with('localeAlternate', () => {})
-              .exhaustive(() => {});
-          }
-        })
-        .with('twitter', () => {
-          if (!metadata.twitter) {
-            return;
-          }
-
-          const twitterKeys: (keyof typeof metadata.twitter)[] = Object.keys(
-            metadata.twitter
-          ) as (keyof typeof metadata.twitter)[];
-
-          const twitter = metadata.twitter;
-
-          for (const twitterKey of twitterKeys) {
-            match(twitterKey)
-              .with('title', () => {
-                if (twitter.title) {
-                  meta.push({
-                    content: twitter.title,
-                    name: 'twitter:title',
-                  });
-                }
-              })
-              .with('description', () => {
-                if (twitter.description) {
-                  meta.push({
-                    content: twitter.description,
-                    name: 'twitter:description',
-                  });
-                }
-              })
-              .with('card', () => {
-                if (twitter.card) {
-                  meta.push({
-                    content: twitter.card,
-                    name: 'twitter:card',
-                  });
-                }
-              })
-              .with('image', () => {
-                const twitterImage = twitter.image;
-                if (twitterImage) {
-                  meta.push({
-                    content: twitterImage.url,
-                    name: 'twitter:image',
-                  });
-                  if (twitterImage.alt) {
-                    meta.push({
-                      content: twitterImage.alt,
-                      name: 'twitter:image:alt',
-                    });
-                  }
-                }
-              })
-              .exhaustive(() => {});
-          }
-        })
-        .with('noindex', () => {
-          if (metadata.noindex) {
-            meta.push({ content: 'noindex,nofollow', name: 'robots' });
-          }
-        })
-        .with('customTags', () => {
-          if (!metadata.customTags) {
-            return;
-          }
-
-          this.debug('Processing custom tags:', metadata.customTags.length);
-
-          // Handle custom tags - convert to TanStack Start format
-          for (const tag of metadata.customTags) {
-            meta.push({
-              content: tag.content,
-              name: tag.name,
+      if (key === 'title') {
+        if (metadata.title) {
+          meta.push({ content: metadata.title, name: 'title' });
+          meta.push({ title: metadata.title });
+        }
+      } else if (key === 'description') {
+        if (metadata.description) {
+          meta.push({ content: metadata.description, name: 'description' });
+        }
+      } else if (key === 'icon') {
+        if (metadata.icon) {
+          for (const icon of metadata.icon) {
+            links.push({
+              href: icon.url,
+              rel: 'icon',
+              sizes: `${icon.width}x${icon.height}`,
+              type: icon.mimeType,
             });
           }
-        })
-        .exhaustive(() => {});
+        }
+      } else if (key === 'appleTouchIcon') {
+        if (metadata.appleTouchIcon) {
+          for (const icon of metadata.appleTouchIcon) {
+            links.push({
+              href: icon.url,
+              rel: 'apple-touch-icon',
+              sizes: `${icon.width}x${icon.height}`,
+              type: icon.mimeType,
+            });
+          }
+        }
+      } else if (key === 'openGraph') {
+        if (!metadata.openGraph) {
+          continue;
+        }
+
+        const ogKeys = Object.keys(
+          metadata.openGraph
+        ) as (keyof typeof metadata.openGraph)[];
+
+        const openGraph = metadata.openGraph;
+
+        for (const ogKey of ogKeys) {
+          if (ogKey === 'title') {
+            if (openGraph.title) {
+              meta.push({
+                content: openGraph.title,
+                property: 'og:title',
+              });
+            }
+          } else if (ogKey === 'description') {
+            if (openGraph.description) {
+              meta.push({
+                content: openGraph.description,
+                property: 'og:description',
+              });
+            }
+          } else if (ogKey === 'locale') {
+            if (openGraph.locale) {
+              meta.push({
+                content: openGraph.locale,
+                property: 'og:locale',
+              });
+            }
+          } else if (ogKey === 'siteName') {
+            if (openGraph.siteName) {
+              meta.push({
+                content: openGraph.siteName,
+                property: 'og:site_name',
+              });
+            }
+          } else if (ogKey === 'type') {
+            if (openGraph.type) {
+              meta.push({
+                content: openGraph.type,
+                property: 'og:type',
+              });
+            }
+          } else if (ogKey === 'image') {
+            const ogImage = openGraph.image;
+            if (ogImage) {
+              meta.push({
+                content: ogImage.url,
+                property: 'og:image',
+              });
+              if (ogImage.alt) {
+                meta.push({
+                  content: ogImage.alt,
+                  property: 'og:image:alt',
+                });
+              }
+            }
+          } else if (ogKey === 'images' && openGraph.images) {
+            for (const img of openGraph.images) {
+              meta.push({ content: img.url, property: 'og:image' });
+              if (img.alt) {
+                meta.push({ content: img.alt, property: 'og:image:alt' });
+              }
+            }
+          }
+        }
+      } else if (key === 'twitter') {
+        if (!metadata.twitter) {
+          continue;
+        }
+
+        const twitterKeys = Object.keys(
+          metadata.twitter
+        ) as (keyof typeof metadata.twitter)[];
+
+        const twitter = metadata.twitter;
+
+        for (const twitterKey of twitterKeys) {
+          if (twitterKey === 'title') {
+            if (twitter.title) {
+              meta.push({
+                content: twitter.title,
+                name: 'twitter:title',
+              });
+            }
+          } else if (twitterKey === 'description') {
+            if (twitter.description) {
+              meta.push({
+                content: twitter.description,
+                name: 'twitter:description',
+              });
+            }
+          } else if (twitterKey === 'card') {
+            if (twitter.card) {
+              meta.push({
+                content: twitter.card,
+                name: 'twitter:card',
+              });
+            }
+          } else if (twitterKey === 'image') {
+            const twitterImage = twitter.image;
+            if (twitterImage) {
+              meta.push({
+                content: twitterImage.url,
+                name: 'twitter:image',
+              });
+              if (twitterImage.alt) {
+                meta.push({
+                  content: twitterImage.alt,
+                  name: 'twitter:image:alt',
+                });
+              }
+            }
+          }
+        }
+      } else if (key === 'noindex') {
+        if (metadata.noindex) {
+          meta.push({ content: 'noindex,nofollow', name: 'robots' });
+        }
+      } else if (key === 'customTags') {
+        if (!metadata.customTags) {
+          continue;
+        }
+
+        this.debug('Processing custom tags:', metadata.customTags.length);
+
+        for (const tag of metadata.customTags) {
+          meta.push({
+            content: tag.content,
+            name: tag.name,
+          });
+        }
+      }
+    }
+
+    if (response.metadataRevisionId) {
+      meta.push({
+        content: response.metadataRevisionId,
+        name: 'generate-metadata:revision-id',
+      });
     }
 
     return {
@@ -404,7 +373,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
 
       const tanstackHead = metadata ? this.convertToTanstackHead(metadata) : {};
 
-      // Deep merge: override > generated > fallback
       const result = this.mergeMetadata(fallback, tanstackHead, override);
       this.debug('Returning merged head metadata');
       return result;
@@ -414,7 +382,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     }
   }
 
-  // Static validator for serverFn input
   public static serverFnValidator = validator;
 
   public static async serverFnHandler(
@@ -454,7 +421,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
     return async (ctx: Ctx): Promise<TanstackHead> => {
       // biome-ignore lint/nursery/noUnnecessaryConditions: wrong
       const opts = factory ? await factory(ctx) : {};
-      // Return empty metadata merged with fallback and override
       return this.mergeMetadata(opts.fallback, { meta: [] }, opts.override);
     };
   }
@@ -466,8 +432,6 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
       _path,
       '(no-op for TanStack Start)'
     );
-    // TanStack Start doesn't have a built-in revalidation mechanism
-    // So we just return void
   }
 
   public revalidateWebhookHandler(options: {
@@ -478,12 +442,10 @@ export class GenerateMetadataClient extends GenerateMetadataClientBase {
   }) {
     this.debug('Creating revalidate webhook handler');
 
-    // Get the Hono app from base class
     const app = this.createWebhookApp({
       webhookHandler: async (data) => {
         if (data._type !== 'metadata_update') {
           this.debug('Ignoring webhook type:', data._type);
-          // Ignore other webhook types
           return;
         }
 
